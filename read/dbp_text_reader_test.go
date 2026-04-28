@@ -2,10 +2,11 @@ package read
 
 import (
 	"context"
+	"testing"
+
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	"testing"
 )
 
 func TestDBPTextReader1(t *testing.T) {
@@ -15,7 +16,7 @@ func TestDBPTextReader1(t *testing.T) {
 	otFileset := `ENGWEBO_ET`
 	ntFileset := `ENGWEBN_ET`
 	testament := request.Testament{NTBooks: []string{`MAT`, `MRK`}, OTBooks: []string{`JOB`, `PSA`, `PRO`, `SNG`}}
-	files, status := input.DBPDirectory(ctx, bibleId, fsType, otFileset, ntFileset, testament)
+	files, status := input.DBPDirectory(ctx, bibleId, fsType, otFileset, ntFileset) //, testament)
 	if status != nil {
 		t.Error(status)
 	}
