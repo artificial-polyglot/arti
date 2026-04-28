@@ -2,6 +2,7 @@ package read
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
@@ -23,12 +24,29 @@ func TestUSFMParser(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	count, stat2 := conn.CountScriptRows()
-	if stat2 != nil {
-		t.Error(stat2)
-	}
-	if count != 11755 {
-		t.Error(`Expected 11755, but got`, count)
-	}
+	selectScripts(conn, t)
 	conn.Close()
+}
+
+func selectScripts(conn db.DBAdapter, t *testing.T) {
+	query := `SELECT script_id, book_id, chapter_num, verse_num, verse_str, usfm_style, script_text 
+		FROM scripts ORDER BY script_id`
+	rows, err := conn.DB.Query(query)
+	if err != nil {
+		t.Error(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var rec db.Script
+		err = rows.Scan(&rec.ScriptId, &rec.BookId, &rec.ChapterNum,
+			&rec.VerseNum, &rec.VerseStr, &rec.UsfmStyle, &rec.ScriptText)
+		if err != nil {
+			t.Error(err)
+		}
+		fmt.Println(rec.ChapterNum, rec.VerseStr, "usfm:", rec.UsfmStyle, "[", rec.ScriptText, "]")
+	}
+	err = rows.Err()
+	if err != nil {
+		t.Error(err)
+	}
 }

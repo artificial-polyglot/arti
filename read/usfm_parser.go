@@ -2,7 +2,6 @@ package read
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -93,7 +92,6 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 			textEnd = indices[i+1][0]
 		}
 		text := strings.TrimSpace(body[loc[1]:textEnd])
-		fmt.Println(loc[0], loc[1], body[loc[0]:loc[1]], marker, text)
 		// handle closing markers
 		if strings.HasSuffix(marker, "*") {
 			if skipping && marker == skipUntil {
@@ -106,14 +104,60 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 		if skipping {
 			continue
 		}
-		// look up the marker in the style map
-		style, found := styleMap[marker]
-		fmt.Println("style", style.StyleType, style.Keep, found)
+		// look up the marker in the style map; strip trailing digit for numbered variants (e.g. \q1 -> q)
+		lookupKey := marker
+		if len(lookupKey) > 0 {
+			last := lookupKey[len(lookupKey)-1]
+			if last >= '0' && last <= '9' {
+				lookupKey = lookupKey[:len(lookupKey)-1]
+			}
+		}
+		style, found := styleMap[lookupKey]
 		if !found {
 			if text != "" {
 				rec.ScriptTexts = append(rec.ScriptTexts, text)
 			}
-			fmt.Println("*** no style", style.StyleType, style.Keep)
+			continue
+		}
+		// handle structural types regardless of Keep value
+		switch style.StyleType {
+		case "book":
+			continue
+		case "chapter":
+			if len(rec.ScriptTexts) > 0 {
+				scripts = append(scripts, rec)
+				rec = db.Script{}
+			}
+			if fields := strings.Fields(text); len(fields) > 0 {
+				if num, err := strconv.Atoi(fields[0]); err == nil {
+					chapterNum = num
+				}
+			}
+			verseNum = 0
+			verseStr = "0"
+			continue
+		case "verse":
+			if len(rec.ScriptTexts) > 0 {
+				scripts = append(scripts, rec)
+				rec = db.Script{}
+			}
+			fields := strings.Fields(text)
+			if len(fields) > 0 {
+				verseStr = fields[0]
+				if num, err := strconv.Atoi(verseStr); err == nil {
+					verseNum = num
+				}
+			}
+			rec = db.Script{
+				DatasetId:  1,
+				BookId:     bookId,
+				ChapterNum: chapterNum,
+				VerseNum:   verseNum,
+				VerseStr:   verseStr,
+			}
+			if len(fields) > 1 {
+				rec.ScriptTexts = append(rec.ScriptTexts, strings.Join(fields[1:], " "))
+			}
 			continue
 		}
 		// if Keep is false, determine whether to skip or just drop
@@ -124,53 +168,12 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 			}
 			continue
 		}
-		// Keep is true — handle by StyleType
-		fmt.Println("-- AT SWITCH", style.StyleType)
-		switch style.StyleType {
-		case "book":
-			continue
-		case "chapter":
-			if len(rec.ScriptTexts) > 0 {
-				fmt.Println("*** chapter", rec)
-				scripts = append(scripts, rec)
-				rec = db.Script{}
-			}
-			num, err := strconv.Atoi(strings.Fields(text)[0])
-			if err == nil {
-				chapterNum = num
-			}
-			verseNum = 0
-			verseStr = "0"
-		case "verse":
-			if len(rec.ScriptTexts) > 0 {
-				fmt.Println("*** verse", rec)
-				scripts = append(scripts, rec)
-				rec = db.Script{}
-			}
-			verseStr = strings.Fields(text)[0]
-			num, err := strconv.Atoi(verseStr)
-			if err == nil {
-				verseNum = num
-			}
-			rec = db.Script{
-				DatasetId:  1,
-				BookId:     bookId,
-				ChapterNum: chapterNum,
-				VerseNum:   verseNum,
-				VerseStr:   verseStr,
-			}
-			fmt.Println(rec)
-			fields := strings.Fields(text)
-			if len(fields) > 1 {
-				rec.ScriptTexts = append(rec.ScriptTexts, strings.Join(fields[1:], " "))
-			}
-		default:
-			if rec.UsfmStyle == "" {
-				rec.UsfmStyle = marker
-			}
-			if text != "" {
-				rec.ScriptTexts = append(rec.ScriptTexts, text)
-			}
+		// Keep is true — accumulate text
+		if rec.UsfmStyle == "" {
+			rec.UsfmStyle = style.StyleType + "." + lookupKey + "." + marker
+		}
+		if text != "" {
+			rec.ScriptTexts = append(rec.ScriptTexts, text)
 		}
 	}
 	// save final pending record
