@@ -80,6 +80,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	var verseStr = "0"
 	var skipping = false
 	var skipUntil string
+	var pendingStyle string
 
 	re := regexp.MustCompile(`\\[a-zA-Z]+\d?\*?`)
 	body := string(content)
@@ -154,7 +155,9 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				ChapterNum: chapterNum,
 				VerseNum:   verseNum,
 				VerseStr:   verseStr,
+				UsfmStyle:  pendingStyle,
 			}
+			pendingStyle = ""
 			if len(fields) > 1 {
 				rec.ScriptTexts = append(rec.ScriptTexts, strings.Join(fields[1:], " "))
 			}
@@ -168,9 +171,19 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 			}
 			continue
 		}
-		// Keep is true — accumulate text
-		if rec.UsfmStyle == "" {
-			rec.UsfmStyle = style.StyleType + "." + lookupKey + "." + marker
+		// Keep is true — h and mt populate titleDesc rather than the script slice
+		if style.StyleType == "para" && lookupKey == "h" {
+			titles.heading = text
+			continue
+		}
+		if style.StyleType == "para" && lookupKey == "mt" {
+			if text != "" {
+				titles.title = append(titles.title, text)
+			}
+			continue
+		}
+		if style.StyleType == "para" {
+			pendingStyle = style.StyleType + "." + lookupKey
 		}
 		if text != "" {
 			rec.ScriptTexts = append(rec.ScriptTexts, text)
