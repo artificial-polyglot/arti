@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -67,8 +68,8 @@ func TestUSXUSFMCompare(t *testing.T) {
 	const compareBucket = "pretest-audio"
 
 	usxPrefixes := []string{
-		"Uploaded/N2HOYWFW Holiya [T] (HOY)/N2HOYWFW Text/USX/",
-		//"N2XISWIN Kisan (XIS)/N2XISWIN Text/USX/",
+		//"Uploaded/N2HOYWFW Holiya [T] (HOY)/N2HOYWFW Text/USX/",
+		"N2XISWIN Kisan (XIS)/N2XISWIN Text/USX/",
 		//"2025-09-08/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE)/O2NHEWYI Text/O2NHEWYI USX/",
 		//"O2NHEWYI Nahuatl Huasteca, Eastern (NHE)/O2NHEWYI Text/O2NHEWYI USX/",
 		//"2025-09-05/N2BHIWFW Bhilali (BHI)/N2BHIWFW Text/N2BHIWFW USX/",
@@ -121,15 +122,12 @@ func TestUSXUSFMCompare(t *testing.T) {
 			t.Fatalf("USX parse failed for %s: %v", usxPrefix, status)
 		}
 
-		diffs, status := compareScriptDatabases(ctx, usxDBPath, sfmDBPath)
+		hasDiffs, status := compareScriptDatabases(ctx, usxDBPath, sfmDBPath)
 		if status != nil {
 			t.Fatalf("Comparison failed for %s: %v", usxPrefix, status)
 		}
-		if len(diffs) > 0 {
-			t.Logf("DIFFERENCES in %s <-> %s:", usxPrefix, sfmPrefix)
-			for _, d := range diffs {
-				t.Logf("  [%s] ch=%d v=%d style=%q text=%q", d.source, d.chapterNum, d.verseNum, d.usfmStyle, d.scriptText)
-			}
+		if hasDiffs {
+			t.Logf("DIFFERENCES in %s <-> %s, see %s", usxPrefix, sfmPrefix, filepath.Join(tmpDir, "diff.txt"))
 			t.FailNow()
 		}
 	}
@@ -239,56 +237,65 @@ func bookIdForCompare(filename string) string {
 	}
 }
 
-type scriptDiff struct {
-	source     string
-	chapterNum int
-	verseNum   int
-	usfmStyle  string
-	scriptText string
+// compareScriptDatabases queries both databases, writes formatted output files into
+// the subdirectory named after each db file (e.g. usx.db -> usx/usx.txt), runs
+// unix diff on the two files, and writes the result to the shared parent directory.
+// Returns true if differences were found.
+func compareScriptDatabases(ctx context.Context, usxDBPath, sfmDBPath string) (bool, *log.Status) {
+	parentDir := filepath.Dir(usxDBPath)
+
+	usxBase := strings.TrimSuffix(filepath.Base(usxDBPath), filepath.Ext(usxDBPath))
+	sfmBase := strings.TrimSuffix(filepath.Base(sfmDBPath), filepath.Ext(sfmDBPath))
+
+	usxTxtPath := filepath.Join(parentDir, usxBase, usxBase+".txt")
+	sfmTxtPath := filepath.Join(parentDir, sfmBase, sfmBase+".txt")
+	diffPath := filepath.Join(parentDir, "diff.txt")
+
+	if status := dumpScriptDB(ctx, usxDBPath, usxTxtPath); status != nil {
+		return false, status
+	}
+	if status := dumpScriptDB(ctx, sfmDBPath, sfmTxtPath); status != nil {
+		return false, status
+	}
+
+	cmd := exec.Command("diff", usxTxtPath, sfmTxtPath)
+	diffOutput, _ := cmd.Output()
+	if err := os.WriteFile(diffPath, diffOutput, 0644); err != nil {
+		return false, log.Error(ctx, 500, err, "Failed to write diff output", diffPath)
+	}
+	return len(diffOutput) > 0, nil
 }
 
-// compareScriptDatabases ATTACHes both db files to an in-memory connection and runs
-// a symmetric difference query, returning rows present in one but not the other.
-func compareScriptDatabases(ctx context.Context, usxDBPath, sfmDBPath string) ([]scriptDiff, *log.Status) {
-	cmp, err := sql.Open("sqlite3", ":memory:")
+func dumpScriptDB(ctx context.Context, dbPath, outPath string) *log.Status {
+	conn, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return nil, log.Error(ctx, 500, err, "Failed to open comparison database")
+		return log.Error(ctx, 500, err, "Failed to open database", dbPath)
 	}
-	defer cmp.Close()
+	defer conn.Close()
 
-	if _, err = cmp.Exec(fmt.Sprintf("ATTACH '%s' AS usx", usxDBPath)); err != nil {
-		return nil, log.Error(ctx, 500, err, "Failed to attach USX database", usxDBPath)
-	}
-	if _, err = cmp.Exec(fmt.Sprintf("ATTACH '%s' AS sfm", sfmDBPath)); err != nil {
-		return nil, log.Error(ctx, 500, err, "Failed to attach SFM database", sfmDBPath)
-	}
-
-	query := `
-		SELECT 'only_in_usx' AS source, chapter_num, verse_num, usfm_style, script_text
-		 FROM usx.scripts
-		 EXCEPT
-		 SELECT 'only_in_usx', chapter_num, verse_num, usfm_style, script_text
-		 FROM sfm.scripts
-		UNION ALL
-		SELECT 'only_in_sfm' AS source, chapter_num, verse_num, usfm_style, script_text
-		 FROM sfm.scripts
-		 EXCEPT
-		 SELECT 'only_in_sfm', chapter_num, verse_num, usfm_style, script_text
-		 FROM usx.scripts`
-
-	rows, err := cmp.Query(query)
+	rows, err := conn.Query(`SELECT book_id, chapter_num, verse_str, usfm_style, script_text, length(script_text) FROM scripts ORDER BY script_id`)
 	if err != nil {
-		return nil, log.Error(ctx, 500, err, "Failed to run comparison query")
+		return log.Error(ctx, 500, err, "Failed to query scripts", dbPath)
 	}
 	defer rows.Close()
 
-	var diffs []scriptDiff
-	for rows.Next() {
-		var d scriptDiff
-		if err = rows.Scan(&d.source, &d.chapterNum, &d.verseNum, &d.usfmStyle, &d.scriptText); err != nil {
-			return nil, log.Error(ctx, 500, err, "Failed to scan diff row")
-		}
-		diffs = append(diffs, d)
+	f, err := os.Create(outPath)
+	if err != nil {
+		return log.Error(ctx, 500, err, "Failed to create output file", outPath)
 	}
-	return diffs, nil
+	defer f.Close()
+
+	for rows.Next() {
+		var bookId, verseStr, usfmStyle, scriptText string
+		var chapterNum, textLen int
+		if err = rows.Scan(&bookId, &chapterNum, &verseStr, &usfmStyle, &scriptText, &textLen); err != nil {
+			return log.Error(ctx, 500, err, "Failed to scan row")
+		}
+		_, _ = fmt.Fprintf(f, "%s|%d|%s|%s\n", bookId, chapterNum, verseStr, strings.TrimSpace(scriptText))
+		//fmt.Fprintf(f, "%s\t%d\t%s\t%s\t%s\t%d\n", bookId, chapterNum, verseStr, usfmStyle, scriptText, textLen)
+	}
+	if err = rows.Err(); err != nil {
+		return log.Error(ctx, 500, err, "Row iteration error", dbPath)
+	}
+	return nil
 }
