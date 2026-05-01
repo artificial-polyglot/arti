@@ -1,0 +1,666 @@
+s3://pretest-audio/N2CCPBBS Chakma CCP/N2CCPBBS USX/  4
+, para.h, para.mt, para.p
+s3://pretest-audio/N2DTBWBT Kadazan, Labuk Kinabatangan (DTB)/N2DTBWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HMDNVS PEYMIB (HMD)/N2HMDNVS Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LDBWBT Duya (IRI)/Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MYAOJV Burmese (Luke)/N2MYAOJV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ABZUBB Abui (ABZ)/N2ABZUBB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BTGWBT Gbadi (BTG)/N2BTGWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CNKBSM Khumi Chin (CNK)/N2CNKBSM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NSXBSA Songo (NSX)/N2NSXBSA Text/N2NSXBSA USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SFETAP Subanen, Guinsalugen (SFE)/N2SFETAP Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2XNRPMS Kangri (XNR)/N2XNRPMS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-10/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE) Part2/O2NHEWYI Text/O2NHEWYI USX/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/N2ANLBSM Khongso (CMR)/N2ANLBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHIWFW Bhilali (BHI)/N2BHIWFW Text/N2BHIWFW USX/  4
+, para.h, para.mt, para.p
+s3://pretest-audio/N2MNSIBT Mansi (MNS)/P2MNSIBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2UDMIBT Udmurt Proofing/N2UDMIBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1LBEBTI Lak LBE/P1LBEBTI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LDBWBT Duya (LDB)/Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SYMANT Samo Maya (SYM)/N2SYMANT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O1ENGRSV English (ENG)/S1ENGRSV Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/P2GLKGVM Gilaki (GLK)/P2GLKGVM Text/  8
+note.f, para.h, para.m, para.mt, para.p, para.pi, para.q1, para.q2
+s3://pretest-audio/N2CACSBG Chuj San Sebastian Proofing/N2CACSBG USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CAKSBG Cakchiquel Central (CAK)/N2CAKSBG USX/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/N2HMDNVS Peymib (HMD)/N2HMDNVS Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2PSTWFW Central Pashto PST/N2PSTWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2UKINLC Kerandi Kui (UKI)/N2UKINLC Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/ACCBSG/ACCBSGN_ET-usx/  8
+note.f, para.h, para.m, para.mt, para.nb, para.p, para.pi, para.q1
+s3://pretest-audio/N2GDGWBT Ga'dang (GDG)/N2GDGWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KEUWB4 Akebu (BOV)/N2KEUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2XISWIN Kisan (XIS)/N2XISWIN Text/USX/  7
+para.h, para.m, para.mt, para.p, para.q, para.q1, para.q2
+s3://pretest-audio/O1RIFNVS Tarifit (Tierfa) (RIF)/O1RIFNVS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1LTHRDPI Tharu, Rana (LOZ)/N1LTHRDPI USX/  6
+note.f, para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/CLALMV/CLALMVN_ET-usx/  12
+char.sc, figure.fig, note.f, para.h, para.li1, para.m, para.mt, para.p, para.pm, para.q1, para.q2, para.qr
+s3://pretest-audio/N2IKHMLT Aokho (IKH)/N2IKHMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IKPMLT Ikpeshi (IKP)/N2IKPMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KVQBSM Karen, Geba (KVQ)/N2KVQBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MBLWBT Maxakali (MBL)/N2MBLWBT Text/N2MBLWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TRVBST Sediq (Tgdaya) (TRV)/N2TRVBST Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2XUJVOH P2_Kurumba, Jennu (XUJ)/P2XUJVOH USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BIBANT Bissa Barka (BIB)/N2BIBANT Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MNIMAW Meithei MNI/N2MNIMAW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NSTNCL Muklom NST/N2NSTNCL USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2VGRWFW Vagiri-old (VGR)/N2VGRWFW Text/N2VGRWFW USX/  0
+
+s3://pretest-audio/Uploaded/N2JITWBT Jita (JIT)/N2JITWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1ENGKJV English (ENG)/N1ENGKJV Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IBYLST Ibani2 (IBY)/N2IBYLST Text/N2IBYLST USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MCXWBT Mpyemo (MCX)/N2MCXWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2GAABSG Ga (GAA)/N2GAABSG Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KYGWBT Keyagana (KYG)/N2KYGWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DKSBS2 Dinka, Cam (DKS)/N2DKSBS2 USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KJGWYI Khmu Proofing/N2KJGWYI USX/  6
+note.f, para.h, para.m, para.mt, para.p, para.q1
+s3://pretest-audio/N2LIMBSC Limbum (HOLD) Proofing/N2LIMBSC USX/  4
+, para.h, para.mt, para.p
+s3://pretest-audio/N2WOIUBB Kamang - Lembur WOI/N2WOIUBB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/P2CPYWBT Asheninka South Ucayali (CPY)/P2CPYWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DYAANT Dyan (DYA)/N2DYAANT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ICHLST Ichen (Etkyen) (ICH)/N2ICHLST USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MKNBBU Alor Malay (MKN)/N2MKNBBU USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OKEBSN Okpe Delta (Gospels) (OKE)/N2OKEBSN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SMWPAU Samawa (SMW)/N2SMWPAU Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O2LEZIBT Lezgi (LEZ)/O2LEZIBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2UDLWBT Ouldeme (UDL)/N2UDLWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/ZLMKSV/P2ZLMKSV Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KLILAI Kalumpang (KLI)/N2KLILAI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MYAOJV Burmese 26(Mark)/N2MYAOJV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2LGLWBT Wala (LGL)/N2LGLWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1MIRTBL Mixe Guichicovi (MIR)/N1MIRTBL USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-05/N2NUMWYT Niuafo'ou (NUM)/N2NUMWYT Text/N2NUMWYT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-09/N2SYWWBT Syuba SYW/N2SYWWBT Text/N2SYWWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1ENGKJV English (ENG)/N1ENGKJV Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BTHBSM Bidayah, Biata (BTH)/N2BTHBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TYVIBT Tuvin Proofing/N2TYVIBT USX/  7
+note.f, note.x, para.h, para.li1, para.mt, para.p, para.q
+s3://pretest-audio/Uploaded/N2MDWBSC Mbosi (MDW)/N2MDWBSC Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2SSNBTL Waata (SSN)/N2SSNBTL Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2EKYWBT Kayah Eastern (EKY)/N2EKYWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2GBMNCL Jaunpuri (GBM)/N2GBMNCL_Luke_Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2GYRSBB Guarayo (GYR)/N2GYRSBB USX/  5
+para.h, para.m, para.mt, para.p, para.q1
+s3://pretest-audio/N1ENGCSB English (Eng)/N1ENGCSB Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NLEBSK Banyala (NLE)/N2NLEBSK Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2PKBTBL Pokomo, Upper (PKB)/Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ZRGWIN Mirgan (ZRG)/N2ZRGWIN Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2MKDMBS Macedonian (MKD)/N2MKDMBS Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-10/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE) Part1/O2NHEWYI Text/O2NHEWYI USX/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/N2BGRWFW Bagiri (BGR)/N2BGRWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BUNBSL Sherbro (BUN)/N2BUNBSL Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CLUWBT Caluyanun (CLU)/N2CLUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CUHTBL Chuka (CUH)/N2CUHTBL Text/N2CUHTBL USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2JITWBT Jita (JIT)/N2JITWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2ZLMKSV SALAM (ZLM)/N2ZLMKSV Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BLKBSM Pao (PWW)/N2BLKBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MDWBSC Mbosi (MDW)/N2MDWBSC Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2PHRTWF Pahari Pothwar (PHR)/N2PHRTWF USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2HAQBST Kiha (HAQ)/N2HAQBST Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ANLBSM Khongso JRS TESTING (ANL)/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BGZLAI Banggai (BGZ)/N2BGZLAI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HAQBST Kiha (HAQ)/N2HAQBST Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2QADBSP Maumi QAD/N2QADBSP USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2WIUWBT Wiru (WIU)/N2WIUWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/P1SGQPIT Senga (SGQ)/Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHIWFW Bhilali (BHI)/N2BHIWFW USX/  4
+, para.h, para.mt, para.p
+s3://pretest-audio/N2PAVGPA Pacaas Novo (PAV)/N2PAVGPA Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2VGRWFW Vagiri (VGR)/N2VGRWFW Text/N2VGRWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2IKPMLT Ikpeshi (IKP)/N2IKPMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1RMYPBT Romani, Vlakh (ACT) Proofing/N1RMYPBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BFWNLC Bonda (BFW)/N2BFWNLC Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DWKNCL Kui,Dawik (DWK)/N2DWKNCL Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IBYLST Ibani (IBY)/N2IBYLST Text/N2IBYLST USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ZPVTBL Zapotec Chichizapan (ZPV)/N2ZPVTBL USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2THEWBT Tharu, Chitwan (THE)/N2THEWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BLKBSM Pa'o (BLK)/N2BLKBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DKSBSS Dinka, Cam (DKS)/N2DKSBSS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IPIPNG Ipili (IPI)/N2IPIPNG USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O2NHEWYI O2_Nahuatl Huasteca Eastern (NHE)/O2NHEWYI USX/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/Uploaded/O2LISNVS PEYLI, EASTERN [T] (LIS)/O2LISNVS Text/Original Text USX/  14
+char.bk, note.f, note.x, para.h, para.li, para.li1, para.m, para.mi, para.mt, para.p, para.ph, para.pi, para.q1, para.q2
+s3://pretest-audio/N2KEUWBT Akebu (BOV)/N2KEUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SEBPDV Senoufo, Shempire (SEB)/N2SEBPDV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2UTRITD Etulo (UTR)/N2UTRITD Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2IKHMLT Aokho (IKH)/N2IKHMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/O2LISNVS PEYLI, EASTERN [T] (LIS)/O2LISNVS Text/Original Text USX/Re-Export/  14
+char.bk, note.f, note.x, para.h, para.li, para.li1, para.m, para.mi, para.mt, para.p, para.ph, para.pi, para.q1, para.q2
+s3://pretest-audio/JMDYPM/JMDYPMN_ET-usx/  9
+note.f, note.x, para.h, para.li2, para.m, para.mt, para.p, para.q1, para.q2
+s3://pretest-audio/N1ROMUCR Romani, Crimean (ACT) Proofing/N1ROMUCR USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHIWFW Bhilali BHI/N2BHIWFW Text/N2BHIWFW USX/  4
+, para.h, para.mt, para.p
+ERROR processing N2EKYWBT Kayah, Eastern (EKY)/N2EKYWBT Text/N2EKYWBT USX/:  "status": 500, "message": "Error while inserting Scripts.", "error": "UNIQUE constraint failed: scripts.book_id, scripts.chapter_num, scripts.verse_str" }
+s3://pretest-audio/Uploaded/N2RMZWBT Marma (RMZ)/N2RMZWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1LOZDPI Lozi (LOZ)/N1LOZDPI USX/  3
+para.h, para.mt, para.t
+s3://pretest-audio/N2BKRYPB Bakumpai (Luke) (BKR)/N2BKRYPB Text/N2BKRYPB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MBLWBT Maxakali (MBL) - On hold/N2MBLWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OZMWBT Badwe'e (OZM)/N2OZMWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2XNNWBT Kankanay, Northern (XNN)/N2XNNWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2YBIWBT Yamphu (YBI)/N2YBIWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KJLWFW Magar Kham KJL/N2KJLWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KRCLIO Balkar Proofing/N2KRCLIO USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ME1WFW Mehra (ME1)/N2ME1WFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MKDMBS Macedonian (MKD)/N2MKDMBS Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2REIWFW Relli (REI)/N2REIWFW Text/N2REIWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SYWWBT Syuba (SYW)/N2SYWWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O1BOMNBT Berom (BOM)/O1BOMNBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/O2DARBTI Dargin (DAR)/O2DARBTI Text/  9
+note.f, para.h, para.mt, para.p, para.q, para.q1, para.q2, para.qm, para.qm1
+s3://pretest-audio/N1KHGNTB N1_BODK (KHG)/N1KHGNTB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHUWFW Bhumiya (BHU)/N2BHUWFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DNKUBB Dengga DNK/N2DNKUBB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ENOLAI Enggano (ENO)/N2ENOLAI Text/N2ENOLAI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2PWRWFW Powari (PWR)/N2PWRWFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2UNEMLT Uneme, North (UNE)/N2UNEMLT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2AYZYSS Mai Brat (AYZ)/N2AYZYSS Text/USX_1/  9
+, char.tl, note.f, note.x, para.h, para.m, para.mt, para.p, para.q1
+s3://pretest-audio/N2MBAPAG Banwaon (PAG)/N2MBAPAG Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/S1ENGRSV English (Genesis) (ENG)/S1ENGRSV Text/S1ENGRSV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2BIBANT Bissa Barka (BIB)/N2BIBANT Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-09/N2CRAWBT Chara (Tsara) CRA/N2CRAWBT Text/N2CRAWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CRAWBT Chara (Tsara) (CRA)/N2CRAWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SSNBTL Waata (SSN)/N2SSNBTL Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2YBIWBT Yamphu (YBI)/N2YBIWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHOIEM Bhojpuri (Luke) (BHO)/N2BHOIEM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TWYLAI Tewoyan (TWY)/N2TWYLAI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O1ENGKJV Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HBNBSS HEIBAN2NF (HBN)/N2HBNBSS Text/N2HBNBSS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2QXOWBT Quechua Sur de Conchucos (QXO)/N2QXOWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KEUWBT Akebu (KEU)/N2KEUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NPINBS Nepali (NPI)_2/N2NPINBS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SMKWBT Bolinao (SMK)/N2SMKWBT Text/N2SMKWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O2SAHIBT Yakut (ECC) (SAH)/O2SAHIBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHPLAI Bima (BHP)/N2BHPLAI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MGWPBT Matumbi (MGW)_1/N2MGWPBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OSOMLT Ososo (OSO)/N2OSOMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2THQMTS Tharu, Kochila (THQ)/N2THQMTS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/O1BOMNBT Berom (Phase 3) (BOM)/O1BOMNBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CHFTBL Chontal, Tabasco (CHF)/N2CHFTBL Text/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/N2CLTBSM Chin, Lautu (CLT)/N2CLTBSM Text/N2CLTBSM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DNKUBB Dengga (DNK)/N2DNKUBB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SASYSN Sasak, Kuto-Kute (SAS)/N2SASYSN Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2WAJWBT Waffa (WAJ)/N2WAJWBT Text/N2WAJWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE)/O2NHEWYI USX/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/Uploaded/N2KYGWBT Keyagana (KYG)/N2KYGWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2KYJWBT Karao (KYJ)/N2KYJWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KMTWBT Kemtuik (KMT)/N2KMTWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MGGCAB Mpumpong (MGG)/N2MGGCAB USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OMBBSP Ambae, East (Havai)(OMB)/N2OMBBSP Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2PNZCAB Pana (PNZ)/N2PNZCAB Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SFWBSG Sehwi (SFW)/N2SFWBSG Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2HOYWFW Holiya [T] (HOY)/N2HOYWFW Text/USX/  9
+note.f, note.fe, note.x, para.h, para.m, para.mt, para.p, para.q1, para.q2
+s3://pretest-audio/Uploaded/N2OSOMLT Ososo (OSO)/N2OSOMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/ta N2BKDLMC Talaandig (BKD)/N2BKDLMC Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2GUISBU Guarani Bolivian (GUI)/N2GUISBU USX/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/Uploaded/N2ZAKWBT Zanaki (ZAK)/N2ZAKWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/ZLMKSV/N2ZLMKSV Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHAWIN Bharia (BHA)/N2BHAWIN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1ENGKJV English (ENG)/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KEUWB2 Akebu (BOV)/N2KEUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1IBODPI Igbo - prepped files/N1IBODPI USX/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/N1SGQPIT Senga (SGQ)_scott_method/Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2EPIBSN Epie (EPI)/N2EPIBSN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2FVRWBT Fur (FVR)/N2FVRWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HLBWFW Mehra2NF (HLB)/N2HLBWFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KYKTAP Kinamayu KYK/N2KYKTAP USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2GBMWIN Garhwali [T] (GBM)/N2GBMWIN Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KYJWBT Karao (KYJ)/N2KYJWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MXGBSA Mbangala (MXG)/N2MXGBSA Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2YOROBV Okun (YOR)/N2YOROBV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ZLMGFA Sekadau (ZLM)/N2ZLMGFA Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2AYZYSS Mai Brat (AYZ)/N2AYZYSS Text/USX/  3
+para.h, para.mt, para.p
+ERROR processing N2EKYWBT Kayah, Eastern (EKY)/N2EKYWBT USX/:  "status": 500, "message": "Error while inserting Scripts.", "error": "UNIQUE constraint failed: scripts.book_id, scripts.chapter_num, scripts.verse_str" }
+s3://pretest-audio/N2KVOYPS Dobel (KVO)/N2KVOYPS Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MAVWYI Satere-Mawe (MAV)/Text/N2MAVWYI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2QAEBSP Dawasamu (Gospels) (QAE)/N2QAEBSP USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TUYBTL Tugen (TUY)/N2TUYBTL USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KVQBSM Karen Geba (KYU)/N2KVQBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MRNWBT Cheke Holo MRN/N2MRNWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NSTCLN Naga, Tangshang - Sangwal (NST)/N2NSTCLN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SHNOMF Shan (SHN)/N2SHNOMF USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/QXOWBT/N2QXOWBT Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2KMTWBT Kemtuik (KMT)/N2KMTWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ASJWBT Sari ASJ/N2ASJWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2AWAIBS Awadhi Proofing/N2AWAIBS USX/  4
+, para.h, para.mt, para.p
+s3://pretest-audio/N2HLBWFW Mehra2 (HLB)/N2HLBWFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2RMZWBT Marma (RMZ)/N2RMZWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2THEWBT Tharu, Chitwan (THE)/N2THEWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2AUUWBT Auye (AUU)/N2AUUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KTBESB Kambaata (KTB)/N2KTBESB Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ROWUBB Dela-Oenale (ROW)/N2ROWUBB Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ZOMBSM Zo (ZOM)/N2ZOMBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/S1ENGRSV English (ENG)/S1ENGRSV Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ASMIEM Assamya Mussolmani (ASM)/N2ASMIEM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LMLBSP Hano (LML)/N2LMLBSP Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OTMTBL Otimi de la Sierra (OTM)/N2OTMTBL Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TDGWBT Tamang, Western2NF (TDG)/N2TDGWBT Text/N2TDGWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2KTBESB Kambaata (KTB)/N2KTBESB Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/O2LISNVS PEYLI, EASTERN [T] (LIS)/O2LISNVS Text/Transliterated Text/  10
+, para.h, para.m, para.mt, para.p, para.ph, para.pi, para.q1, para.q2, para.qc
+s3://pretest-audio/N2ANLBSM Khongso (ANL)/N2ANLBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2DBDLST Dadiya (DBD)/N2DBDLST USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LIMBSC Limbum (LIM)/N2LIMBSC USX/  0
+
+s3://pretest-audio/N2TDGWBT Tamang, Western (TDG)/N2TDGWBT Text/N2TDGWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TKBNLC Buksa (TKB)/N2TKBNLC Text/N2TKBNLC USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2DWWWBT Dawawa (DWW)/N2DWWWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-05/N2BHIWFW Bhilali (BHI)/N2BHIWFW Text/N2BHIWFW USX/  4
+, para.h, para.mt, para.p
+s3://pretest-audio/N1THRDPI Tharu, Rana (LOZ)/N1THRDPI USX/  6
+note.f, para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/N2ITIPBS Tinggian Inlaud (ITI)/N2ITIPBS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ZWAWBT Zay (ZWA)/N2ZWAWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2BHPLAI Bima (BHP)/N2BHPLAI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2SYMANT Samo Maya (SYM)/N2SYMANT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/P2CPYWBT Asheninka South Ucayali (CPY)/P2CPYWBT Text/USX/  3
+para.h, para.mt, para.p
+ERROR processing N1ENGKJV Text/USX/:  "status": 500, "message": "Error while inserting Scripts.", "error": "UNIQUE constraint failed: scripts.book_id, scripts.chapter_num, scripts.verse_str" }
+s3://pretest-audio/N2AYZYSS Mai Brat (AYZ)/N2AYZYSS Text/  9
+, char.tl, note.f, note.x, para.h, para.m, para.mt, para.p, para.q1
+s3://pretest-audio/N2CULMNT Kulina (CUL)/CULMNTN_ET-usx/  9
+char.sup, figure.fig, para.h, para.li, para.m, para.mi, para.mt, para.p, para.q
+s3://pretest-audio/N2IBBBIB Ibibio (IBB)/N2IBBBIB Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IGRNBT Ehugbo (IGR)/N2IGRNBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KLGWBT Tagakaulo KLG/N2KLGWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MIRUNT Mixe del Istmo (MIR)/N2MIRUNT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NBQLAI Nggem (NBQ)/N2NBQLAI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KOIIBT Komi-Permyak (KOI)/N2KOIIBT Chapter Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MAVWYI Satere-Mawe2 (MAV)/Text/N2MAVWYI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2SILGIL Sisaala Tumulung Proofing/N2SILGIL USX/  7
+, para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/N2ZRSWYI Mairasi (ZRS)/N2ZRSWYI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1SKNSEC Kolibugan (SKN)/N1SKNSEC USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BKDLMC Talaandig (BKD)/N2BKDLMC Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HOYWFW Holiya [T] (HOY)/N2HOYWFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IBYLST Ibani (IBY)/N2IBYLST USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MZJSIM Manya (MZJ)/N2MZJSIM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2QXNWYI Quechua Northen Conchucos (QXN)/N2QXNWYI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ZAKWBT Zanaki (ZAK)/N2ZAKWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LGLWBT Wala (LGL)/N2LGLWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2PAKALE Parakana (PAK)/N2PAKALE USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2TCZCBT Chongthu (TCZ)/N2TCZCBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2WOIUBB Kamang - Lembur (WOI)/N2WOIUBB USX/  3
+para.h, para.mt, para.p
+ERROR processing O1ENGRSV English1 (ENG)/S1ENGRSV Text/:  "status": 500, "message": "Error parsing USX.", "error": "XML syntax error on line 1: unexpected EOF" }
+s3://pretest-audio/O2LISNVS PEYLI, EASTERN [T] (LIS)/LISNVS Original Text USX/  14
+char.bk, note.f, note.x, para.h, para.li, para.li1, para.m, para.mi, para.mt, para.p, para.ph, para.pi, para.q1, para.q2
+s3://pretest-audio/Uploaded/P2GLKGVM Gilaki (GLK)/P2GLKGVM Text/  8
+note.f, para.h, para.m, para.mt, para.p, para.pi, para.q1, para.q2
+s3://pretest-audio/Uploaded/P2ZLMKSV SALAM (PSA, PROV, JON) (ZLM)/P2ZLMKSV Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1ROMUSR Romani, Servi (ACT) Proofing/N1ROMUSR USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2QVIBSE Quichua Imbabur Highland (QVI)/N2QVIBSE Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2PKBTBL Pokomo, Upper (PKB)/Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-10/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE) Part1/New folder (2)/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/N2GBMNLC Bengani (John) (GBM)/N2GBMNLC Text/N2GBMNLC USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IGRNBT Ehugbo IGR/N2IGRNBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LGIKTD Lengilu (LGI)/N2LGIKTD USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MLVWBT Mwotlap (MLV)/N2MLVWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MNIMAW Meithei (MNI)/N2MNIMAW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MQYLAI Manggarai (MQY)/N2MQYLAI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2QUCBSG Kiche Totonicapan (QUC)/N2QUCBSG Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BAKIBT Bashkir Proofing/N2BAKIBT USX/  6
+, note.f, para.h, para.mt, para.p, para.q1
+s3://pretest-audio/N2HNEWIN Baigani (HNE)/N2HNEWIN Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KJBSBG Kanjobal Eastern (KJB)/N2KJBSBG USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2VAAWFW HAPI (VAA)/N2VAAWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2BDTACA Bhogoto (BDT)/N2BDTACA Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2QUCBSG Kiche Totonicapan (QUC)/N2QUCBSG Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2QXNWYI Quechua Northen Conchucos (QXN)/N2QXNWYI Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BDTACA Bhogoto (BDT)/N2BDTACA Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-08/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE)/O2NHEWYI Text/O2NHEWYI USX/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/N2MCOTBL Mixe de Coatlan (MCO)/N2MCOTBL USX/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/O2NHEWYI Nahuatl Huasteca, Eastern (NHE)/O2NHEWYI Text/O2NHEWYI USX/  6
+para.h, para.m, para.mt, para.p, para.q, para.q2
+s3://pretest-audio/N1SGQPIT Senga (SGQ)/Text/  6
+note.f, note.x, para.h, para.mt, para.p, para.q
+s3://pretest-audio/N2DHIWBT Dhimal (DHI)/N2DHIWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2GBMWIN Garhwali [T] (GBM)/N2GBMWIN Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2LDBWBT Duya2 (IRI)/Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2AUUWBT Auye (AUU)/N2AUUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/2025-09-10/O2NHEWYI O2_Nahuatl Huasteca, Eastern (NHE) Part3/O2NHEWYI Text/O2NHEWYI USX/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/N2CEKBSM Chin, Eastern Khumi - Asang Khongso (CEK)/N2CEKBSM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CFMBSM Khualsim (CFM)/N2CFMBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KEUWB3 Akebu (BOV)/N2KEUWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2VJKIEM Bajjika (Luke) (VJK)/N2VJKIEM USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O1AARDPI Afar (AAR)/O1AARDPI USX/  11
+figure.fig, note.f, note.x, para.h, para.m, para.mt, para.p, para.pi, para.q, para.q1, para.q2
+s3://pretest-audio/Uploaded/N2CHFTBL Chontal, Tabasco (CHF)/N2CHFTBL Text/  5
+para.h, para.m, para.mt, para.p, para.q
+s3://pretest-audio/2025-09-05/N2KNNWFW Siddi (KNN)/N2KNNWFW Text/N2KNNWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/JGOCAB/JGOCABN_ET-usx/  5
+note.f, para.h, para.mt, para.p, para.q
+s3://pretest-audio/N2DWWWBT Dawawa (DWW)/N2DWWWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HBNBSS HEIBAN (HBN)/N2HBNBSS Text/N2HBNBSS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O2DARBTI Dargin (DAR)/O2DARBTI Text/  9
+note.f, para.h, para.mt, para.p, para.q, para.q1, para.q2, para.qm, para.qm1
+s3://pretest-audio/O2SGJWIN Surgujia (SGJ)/O2SGJWIN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1ENGKJB English (ENG)/N1ENGKJB Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2HLBWFW Mehra (HLB)/N2HLBWFW Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2IRHLAI Irarutu (Mat-Act) (IRH)/N2IRHLAI USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KWGBIV Kaba Dem, Sara (KWG)/N2KWGBIV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2KWXWIN Palmuwa (KWX)/N2KWXWIN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2HOYWFW Holiya [T] (HOY)/N2HOYWFW Text/Original USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BSNWBT Eduria (Barsana) (BSN)/N2BSNWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CUVCAB Tchouvak(Couvac)(CUV)/N2CUVCAB Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MYAOJV Burmese (John)/N2MYAOJV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2OKXMLT Okpe (OKX)/N2OKXMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N1SGQPIT Senga (SGQ)_MRK/Text/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BWYANT Bwamu, Cwi (BWY)/N2BWYANT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2CNQWBT Chung (CNQ)/N2CNQWBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MLRWBT Vame (MLR)/N2MLRWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2UDLWBT Ouldeme (UDL)/N2UDLWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O2ENGRSV English2 (ENG)/S2ENGRSV Text/S2ENGRSV USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BFBFMP Bareli, Pauri--Maharashtra BFB/N2BFBFMP USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2BHIWFW Bhilali2NF (BHI)/N2BHIWFW Text/N2BHIWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2YSYNVS PEYBWY (YSY)/N2YSYNVS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2ZWAWBT Zay (ZWA)/N2ZWAWBT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2ANLBSM Khongso (ANL) - Re-run/N2ANLBSM Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MGPMTS Magar, Eastern (MGP)_3/N2MGPMTS USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2NYKBSA Nyaneka (NYK)/N2NYKBSA Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OGBGSN Ogbia (OGB)/N2OGBGSN USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2OKXMLT Okpe (OKX)/N2OKXMLT Text/USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/O1SAHIBT Yakut (ECC) (SAH)/O1SAHIBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2MGWPBT Matumbi (MGW)/N2MGWPBT Text/N2MGWPBT USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/N2VGRWFW Vagiri (VGR)/N2VGRWFW USX/  3
+para.h, para.mt, para.p
+s3://pretest-audio/Uploaded/N2CFMBSM Khualsim (CFM)/N2CFMBSM Text/USX/  3
+para.h, para.mt, para.p

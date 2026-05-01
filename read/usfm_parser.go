@@ -211,8 +211,7 @@ func (p *USFMParser) storeRecord(text []rune) error {
 	if !ok {
 		if p.skipUntil == "" {
 			if whole := strings.TrimSpace(string(text)); whole != "" {
-				//p.text = append(p.text, whole)
-				p.text = append(p.text, string(text))
+				p.text = append(p.text, whole)
 			}
 		}
 		return nil
@@ -235,7 +234,6 @@ func (p *USFMParser) storeRecord(text []rune) error {
 		p.flushPendingVerse()
 		var wsRegEx = regexp.MustCompile(`\s+`)
 		whole := strings.TrimSpace(string(text))
-		//whole := strings.TrimLeft(string(text), " \t\n\r")
 		parts := wsRegEx.Split(whole, 2)
 		p.verseStr = parts[0]
 		p.text = nil
@@ -270,13 +268,11 @@ func (p *USFMParser) storeRecord(text []rune) error {
 		if usfmStyle.StyleType == "para" {
 			p.usfmStyle = usfmStyle.StyleType + "." + style + styleNum
 			if usfmStyle.Keep && len(whole) > 0 {
-				//p.text = append(p.text, whole)
-				p.text = append(p.text, string(text))
+				p.text = append(p.text, whole)
 			}
 		} else {
 			if p.skipUntil == "" && len(whole) > 0 {
-				//p.text = append(p.text, whole)
-				p.text = append(p.text, string(text))
+				p.text = append(p.text, whole)
 			}
 		}
 	}
@@ -309,154 +305,3 @@ func (p *USFMParser) addChapterHeading(records []db.Script, titles titleDesc) []
 	}
 	return results
 }
-
-/*
-func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleDesc, *log.Status) {
-	var titles titleDesc
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, titles, log.Error(p.ctx, 500, err, "failed to read USFM file")
-	}
-	styleMap := p.BuildUSFMMap()
-	var scripts []db.Script
-	var rec = db.Script{DatasetId: 1, BookId: bookId, ChapterNum: 1}
-	var chapterNum = 1
-	var verseNum int
-	var verseStr = "0"
-	var skipping = false
-	var skipUntil string
-	var pendingStyle string
-
-	re := regexp.MustCompile(`\\[a-zA-Z]+\d?\*?`)
-	body := string(content)
-	indices := re.FindAllStringIndex(body, -1)
-
-	for i, loc := range indices {
-		marker := strings.TrimSpace(body[loc[0]+1 : loc[1]])
-		textEnd := len(body)
-		if i+1 < len(indices) {
-			textEnd = indices[i+1][0]
-		}
-		text := strings.TrimLeft(body[loc[1]:textEnd], " \t\n\r")
-		//text := body[loc[1]:textEnd]
-		// handle closing marker
-		if strings.HasSuffix(marker, "*") {
-			if skipping && marker == skipUntil {
-				skipping = false
-				skipUntil = ""
-			}
-			continue
-		}
-		// skip content until closing marker is found
-		if skipping {
-			continue
-		}
-		// look up the marker in the style map; strip trailing digit for numbered variants (e.g. \q1 -> q)
-		lookupKey := marker
-		if len(lookupKey) > 0 {
-			last := lookupKey[len(lookupKey)-1]
-			if last >= '0' && last <= '9' {
-				lookupKey = lookupKey[:len(lookupKey)-1]
-			}
-		}
-		style, found := styleMap[lookupKey]
-		if !found {
-			if text != "" {
-				rec.ScriptTexts = append(rec.ScriptTexts, text)
-			}
-			continue
-		}
-		// handle structural types regardless of Keep value
-		switch style.StyleType {
-		case "book":
-			continue
-		case "chapter":
-			if rec.VerseStr != "" && rec.VerseStr != "0" {
-				scripts = append(scripts, rec)
-				rec = db.Script{DatasetId: 1, BookId: bookId}
-			}
-			if fields := strings.Fields(text); len(fields) > 0 {
-				if num, err := strconv.Atoi(fields[0]); err == nil {
-					chapterNum = num
-				}
-			}
-			verseNum = 0
-			verseStr = "0"
-			continue
-		case "verse":
-			if rec.VerseStr != "" && rec.VerseStr != "0" {
-				scripts = append(scripts, rec)
-				rec = db.Script{DatasetId: 1, BookId: bookId}
-			}
-			fields := strings.Fields(text)
-			if len(fields) > 0 {
-				verseStr = fields[0]
-				if num, err := strconv.Atoi(verseStr); err == nil {
-					verseNum = num
-				}
-			}
-			rec = db.Script{
-				DatasetId:  1,
-				BookId:     bookId,
-				ChapterNum: chapterNum,
-				VerseNum:   verseNum,
-				VerseStr:   verseStr,
-				UsfmStyle:  pendingStyle,
-			}
-			pendingStyle = ""
-			if len(fields) > 1 {
-				rec.ScriptTexts = append(rec.ScriptTexts, strings.Join(fields[1:], " "))
-			}
-			continue
-		}
-		// if Keep is false, determine whether to skip or just drop
-		if !style.Keep {
-			if p.hasTerminator(style.StyleType) {
-				skipping = true
-				skipUntil = marker + `*`
-			}
-			continue
-		}
-		// Keep is true — h and mt populate titleDesc rather than the script slice
-		if style.StyleType == "para" && lookupKey == "h" {
-			titles.heading = text
-			continue
-		}
-		if style.StyleType == "para" && lookupKey == "mt" {
-			if text != "" {
-				titles.title = append(titles.title, text)
-			}
-			continue
-		}
-		if style.StyleType == "para" {
-			pendingStyle = style.StyleType + "." + lookupKey
-		}
-		if text != "" {
-			rec.ScriptTexts = append(rec.ScriptTexts, text)
-		}
-	}
-	// save final pending record
-	if rec.VerseStr != "" && rec.VerseStr != "0" {
-		scripts = append(scripts, rec)
-	}
-	return scripts, titles, nil
-}
-*/
-
-/*
-// not needed if decode works
-func (p *USFMParser) hasTerminator(style string) bool {
-	switch style {
-	case "book":
-		return false
-	case "chapter":
-		return false
-	case "verse":
-		return false
-	case "para":
-		return false
-	default:
-		return true
-	}
-}
-*/
