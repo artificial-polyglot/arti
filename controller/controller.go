@@ -376,6 +376,12 @@ func (c *Controller) readText(textFiles []input.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
+	} else if textFiles[0].MediaType == request.TextUSFMEdit {
+		reader := read.NewUSFMParser(c.database)
+		status = reader.ProcessFiles(textFiles)
+		if status != nil {
+			return status
+		}
 	} else if textFiles[0].MediaType == request.TextPlainEdit {
 		reader := read.NewDBPTextEditReader(c.database, c.req)
 		status = reader.Process()

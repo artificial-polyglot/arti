@@ -102,21 +102,24 @@ func unzip(ctx context.Context, files []InputFile) ([]InputFile, *log.Status) {
 // setMediaType function looks at names and sets the Media Type
 func setMediaType(ctx context.Context, file *InputFile) *log.Status {
 	fN := file.Filename
+	fNLower := strings.ToLower(fN)
 	if strings.HasSuffix(fN, `_ET`) || strings.HasSuffix(fN, `_ET.json`) {
 		file.MediaType = request.TextPlainEdit
-	} else if strings.HasSuffix(fN, `usx`) {
+	} else if strings.HasSuffix(fNLower, `usx`) {
 		file.MediaType = request.TextUSXEdit
+	} else if strings.HasSuffix(fNLower, `.sfm`) || strings.HasSuffix(fNLower, `.usfm`) {
+		file.MediaType = request.TextUSFMEdit
 	} else if (fN[0] == 'A' || fN[0] == 'B') && (fN[1] >= '0' && fN[1] <= '9') {
 		file.MediaType = request.Audio
-	} else if strings.HasSuffix(fN, `.xlsx`) || strings.HasSuffix(fN, `.xlsm`) {
+	} else if strings.HasSuffix(fNLower, `.xlsx`) || strings.HasSuffix(fNLower, `.xlsm`) {
 		file.MediaType = request.TextScript
-	} else if strings.HasSuffix(fN, `.csv`) {
+	} else if strings.HasSuffix(fNLower, `.csv`) {
 		file.MediaType = request.TextCSV
 	} else if (fN[0] == 'N' || fN[0] == 'O' || fN[0] == 'P') && fN[1] == '1' && fN[2] == '_' {
 		file.MediaType = request.Audio
 	} else if (fN[0] == 'N' || fN[0] == 'O' || fN[0] == 'P') && fN[1] == '2' && fN[2] == '_' {
 		file.MediaType = request.AudioDrama
-	} else if strings.HasSuffix(fN, `.mp3`) || strings.HasSuffix(fN, `.wav`) {
+	} else if strings.HasSuffix(fNLower, `.mp3`) || strings.HasSuffix(fNLower, `.wav`) {
 		file.MediaType = request.Audio
 	} else {
 		parts := strings.Split(fN, `_`)
@@ -145,18 +148,21 @@ func parseFilenames(ctx context.Context, file *InputFile) *log.Status {
 			file.Testament = `NT`
 		}
 		file.FileExt = filepath.Ext(file.Filename)
-	} else if file.MediaType == request.TextUSXEdit {
+	} else if file.MediaType == request.TextUSXEdit || file.MediaType == request.TextUSFMEdit {
 		parts := strings.Split(file.Directory, `/`)
 		file.MediaId = parts[len(parts)-1]
 		var tmpBookId, tmpBookSeq string
-		if len(file.Filename) == 10 {
+		if file.MediaType == request.TextUSFMEdit {
+			tmpBookId = file.Filename[2:5]
+			tmpBookSeq = file.Filename[0:2]
+		} else if len(file.Filename) == 10 {
 			tmpBookId = file.Filename[3:6]
 			tmpBookSeq = file.Filename[0:3]
 		} else if len(file.Filename) == 7 {
 			tmpBookId = file.Filename[0:3]
 			tmpBookSeq = strconv.Itoa(db.BookSeqMap[tmpBookId])
 		} else {
-			return log.ErrorNoErr(ctx, 400, `USX files are expected in the format 001GEN.usx or GEN.usx`)
+			return log.ErrorNoErr(ctx, 400, `USX files are expected like 001GEN.usx or GEN.usx USF file are expected like 01GEN.usfm`)
 		}
 		file.BookId, status = validateBookId(ctx, tmpBookId)
 		if status != nil {

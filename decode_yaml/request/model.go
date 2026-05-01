@@ -145,6 +145,7 @@ const (
 	Audio         MediaType = "audio"
 	AudioDrama    MediaType = "audio_drama"
 	TextUSXEdit   MediaType = "text_usx_edit"
+	TextUSFMEdit  MediaType = "text_usfm_edit"
 	TextPlainEdit MediaType = "text_plain_edit"
 	TextPlain     MediaType = "text_plain"
 	TextScript    MediaType = "text_script"
