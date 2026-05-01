@@ -2,7 +2,6 @@ package read
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +19,7 @@ type USFMParser struct {
 	conn db.DBAdapter
 	// transient variables
 	styleMap   map[string]USFMStyle
+	titleDesc  titleDesc
 	stack      USFMStack
 	bookId     string
 	chapterNum int
@@ -83,7 +83,7 @@ func (p *USFMParser) BuildUSFMMap() map[string]USFMStyle {
 }
 
 func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleDesc, *log.Status) {
-	var titles titleDesc
+	p.titleDesc = titleDesc{}
 	p.stack = USFMStack{}
 	p.bookId = bookId
 	p.chapterNum = 1
@@ -95,7 +95,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	p.scripts = nil
 	content, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, titles, log.Error(p.ctx, 500, err, "Failed to read USFM file")
+		return nil, p.titleDesc, log.Error(p.ctx, 500, err, "Failed to read USFM file")
 	}
 	const BEGIN = 1
 	const SLASH = 2
@@ -109,7 +109,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	var state = BEGIN
 	for _, ch := range string(content) {
 		//fmt.Printf("state: %d, %s\n", state, char)
-		_, _ = fmt.Fprintln(p.testOut, "state:", state, "style:", style+styleNum, "text:", string(text), "ch:", string(ch), "[]text:", p.text)
+		//_, _ = fmt.Fprintln(p.testOut, "state:", state, "style:", style+styleNum, "text:", string(text), "ch:", string(ch), "[]text:", p.text)
 		switch state {
 		case BEGIN:
 			if ch == '\\' {
@@ -122,7 +122,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				style = string(ch)
 				styleNum = ""
 			} else {
-				return nil, titles, log.ErrorNoErr(p.ctx, 500, "Backslash, but no style")
+				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "Backslash, but no style")
 			}
 		case STYLE:
 			if unicode.IsLetter(ch) {
@@ -141,7 +141,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				p.stack.Push(style, styleNum, true)
 
 			} else {
-				return nil, titles, log.ErrorNoErr(p.ctx, 500, "Failed to read style ")
+				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "Failed to read style ")
 			}
 		case STYLENUM:
 			if unicode.IsSpace(ch) {
@@ -153,14 +153,14 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				p.stack.Push(style, styleNum, true)
 				text = []rune{}
 			} else {
-				return nil, titles, log.ErrorNoErr(p.ctx, 500, "failed to read USFM file")
+				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "failed to read USFM file")
 			}
 		case TEXT:
 			if ch == '\\' {
 				state = SLASH
 				err = p.storeRecord(text)
 				if err != nil {
-					return nil, titles, log.Error(p.ctx, 500, err)
+					return nil, p.titleDesc, log.Error(p.ctx, 500, err)
 				}
 				text = []rune{}
 			} else { // state = TEXT
@@ -171,7 +171,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				state = SLASH
 				err = p.storeRecord([]rune{})
 				if err != nil {
-					return nil, titles, log.Error(p.ctx, 500, err)
+					return nil, p.titleDesc, log.Error(p.ctx, 500, err)
 				}
 			} else {
 				state = TEXT
@@ -182,11 +182,11 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	if len(text) > 0 {
 		err = p.storeRecord(text)
 		if err != nil {
-			return nil, titles, log.Error(p.ctx, 500, err)
+			return nil, p.titleDesc, log.Error(p.ctx, 500, err)
 		}
 	}
 	p.flushPendingVerse()
-	return p.scripts, titles, nil
+	return p.scripts, p.titleDesc, nil
 }
 
 func (p *USFMParser) flushPendingVerse() {
@@ -248,6 +248,13 @@ func (p *USFMParser) storeRecord(text []rune) error {
 			return err
 		}
 	default:
+		if style == "h" {
+			p.titleDesc.heading = strings.TrimSpace(string(text))
+			return nil
+		} else if style == "mt" {
+			p.titleDesc.title = append(p.titleDesc.title, strings.TrimSpace(string(text)))
+			return nil
+		}
 		if p.skipUntil == "" {
 			if !usfmStyle.Keep {
 				if usfmStyle.StyleType != "para" {
