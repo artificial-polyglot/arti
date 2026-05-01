@@ -2,6 +2,7 @@ package read
 
 import (
 	"context"
+
 	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
@@ -149,6 +150,7 @@ var usfm = map[string]bool{
 	`note.fe`:     false, // end note
 	`note.ef`:     false, // extended study note
 	`note.x`:      false, // cross reference
+	`note.xt`:     false, // unknown
 	`note.ex`:     false, // extended cross reference
 	`sidebar.esb`: false,
 	`figure.fig`:  false,

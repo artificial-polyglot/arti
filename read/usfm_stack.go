@@ -3,14 +3,23 @@ package read
 type StylePair struct {
 	Style    string
 	StyleNum string
+	StyleEnd bool
+}
+
+func (s StylePair) String() string {
+	if s.StyleEnd {
+		return s.Style + s.StyleNum + "*"
+	} else {
+		return s.Style + s.StyleNum
+	}
 }
 
 type USFMStack struct {
 	items []StylePair
 }
 
-func (s *USFMStack) Push(style string, styleNum string) {
-	s.items = append(s.items, StylePair{style, styleNum})
+func (s *USFMStack) Push(style string, styleNum string, styleEnd bool) {
+	s.items = append(s.items, StylePair{style, styleNum, styleEnd})
 }
 
 func (s *USFMStack) Pop() (StylePair, bool) {

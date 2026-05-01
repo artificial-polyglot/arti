@@ -24,6 +24,8 @@ type USFMParser struct {
 	bookId     string
 	chapterNum int
 	verseStr   string
+	verseNum   int
+	usfmStyle  string
 	text       []string
 	skipUntil  string
 	scripts    []db.Script
@@ -86,6 +88,8 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	p.bookId = bookId
 	p.chapterNum = 1
 	p.verseStr = "0"
+	p.verseNum = 0
+	p.usfmStyle = ""
 	p.text = nil
 	p.skipUntil = ""
 	p.scripts = nil
@@ -129,12 +133,12 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				styleNum = string(ch)
 			} else if unicode.IsSpace(ch) {
 				state = TEXT
-				p.stack.Push(style, styleNum)
+				p.stack.Push(style, styleNum, false)
 				text = []rune{}
 			} else if ch == '*' {
 				state = ENDSTYLE
 				text = []rune{}
-				p.stack.Push(style, styleNum)
+				p.stack.Push(style, styleNum, true)
 
 			} else {
 				return nil, titles, log.ErrorNoErr(p.ctx, 500, "Failed to read style ")
@@ -142,11 +146,11 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 		case STYLENUM:
 			if unicode.IsSpace(ch) {
 				state = TEXT
-				p.stack.Push(style, styleNum)
+				p.stack.Push(style, styleNum, false)
 				text = []rune{}
 			} else if ch == '*' {
 				state = ENDSTYLE
-				p.stack.Push(style, styleNum)
+				p.stack.Push(style, styleNum, true)
 				text = []rune{}
 			} else {
 				return nil, titles, log.ErrorNoErr(p.ctx, 500, "failed to read USFM file")
@@ -165,10 +169,13 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 		case ENDSTYLE:
 			if ch == '\\' {
 				state = SLASH
+				err = p.storeRecord([]rune{})
+				if err != nil {
+					return nil, titles, log.Error(p.ctx, 500, err)
+				}
 			} else {
 				state = TEXT
-				text = []rune{}
-				text = append(text, ch)
+				text = []rune{ch}
 			}
 		}
 	}
@@ -178,73 +185,92 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 			return nil, titles, log.Error(p.ctx, 500, err)
 		}
 	}
+	p.flushPendingVerse()
 	return p.scripts, titles, nil
+}
+
+func (p *USFMParser) flushPendingVerse() {
+	if p.verseStr != "" && p.verseStr != "0" {
+		rec := db.Script{
+			DatasetId:   1,
+			BookId:      p.bookId,
+			ChapterNum:  p.chapterNum,
+			VerseStr:    p.verseStr,
+			VerseNum:    p.verseNum,
+			UsfmStyle:   p.usfmStyle, //"v",
+			ScriptTexts: p.text,
+		}
+		p.scripts = append(p.scripts, rec)
+		p.text = nil
+	}
 }
 
 func (p *USFMParser) storeRecord(text []rune) error {
 	var err error
-	pair, ok := p.stack.Pop()
+	fullStyle, ok := p.stack.Pop()
 	if !ok {
-		return fmt.Errorf("USFM stack is empty")
+		if p.skipUntil == "" {
+			if whole := strings.TrimSpace(string(text)); whole != "" {
+				//p.text = append(p.text, whole)
+				p.text = append(p.text, string(text))
+			}
+		}
+		return nil
 	}
-	style := pair.Style
-	styleNum := pair.StyleNum
+	style := fullStyle.Style
+	styleNum := fullStyle.StyleNum
 	//fmt.Printf("style: %s, styleNum: %s\n", style, styleNum)
 	usfmStyle := p.styleMap[style]
 	switch usfmStyle.StyleType {
 	case "book":
 		return nil
 	case "chapter":
+		p.flushPendingVerse()
 		p.chapterNum, err = strconv.Atoi(strings.TrimSpace(string(text)))
 		if err != nil {
 			return err
 		}
+		p.verseStr = "0"
 	case "verse":
+		p.flushPendingVerse()
 		var wsRegEx = regexp.MustCompile(`\s+`)
 		whole := strings.TrimSpace(string(text))
+		//whole := strings.TrimLeft(string(text), " \t\n\r")
 		parts := wsRegEx.Split(whole, 2)
 		p.verseStr = parts[0]
+		p.text = nil
 		if len(parts) > 1 {
-			p.text = append(p.text, parts[1])
+			p.text = []string{parts[1]}
 		}
-		var verseNum int
 		startVerse := strings.Split(p.verseStr, "-")
-		verseNum, err = strconv.Atoi(startVerse[0])
+		p.verseNum, err = strconv.Atoi(startVerse[0])
 		if err != nil {
 			return err
 		}
-		var rec = db.Script{
-			DatasetId:   1,
-			BookId:      p.bookId,
-			ChapterNum:  p.chapterNum,
-			VerseStr:    p.verseStr,
-			VerseNum:    verseNum,
-			UsfmStyle:   style + styleNum,
-			ScriptTexts: p.text,
-		}
-		_, err = fmt.Fprintln(p.testOut, "rec:", rec.BookId, rec.ChapterNum, rec.VerseStr, len(rec.ScriptTexts))
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		p.scripts = append(p.scripts, rec)
-		p.text = nil
-		//fmt.Println("rec", rec.BookId, rec.ChapterNum, rec.VerseStr, rec.UsfmStyle, strings.Join(rec.ScriptTexts, "|"))
 	default:
 		if p.skipUntil == "" {
 			if !usfmStyle.Keep {
-				if usfmStyle.StyleType == "char" {
-					p.skipUntil = style + styleNum
+				if usfmStyle.StyleType != "para" {
+					p.skipUntil = style + styleNum + `*`
 				}
 			}
 		} else { // p.skipUntil != ""
-			if p.skipUntil == style+styleNum {
+			if p.skipUntil == fullStyle.String() {
 				p.skipUntil = ""
 			}
 		}
 		whole := strings.TrimSpace(string(text))
-		if p.skipUntil == "" && len(whole) > 0 {
-			p.text = append(p.text, whole)
+		if usfmStyle.StyleType == "para" {
+			p.usfmStyle = usfmStyle.StyleType + "." + style + styleNum
+			if usfmStyle.Keep && len(whole) > 0 {
+				//p.text = append(p.text, whole)
+				p.text = append(p.text, string(text))
+			}
+		} else {
+			if p.skipUntil == "" && len(whole) > 0 {
+				//p.text = append(p.text, whole)
+				p.text = append(p.text, string(text))
+			}
 		}
 	}
 	return nil
