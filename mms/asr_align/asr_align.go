@@ -2,7 +2,7 @@ package asr_align
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,9 +15,19 @@ import (
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/ffmpeg"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/stdio_exec"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/uroman"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
+
+type Char struct {
+	BookId     string
+	ChapterNum int
+	VerseStr   string
+	WordSeq    int  // questionable need
+	CharSeq    int  // questionable need
+	Char       rune `json:"ch"`
+	StartTS    float64
+	EndTS      float64 `json:"ts"`
+}
 
 type ASRAlign struct {
 	ctx          context.Context
@@ -26,9 +36,9 @@ type ASRAlign struct {
 	sttLang      string
 	adapter      bool
 	mmsAsrPy     *stdio_exec.StdioExec
-	uroman       *stdio_exec.StdioExec
 	diffMatch    *diffmatchpatch.DiffMatchPatch
 	versePattern *regexp.Regexp
+	testing      bool // set in asr_align_test.go
 }
 
 func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool) ASRAlign {
@@ -75,19 +85,8 @@ func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
 		return status
 	}
 	defer a.mmsAsrPy.Close()
-	a.uroman, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath(), "-l", a.lang)
-	if status != nil {
-		return status
-	}
-	defer a.uroman.Close()
-	var response string
 	for _, file := range files {
-		response, status = a.processASR(file, tempDir)
-		if status != nil {
-			return status
-		}
-		fmt.Println("response:", response)
-		status = a.parseResult(file, response)
+		status = a.processFile(file, tempDir)
 		if status != nil {
 			return status
 		}
@@ -95,27 +94,47 @@ func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
 	return status
 }
 
-// processFile
+func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status {
+	response, status := a.processASR(file, tempDir)
+	if status != nil {
+		return status
+	}
+	var chars []Char
+	err := json.Unmarshal([]byte(response), &chars)
+	if err != nil {
+		return log.Error(a.ctx, 500, err, "Error Unmarshalling ASR Response")
+	}
+	for _, c := range chars {
+		print(string(c.Char))
+	}
+	return status
+}
+
 func (a *ASRAlign) processASR(file input.InputFile, tempDir string) (string, *log.Status) {
 	var response string
-	var status *log.Status
-	fmt.Println("Process", file.FilePath())
-	wavFile, status := ffmpeg.ConvertMp3ToWav(a.ctx, tempDir, file.FilePath())
-	if status != nil {
-		return response, status
-	}
-	var audioFile db.Audio
-	audioFile.AudioFile = file.Filename
-	audioFile.AudioChapterWav = wavFile
-	response, status1 := a.mmsAsrPy.Process(wavFile)
-	if status1 != nil {
-		return response, status1
-	}
-	// Temp code for debugging
-	err := os.WriteFile(file.MediaId+"_"+file.BookId+strconv.Itoa(file.Chapter), []byte(response), 0644)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	testFile := file.MediaId + "_" + file.BookId + "_" + strconv.Itoa(file.Chapter) + ".txt"
+	_, err := os.Stat(testFile)
+	if a.testing && !os.IsNotExist(err) {
+		bytes, err2 := os.ReadFile(testFile)
+		if err2 != nil {
+			return response, log.Error(a.ctx, 500, err2, "Error Reading Test File.")
+		}
+		response = string(bytes)
+	} else {
+		wavFile, status := ffmpeg.ConvertMp3ToWav(a.ctx, tempDir, file.FilePath())
+		if status != nil {
+			return response, status
+		}
+		response, status = a.mmsAsrPy.Process(wavFile)
+		if status != nil {
+			return response, status
+		}
+		if a.testing {
+			err = os.WriteFile(testFile, []byte(response), 0644)
+			if err != nil {
+				return response, log.Error(a.ctx, 500, err, "Error Writing Test File.")
+			}
+		}
 	}
 	return response, nil
 }
@@ -134,12 +153,12 @@ func (a *ASRAlign) parseResult(file input.InputFile, response string) *log.Statu
 	}
 	sourceText := a.combineVerses(scripts)
 	respVerses := a.parseASRByOriginal(sourceText, response)
-	for i := range respVerses {
-		respVerses[i].uRoman, status = a.uroman.Process(respVerses[i].text)
-		if status != nil {
-			return status
-		}
-	}
+	//for i := range respVerses {
+	//	respVerses[i].uRoman, status = a.uroman.Process(respVerses[i].text)
+	//	if status != nil {
+	//		return status
+	//	}
+	//}
 	status = a.ensureASRTable()
 	if status != nil {
 		return status

@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from transformers import Wav2Vec2ForCTC
 from transformers import AutoProcessor
 import torch
@@ -36,7 +37,7 @@ def ensureMinimumTensorSize(batch, minTensorLength, padValue):
     return batch
 
 if len(sys.argv) < 2:
-    print("Usage: mms_asr.py  {iso639-3}  adapter(optional)", file=sys.stderr)
+    print("Usage: asr_align.py  {iso639-3}  adapter(optional)", file=sys.stderr)
     sys.exit(1)
 lang = sys.argv[1]
 adapter = len(sys.argv) > 2 and sys.argv[2].lower() == "adapter"
@@ -74,17 +75,30 @@ for line in sys.stdin:
     with torch.no_grad():
         outputs = model(**inputs).logits
     ids = torch.argmax(outputs, dim=-1)[0]
-    transcription = processor.decode(ids)
-    sys.stdout.write(transcription)
+    blank_id = processor.tokenizer.pad_token_id
+    word_delimiter_id = processor.tokenizer.word_delimiter_token_id
+    results = []
+    prev = blank_id
+    for frame_idx, token_id in enumerate(ids):
+        token_id = token_id.item()
+        if token_id != blank_id and token_id != prev:
+            if token_id == word_delimiter_id:
+                ch = 32
+            else:
+                ch = ord(processor.decode([token_id]))
+            ts = round(frame_idx * 0.02, 6)
+            results.append({"ch": ch, "ts": ts})
+        prev = token_id
+    sys.stdout.write(json.dumps(results))
     sys.stdout.write("\n")
     sys.stdout.flush()
 
 
 
 ## Testing
-## cd Documents/go2/dataset/mms
+## cd ~/Documents/go2/fcbh-dataset-io/mms/asr_align
 ## conda activate mms_asr
-## python mms_asr.py eng
+## python asr_align.py eng
 ## /Users/gary/FCBH2024/download/ENGWEB/ENGWEBN2DA-mp3-64/B02___01_Mark________ENGWEBN2DA.wav
 
 

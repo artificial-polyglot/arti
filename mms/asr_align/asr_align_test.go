@@ -14,8 +14,6 @@ import (
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
 	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/match/diff"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/stdio_exec"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/uroman"
 )
 
 func TestASRAlign_ProcessFiles(t *testing.T) {
@@ -24,13 +22,14 @@ func TestASRAlign_ProcessFiles(t *testing.T) {
 	user := request.GetTestUser()
 	conn, status := db.NewerDBAdapter(ctx, false, user, "N2MZJSIM") // is not used
 	asr := NewASRAlign(ctx, conn, "mzj", "", false)
+	asr.testing = true
 	var files []input.InputFile
 	var file input.InputFile
-	file.BookId = "MAT"
-	file.Chapter = 12
+	file.BookId = "3JN"
+	file.Chapter = 1
 	file.MediaId = "N2MZJSIM"
-	file.Directory = path.Join(os.Getenv("FCBH_DATASET_FILES"), "N2MZJSIM", "N2MZJSIM Chapter VOX")
-	file.Filename = "N2_MZJ_SIM_012_MAT_012_VOX.mp3"
+	file.Directory = path.Join(os.Getenv("FCBH_DATASET_FILES"), "N2MZJSIM Manya (MZJ)", "N2MZJSIM Chapter VOX")
+	file.Filename = "N2_MZJ_SIM_237_3JN_001_VOX.mp3"
 	fmt.Println("audio file: ", file.FilePath())
 	files = append(files, file)
 	status = asr.ProcessFiles(files)
@@ -49,14 +48,14 @@ func TestASRAlign_ParseResult(t *testing.T) {
 	}
 	asr := NewASRAlign(ctx, conn, "mzj", "", false)
 	var file input.InputFile
-	file.BookId = "MAT"
-	file.Chapter = 12
+	file.BookId = "3JN" //"PHM"
+	file.Chapter = 1
 	file.MediaId = "N2MZJSIM"
-	asr.uroman, status = stdio_exec.NewStdioExec(asr.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath(), "-l", asr.lang)
-	if status != nil {
-		t.Fatal(status)
-	}
-	defer asr.uroman.Close()
+	//asr.uroman, status = stdio_exec.NewStdioExec(asr.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath(), "-l", asr.lang)
+	//if status != nil {
+	//	t.Fatal(status)
+	//}
+	//defer asr.uroman.Close()
 	response := readResultFile(file)
 	status = asr.parseResult(file, response)
 
