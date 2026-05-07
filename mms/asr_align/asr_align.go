@@ -3,11 +3,12 @@ package asr_align
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
+	"unicode/utf8"
 
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
@@ -19,14 +20,14 @@ import (
 )
 
 type Char struct {
-	BookId     string
-	ChapterNum int
-	VerseStr   string
-	WordSeq    int  // questionable need
-	CharSeq    int  // questionable need
-	Char       rune `json:"ch"`
-	StartTS    float64
-	EndTS      float64 `json:"ts"`
+	BookId   string
+	Chapter  int
+	VerseStr string
+	WordSeq  int  // questionable need
+	CharSeq  int  // questionable need
+	Char     rune `json:"ch"`
+	StartTS  float64
+	EndTS    float64 `json:"ts"`
 }
 
 type ASRAlign struct {
@@ -53,7 +54,6 @@ func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang st
 	return a
 }
 
-// ProcessFiles will perform Auto Speech Recognition on these files
 func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "mms_asr_align_")
@@ -99,14 +99,22 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 	if status != nil {
 		return status
 	}
-	var chars []Char
-	err := json.Unmarshal([]byte(response), &chars)
+	var audioChars []Char
+	err := json.Unmarshal([]byte(response), &audioChars)
 	if err != nil {
 		return log.Error(a.ctx, 500, err, "Error Unmarshalling ASR Response")
 	}
-	for _, c := range chars {
+	for i, c := range audioChars {
+		audioChars[i].BookId = file.BookId
+		audioChars[i].Chapter = file.Chapter
 		print(string(c.Char))
 	}
+	textChars, status1 := a.selectVersesByBookChapter(file.BookId, file.Chapter)
+	if status1 != nil {
+		return status1
+	}
+	mergeChars := a.merge(audioChars, textChars)
+	fmt.Println(mergeChars)
 	return status
 }
 
@@ -139,39 +147,8 @@ func (a *ASRAlign) processASR(file input.InputFile, tempDir string) (string, *lo
 	return response, nil
 }
 
-type asrScript struct {
-	scriptId int64
-	verseStr string
-	text     string
-	uRoman   string
-}
-
-func (a *ASRAlign) parseResult(file input.InputFile, response string) *log.Status {
-	scripts, status := a.selectVersesByBookChapter(file.BookId, file.Chapter)
-	if status != nil {
-		return status
-	}
-	sourceText := a.combineVerses(scripts)
-	respVerses := a.parseASRByOriginal(sourceText, response)
-	//for i := range respVerses {
-	//	respVerses[i].uRoman, status = a.uroman.Process(respVerses[i].text)
-	//	if status != nil {
-	//		return status
-	//	}
-	//}
-	status = a.ensureASRTable()
-	if status != nil {
-		return status
-	}
-	status = a.insertASRText(respVerses)
-	if status != nil {
-		return status
-	}
-	return nil
-}
-
-func (a *ASRAlign) selectVersesByBookChapter(bookId string, chapter int) ([]asrScript, *log.Status) {
-	var results []asrScript
+func (a *ASRAlign) selectVersesByBookChapter(bookId string, chapter int) ([]Char, *log.Status) {
+	var results []Char
 	var query = `SELECT s.script_id, s.verse_str, LOWER(GROUP_CONCAT(w.word, ' ')) AS text
 	FROM scripts s JOIN words w ON w.script_id = s.script_id
 	WHERE w.ttype = 'W' AND s.book_id = ? AND s.chapter_num = ?
@@ -183,12 +160,21 @@ func (a *ASRAlign) selectVersesByBookChapter(bookId string, chapter int) ([]asrS
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var s asrScript
-		err = rows.Scan(&s.scriptId, &s.verseStr, &s.text)
+		var scriptId int64
+		var verseStr string
+		var text string
+		err = rows.Scan(&scriptId, &verseStr, &text)
 		if err != nil {
 			return results, log.Error(a.ctx, 500, err, query, bookId, chapter)
 		}
-		results = append(results, s)
+		for _, ch := range text {
+			var char Char
+			char.BookId = bookId
+			char.Chapter = chapter
+			char.VerseStr = verseStr
+			char.Char = ch
+			results = append(results, char)
+		}
 	}
 	err = rows.Err()
 	if err != nil {
@@ -197,46 +183,63 @@ func (a *ASRAlign) selectVersesByBookChapter(bookId string, chapter int) ([]asrS
 	return results, nil
 }
 
-func (a *ASRAlign) combineVerses(scripts []asrScript) string {
-	var results []string
-	for _, s := range scripts {
-		results = append(results, "{"+strconv.FormatInt(s.scriptId, 10)+"}")
-		results = append(results, s.text)
-	}
-	return strings.Join(results, "")
+type RuneDiff struct {
+	Type diffmatchpatch.Operation
+	Rune rune
 }
 
-func (a *ASRAlign) parseASRByOriginal(sourceText string, response string) []asrScript {
-	var results []asrScript
-	diffs := a.diffMatch.DiffMain(sourceText, response, false)
-	var currId string
-	var currText []string
-	for _, d := range diffs {
-		if d.Type == diffmatchpatch.DiffDelete {
-			matches := a.versePattern.FindStringSubmatch(d.Text)
-			if len(matches) > 0 {
-				if len(currText) > 0 {
-					var script asrScript
-					script.scriptId, _ = strconv.ParseInt(currId, 10, 64)
-					script.text = strings.Join(currText, "")
-					results = append(results, script)
-					currText = nil
-				}
-				currId = matches[1]
-			}
-		} else {
-			currText = append(currText, d.Text)
+/*
+*
+Compare the two []Char.  Output a []Char that is assigned VerseStr, and include
+*/
+func (a *ASRAlign) merge(audioChars []Char, textChars []Char) []Char {
+	var results []Char
+	var audioStr = a.convertChar2String(audioChars)
+	var textStr = a.convertChar2String(textChars)
+	lenAudio := utf8.RuneCountInString(audioStr)
+	lenText := utf8.RuneCountInString(textStr)
+	fmt.Println(lenAudio, lenText)
+	diffs := a.diffMatch.DiffMain(audioStr, textStr, false)
+	var runeDiffs []RuneDiff
+	for _, diff := range diffs {
+		for _, r := range diff.Text {
+			runeDiffs = append(runeDiffs, RuneDiff{Type: diff.Type, Rune: r})
 		}
 	}
-	if len(currText) > 0 {
-		var script asrScript
-		script.scriptId, _ = strconv.ParseInt(currId, 10, 64)
-		script.text = strings.Join(currText, "")
-		results = append(results, script)
+	var audioIndex = 0
+	var textIndex = 0
+	for _, diff := range runeDiffs {
+		var selected Char
+		switch diff.Type {
+		case diffmatchpatch.DiffEqual:
+			selected = audioChars[audioIndex]
+			selected.VerseStr = textChars[textIndex].VerseStr
+			audioIndex++
+			textIndex++
+		case diffmatchpatch.DiffDelete:
+			selected = audioChars[audioIndex]
+			if textIndex < len(textChars) {
+				selected.VerseStr = textChars[textIndex].VerseStr
+			}
+			audioIndex++
+		case diffmatchpatch.DiffInsert:
+			selected = textChars[textIndex]
+			textIndex++
+		}
+		results = append(results, selected)
 	}
 	return results
 }
 
+func (a *ASRAlign) convertChar2String(chars []Char) string {
+	var result []rune
+	for _, ch := range chars {
+		result = append(result, ch.Char)
+	}
+	return string(result)
+}
+
+/*
 func (a *ASRAlign) ensureASRTable() *log.Status {
 	query := `CREATE TABLE IF NOT EXISTS asr (
 		script_id INTEGER PRIMARY KEY,
@@ -276,3 +279,4 @@ func (a *ASRAlign) insertASRText(scripts []asrScript) *log.Status {
 	}
 	return nil
 }
+*/
