@@ -15,20 +15,10 @@ import (
 	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/ffmpeg"
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/performance"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/stdio_exec"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
-
-type Char struct {
-	BookId   string
-	Chapter  int
-	VerseStr string
-	WordSeq  int  // questionable need
-	CharSeq  int  // questionable need
-	Char     rune `json:"ch"`
-	StartTS  float64
-	EndTS    float64 `json:"ts"`
-}
 
 type ASRAlign struct {
 	ctx          context.Context
@@ -40,6 +30,7 @@ type ASRAlign struct {
 	diffMatch    *diffmatchpatch.DiffMatchPatch
 	versePattern *regexp.Regexp
 	testing      bool // set in asr_align_test.go
+	timer        performance.CodeTimer
 }
 
 func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool) ASRAlign {
@@ -51,10 +42,12 @@ func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang st
 	a.adapter = adapter
 	a.diffMatch = diffmatchpatch.New()
 	a.versePattern = regexp.MustCompile(`\{(\d+)\}`)
+	a.timer = performance.NewCodeTimer()
 	return a
 }
 
 func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
+	a.timer.Duration("Start")
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "mms_asr_align_")
 	if err != nil {
@@ -85,6 +78,7 @@ func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
 		return status
 	}
 	defer a.mmsAsrPy.Close()
+	a.timer.Duration("After Setup")
 	for _, file := range files {
 		status = a.processFile(file, tempDir)
 		if status != nil {
@@ -99,22 +93,29 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 	if status != nil {
 		return status
 	}
+	a.timer.Duration("After ASR")
 	var audioChars []Char
 	err := json.Unmarshal([]byte(response), &audioChars)
 	if err != nil {
 		return log.Error(a.ctx, 500, err, "Error Unmarshalling ASR Response")
 	}
-	for i, c := range audioChars {
+	a.timer.Duration("After Unmarshal")
+	for i := range audioChars {
 		audioChars[i].BookId = file.BookId
 		audioChars[i].Chapter = file.Chapter
-		print(string(c.Char))
+		//print(string(c.Char))
 	}
+	a.timer.Duration("After set book, chapter")
 	textChars, status1 := a.selectVersesByBookChapter(file.BookId, file.Chapter)
 	if status1 != nil {
 		return status1
 	}
+	a.timer.Duration("After select book")
 	mergeChars := a.merge(audioChars, textChars)
-	fmt.Println(mergeChars)
+	a.timer.Duration("After Merge")
+	DumpChars(textChars)
+	DumpChars(audioChars)
+	DumpChars(mergeChars)
 	return status
 }
 
@@ -208,25 +209,33 @@ func (a *ASRAlign) merge(audioChars []Char, textChars []Char) []Char {
 	}
 	var audioIndex = 0
 	var textIndex = 0
+	// For word sample training, it would be correct to maintain the
+	// sample size to be that of the text,
+	// and add whole words from the audio, but not partial words
+	// discarding spaces from audio data but keep the text data spaces
 	for _, diff := range runeDiffs {
 		var selected Char
 		switch diff.Type {
 		case diffmatchpatch.DiffEqual:
 			selected = audioChars[audioIndex]
 			selected.VerseStr = textChars[textIndex].VerseStr
+			results = append(results, selected)
 			audioIndex++
 			textIndex++
 		case diffmatchpatch.DiffDelete:
-			selected = audioChars[audioIndex]
-			if textIndex < len(textChars) {
-				selected.VerseStr = textChars[textIndex].VerseStr
+			if audioChars[audioIndex].Char != 32 {
+				selected = audioChars[audioIndex]
+				if textIndex < len(textChars) {
+					selected.VerseStr = textChars[textIndex].VerseStr
+				}
+				results = append(results, selected)
 			}
 			audioIndex++
 		case diffmatchpatch.DiffInsert:
 			selected = textChars[textIndex]
+			results = append(results, selected)
 			textIndex++
 		}
-		results = append(results, selected)
 	}
 	return results
 }
