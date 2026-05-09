@@ -100,12 +100,6 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 		return log.Error(a.ctx, 500, err, "Error Unmarshalling ASR Response")
 	}
 	a.timer.Duration("After Unmarshal")
-	for i := range audioChars {
-		audioChars[i].BookId = file.BookId
-		audioChars[i].Chapter = file.Chapter
-		//print(string(c.Char))
-	}
-	a.timer.Duration("After set book, chapter")
 	textChars, status1 := a.selectVersesByBookChapter(file.BookId, file.Chapter)
 	if status1 != nil {
 		return status1
@@ -116,7 +110,17 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 	DumpChars(textChars)
 	DumpChars(audioChars)
 	DumpChars(mergeChars)
-	return status
+	words := a.summarizeCharsToWords(mergeChars)
+	scripts := a.summarizeWordsToScripts(words)
+	err = a.updateWords(a.conn.DB, words)
+	if err != nil {
+		return log.Error(a.ctx, 500, err, "Error updating timestamps in word table")
+	}
+	err = a.updateScripts(a.conn.DB, scripts)
+	if err != nil {
+		return log.Error(a.ctx, 500, err, "Error updating timestamps in scripts table")
+	}
+	return nil
 }
 
 func (a *ASRAlign) processASR(file input.InputFile, tempDir string) (string, *log.Status) {
@@ -148,42 +152,6 @@ func (a *ASRAlign) processASR(file input.InputFile, tempDir string) (string, *lo
 	return response, nil
 }
 
-func (a *ASRAlign) selectVersesByBookChapter(bookId string, chapter int) ([]Char, *log.Status) {
-	var results []Char
-	var query = `SELECT s.script_id, s.verse_str, LOWER(GROUP_CONCAT(w.word, ' ')) AS text
-	FROM scripts s JOIN words w ON w.script_id = s.script_id
-	WHERE w.ttype = 'W' AND s.book_id = ? AND s.chapter_num = ?
-	GROUP BY s.script_id, s.verse_str
-	ORDER BY s.script_id, s.verse_str`
-	rows, err := a.conn.DB.Query(query, bookId, chapter)
-	if err != nil {
-		return results, log.Error(a.ctx, 500, err, query, bookId, chapter)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var scriptId int64
-		var verseStr string
-		var text string
-		err = rows.Scan(&scriptId, &verseStr, &text)
-		if err != nil {
-			return results, log.Error(a.ctx, 500, err, query, bookId, chapter)
-		}
-		for _, ch := range text {
-			var char Char
-			char.BookId = bookId
-			char.Chapter = chapter
-			char.VerseStr = verseStr
-			char.Char = ch
-			results = append(results, char)
-		}
-	}
-	err = rows.Err()
-	if err != nil {
-		return results, log.Error(a.ctx, 500, err, query, bookId, chapter)
-	}
-	return results, nil
-}
-
 type RuneDiff struct {
 	Type diffmatchpatch.Operation
 	Rune rune
@@ -209,24 +177,24 @@ func (a *ASRAlign) merge(audioChars []Char, textChars []Char) []Char {
 	}
 	var audioIndex = 0
 	var textIndex = 0
-	// For word sample training, it would be correct to maintain the
-	// sample size to be that of the text,
-	// and add whole words from the audio, but not partial words
-	// discarding spaces from audio data but keep the text data spaces
 	for _, diff := range runeDiffs {
 		var selected Char
 		switch diff.Type {
 		case diffmatchpatch.DiffEqual:
-			selected = audioChars[audioIndex]
-			selected.VerseStr = textChars[textIndex].VerseStr
+			selected = textChars[textIndex]
+			selected.BeginTS = audioChars[audioIndex].BeginTS
+			selected.EndTS = audioChars[audioIndex].EndTS
 			results = append(results, selected)
 			audioIndex++
 			textIndex++
 		case diffmatchpatch.DiffDelete:
-			if audioChars[audioIndex].Char != 32 {
+			if audioChars[audioIndex].Char != 32 { // remove space chars that are only in the audio
 				selected = audioChars[audioIndex]
-				if textIndex < len(textChars) {
+				if textIndex < len(textChars) { // not sure why this is needed
+					selected.ScriptId = textChars[textIndex].ScriptId
+					selected.WordId = textChars[textIndex].WordId
 					selected.VerseStr = textChars[textIndex].VerseStr
+					selected.WordSeq = textChars[textIndex].WordSeq
 				}
 				results = append(results, selected)
 			}
@@ -248,44 +216,82 @@ func (a *ASRAlign) convertChar2String(chars []Char) string {
 	return string(result)
 }
 
-/*
-func (a *ASRAlign) ensureASRTable() *log.Status {
-	query := `CREATE TABLE IF NOT EXISTS asr (
-		script_id INTEGER PRIMARY KEY,
-		script_text TEXT NOT NULL,
-		uroman TEXT NOT NULL DEFAULT '')`
-	_, err := a.conn.DB.Exec(query)
-	if err != nil {
-		return log.Error(a.ctx, 500, err, query)
-	}
-	return nil
+func (a *ASRAlign) mergeAddedWords(chars []Char) []Char {
+	// This solution is not good, it requires the entire words table to be recreated with new word_id
+	// And we are doing this one chapter at a time
+
+	// This method should iterate over the merged Chars
+	// The added words will not have a wordId, or a verseStr
+	// The verseId should be assigned by what is before and after them.
+	// When there is a different verseStr before and after, I think the before vs should be assigned
+	// That is, they should be put at the end of the prior verse, rather than the beginning.
+	// The wordId should be assigned as 1 more than the prior word, and all words that
+	// are already assigned should be incremented by one
+	//
+	// Not sure when the update is done.  The inserted words could be put aside and inserted as a group.
+	// And the updated words could be also set aside and inserted as a group.
+	// The changed words need to be updated before the inserts
+	return chars
 }
 
-func (a *ASRAlign) insertASRText(scripts []asrScript) *log.Status {
-	_, err := a.conn.DB.Exec(`DELETE FROM asr`)
-	if err != nil {
-		return log.Error(a.ctx, 500, err, "could not delete asr")
-	}
-	query := `INSERT INTO asr (script_id, script_text, uroman) VALUES (?,?,?)`
-	tx, err := a.conn.DB.Begin()
-	if err != nil {
-		return log.Error(a.ctx, 500, err, query)
-	}
-	stmt, err := tx.Prepare(query)
-	if err != nil {
-		return log.Error(a.ctx, 500, err, query)
-	}
-	defer stmt.Close()
-	for _, rec := range scripts {
-		_, err = stmt.Exec(rec.scriptId, rec.text, rec.uRoman)
-		if err != nil {
-			return log.Error(a.ctx, 500, err, `Error while inserting asr text.`)
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return log.Error(a.ctx, 500, err, query)
-	}
-	return nil
+type Script struct {
+	ScriptId int64
+	BeginTS  float64
+	EndTS    float64
 }
-*/
+type Word struct {
+	ScriptId int64
+	WordId   int64
+	BeginTS  float64
+	EndTS    float64
+}
+
+func (a *ASRAlign) summarizeCharsToWords(chars []Char) []Word {
+	var words []Word
+	if len(chars) == 0 {
+		return words
+	}
+	current := Word{
+		ScriptId: chars[0].ScriptId,
+		WordId:   chars[0].WordId,
+		BeginTS:  chars[0].BeginTS,
+		EndTS:    chars[0].EndTS,
+	}
+	for _, c := range chars[1:] {
+		if c.WordId != current.WordId {
+			words = append(words, current)
+			current = Word{
+				ScriptId: c.ScriptId,
+				WordId:   c.WordId,
+				BeginTS:  c.BeginTS,
+				EndTS:    c.EndTS,
+			}
+		}
+		current.EndTS = c.EndTS
+	}
+	return append(words, current)
+}
+
+func (a *ASRAlign) summarizeWordsToScripts(words []Word) []Script {
+	var scripts []Script
+	if len(words) == 0 {
+		return scripts
+	}
+	current := Script{
+		ScriptId: words[0].ScriptId,
+		BeginTS:  words[0].BeginTS,
+		EndTS:    words[0].EndTS,
+	}
+	for _, w := range words[1:] {
+		if w.ScriptId != current.ScriptId {
+			scripts = append(scripts, current)
+			current = Script{
+				ScriptId: w.ScriptId,
+				BeginTS:  w.BeginTS,
+				EndTS:    w.EndTS,
+			}
+		}
+		current.EndTS = w.EndTS
+	}
+	return append(scripts, current)
+}

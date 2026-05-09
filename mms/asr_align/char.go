@@ -3,13 +3,13 @@ package asr_align
 import "fmt"
 
 type Char struct {
-	BookId   string
-	Chapter  int
+	ScriptId int64
+	WordId   int64
 	VerseStr string
-	WordSeq  int  // questionable need
+	WordSeq  int
 	CharSeq  int  // questionable need
 	Char     rune `json:"ch"`
-	StartTS  float64
+	BeginTS  float64
 	EndTS    float64 `json:"ts"`
 }
 
