@@ -14,6 +14,14 @@ let uploadCompleted = false; // Track if upload was completed successfully
 let isUploading = false;
 
 /**
+ * Return the currently selected text format extension (sfm or usx)
+ */
+function getTextFormat() {
+    const radio = document.querySelector('input[name="text_format"]:checked');
+    return radio ? radio.value : 'sfm';
+}
+
+/**
  * Initialize folder upload functionality
  */
 function initializeFolderUpload() {
@@ -214,7 +222,8 @@ function loadYAMLFile(file) {
  */
 async function handleDirectoryPicker(directoryHandle) {
     try {
-        const folderData = await readDirectoryContentsFSA(directoryHandle);
+        const files = await collectFilesFSA(directoryHandle);
+        const folderData = organizeFilesByType(files);
         const folderName = directoryHandle.name;
         processFolderData(folderData, folderName);
     } catch (error) {
@@ -247,23 +256,25 @@ function handleFileList(files) {
 }
 
 /**
- * Read directory contents using File System Access API (for showDirectoryPicker)
+ * Recursively collect all files from a directory handle, attaching
+ * customRelativePath so organizeFilesByType can determine subfolder structure.
  */
-async function readDirectoryContentsFSA(directoryHandle) {
-    const files = [];
-    
+async function collectFilesFSA(directoryHandle, currentPath = '') {
+    const allFiles = [];
+
     for await (const [name, handle] of directoryHandle.entries()) {
         if (handle.kind === 'file') {
             const file = await handle.getFile();
-            files.push(file);
+            file.customRelativePath = currentPath ? `${currentPath}/${name}` : name;
+            allFiles.push(file);
         } else if (handle.kind === 'directory') {
-            // Recursively read subdirectory
-            const subFiles = await readDirectoryContentsFSA(handle);
-            files.push(...subFiles);
+            const newPath = currentPath ? `${currentPath}/${name}` : name;
+            const subFiles = await collectFilesFSA(handle, newPath);
+            allFiles.push(...subFiles);
         }
     }
-    
-    return organizeFilesByType(files);
+
+    return allFiles;
 }
 
 /**
@@ -331,8 +342,21 @@ async function readDirectoryContentsWebkit(directoryEntry, currentPath = '') {
         }
     };
     
-    await readDirectory(directoryEntry, currentPath);
-    
+    // Iterate the root's children directly with an empty starting path so the
+    // root folder name is not included in customRelativePath (folderName tracks it).
+    const rootReader = directoryEntry.createReader();
+    const readRootEntries = async () => {
+        const entries = await new Promise((resolve, reject) => {
+            rootReader.readEntries(resolve, reject);
+        });
+        if (entries.length === 0) return;
+        for (const entry of entries) {
+            await readDirectory(entry, '', 0);
+        }
+        await readRootEntries();
+    };
+    await readRootEntries();
+
     return organizeFilesByType(allFiles);
 }
 
@@ -343,62 +367,33 @@ function organizeFilesByType(files) {
     const audioFiles = [];
     const textFiles = [];
     let audioSubfolder = '';
-    let textSubfolder = '';
-    
-    // Organizing files by type
-    
+    let usxSubfolder = '';
+    let sfmSubfolder = '';
+
     for (const file of files) {
-        // Use our custom relative path that we built during directory traversal
         const path = file.customRelativePath || file.webkitRelativePath || file.name;
         const pathParts = path.split('/');
-        
-        // Look for audio files (mp3, wav) in any subfolder
+        // Full relative path to the file's parent directory (may be multiple levels)
+        const parentPath = pathParts.length >= 2 ? pathParts.slice(0, -1).join('/') : '';
+
         if (file.name.match(/\.(mp3|wav)$/i)) {
             audioFiles.push(file);
-            // Try to identify the audio subfolder (more robust detection)
-            if (pathParts.length >= 2) {
-                const subfolder = pathParts[pathParts.length - 2];
-                // Look for common audio folder patterns
-                if (!audioSubfolder || 
-                    subfolder.includes('VOX') || 
-                    subfolder.includes('Audio') || 
-                    subfolder.includes('audio') ||
-                    subfolder.includes('MP3') ||
-                    subfolder.includes('mp3')) {
-                    audioSubfolder = subfolder;
-                }
-            }
-        }
-        
-        // Look for text files (usx) in any subfolder
-        else if (file.name.toLowerCase().endsWith('.usx')) {
+            if (!audioSubfolder && parentPath) audioSubfolder = parentPath;
+        } else if (file.name.match(/\.usx$/i)) {
             textFiles.push(file);
-            
-            // Try to identify the text subfolder (more robust detection)
-            if (pathParts.length >= 2) {
-                const subfolder = pathParts[pathParts.length - 2];
-                // Look for common text folder patterns
-                if (!textSubfolder || 
-                    subfolder.includes('USX') || 
-                    subfolder.includes('usx') ||
-                    subfolder.includes('Text') || 
-                    subfolder.includes('text') ||
-                    subfolder.includes('TXT') ||
-                    subfolder.includes('txt')) {
-                    textSubfolder = subfolder;
-                }
-            }
+            if (!usxSubfolder && parentPath) usxSubfolder = parentPath;
+        } else if (file.name.match(/\.sfm$/i)) {
+            textFiles.push(file);
+            if (!sfmSubfolder && parentPath) sfmSubfolder = parentPath;
         }
     }
-    
-    // File organization complete
-    
-    
+
     return {
         audioFiles,
         textFiles,
         audioSubfolder: audioSubfolder || 'audio',
-        textSubfolder: textSubfolder || 'text',
+        usxSubfolder: usxSubfolder || 'text',
+        sfmSubfolder: sfmSubfolder || 'text',
         totalFiles: files.length
     };
 }
@@ -482,7 +477,11 @@ function populateFormFromFolder(folderInfo, folderData) {
     
     // Populate S3 paths (using new bucket structure)
     const audioBucketName = getAudioBucketName();
-    const textPath = `s3://${audioBucketName}/${folderData.folderName}/${folderData.textSubfolder}/*.usx`;
+    const textExt = getTextFormat();
+    const textSubfolder = textExt === 'sfm'
+        ? (folderData.sfmSubfolder || folderData.usxSubfolder)
+        : (folderData.usxSubfolder || folderData.sfmSubfolder);
+    const textPath = `s3://${audioBucketName}/${folderData.folderName}/${textSubfolder}/*.${textExt}`;
     const audioPath = `s3://${audioBucketName}/${folderData.folderName}/${folderData.audioSubfolder}/*.mp3`;
     
     document.getElementById('textData').value = textPath;

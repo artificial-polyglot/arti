@@ -384,6 +384,7 @@
 
         input[type="text"],
         input[type="number"],
+        textarea,
         select {
             flex: 1;
             min-width: 200px;
@@ -393,6 +394,12 @@
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 14px;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: none;
+            overflow: hidden;
         }
 
         select {
@@ -401,28 +408,33 @@
 
         input[type="text"]:focus,
         input[type="number"]:focus,
+        textarea:focus,
         select:focus {
             outline: none;
             border-color: #0066cc;
             box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
         }
 
-        input[type="text"]::placeholder {
+        input[type="text"]::placeholder,
+        textarea::placeholder {
             color: #999;
         }
 
-        input[type="text"].optional {
+        input[type="text"].optional,
+        textarea.optional {
             background-color: #3a3a3a;
             border: 1px solid #555;
             color: #ccc;
         }
 
-        input[type="text"].optional::placeholder {
+        input[type="text"].optional::placeholder,
+        textarea.optional::placeholder {
             color: #777;
             font-style: italic;
         }
 
-        input[type="text"].optional:focus {
+        input[type="text"].optional:focus,
+        textarea.optional:focus {
             background-color: #4a4a4a;
             border-color: #666;
         }
@@ -650,6 +662,7 @@
 
         <div class="button-group">
             <button onclick="clearForm()">Clear</button>
+            <button onclick="saveFile()">Save YAML</button>
             <button id="uploadButton" disabled>Upload</button>
         </div>
 
@@ -659,7 +672,7 @@
             <div class="form-group">
                 <div class="form-row">
                     <label for="username">username:</label>
-                    <input type="text" id="username"
+                    <input type="text" id="username" style="max-width: 400px;"
                         placeholder="Enter a unique username for yourself (used to group datasets on the server)."
                         required>
                 </div>
@@ -668,22 +681,40 @@
             <div class="form-group">
                 <div class="form-row">
                     <label for="datasetName">dataset_name:</label>
-                    <input type="text" id="datasetName"
+                    <input type="text" id="datasetName" style="max-width: 400px;"
                         placeholder="Enter a unique name for this dataset (unique within your username that is).">
                 </div>
             </div>
 
             <div class="form-group">
-                <div class="form-row">
-                    <label for="textData">text_data:</label>
-                    <input type="text" id="textData" placeholder="s3://bucket-name/path/to/files/*.usx">
+                <div class="form-row" style="align-items: flex-start;">
+                    <label for="textData" style="padding-top: 6px;">text_data:</label>
+                    <textarea id="textData" rows="2"
+                        placeholder="s3://bucket-name/path/to/files/*.sfm"></textarea>
                 </div>
             </div>
 
             <div class="form-group">
-                <div class="form-row">
-                    <label for="audioData">audio_data:</label>
-                    <input type="text" id="audioData" placeholder="s3://bucket-name/path/to/files/*.wav">
+                <div class="radio-group">
+                    <label>text_format:</label>
+                    <div class="radio-options" style="flex-direction: row; gap: 20px; align-items: center;">
+                        <div class="radio-option">
+                            <input type="radio" id="text_format_sfm" name="text_format" value="sfm" checked>
+                            <label for="text_format_sfm">SFM (.sfm)</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="text_format_usx" name="text_format" value="usx">
+                            <label for="text_format_usx">USX (.usx)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-row" style="align-items: flex-start;">
+                    <label for="audioData" style="padding-top: 6px;">audio_data:</label>
+                    <textarea id="audioData" rows="2"
+                        placeholder="s3://bucket-name/path/to/files/*.mp3"></textarea>
                 </div>
             </div>
 
@@ -691,7 +722,8 @@
                 <div class="form-row">
                     <label for="languageIso">language_iso:</label>
                     <input type="text" id="languageIso"
-                        placeholder="Enter 3-letter ISO code (e.g., eng, spa, fra), this specifies the language model to use."
+                        style="flex: none; width: 90px; min-width: 0;"
+                        placeholder="eng"
                         maxlength="3">
                 </div>
             </div>
@@ -761,8 +793,8 @@
                 <div class="form-group">
                     <div class="form-row">
                         <label for="gordonFilter">gordon_filter:</label>
-                        <input type="number" id="gordonFilter" placeholder="Enter 4 for filter, or zero for no filter."
-                            value="0">
+                        <input type="number" id="gordonFilter" style="flex: none; width: 90px; min-width: 0;"
+                            placeholder="0" value="0">
                     </div>
                 </div>
 
@@ -771,8 +803,8 @@
                         <label for="notifyOk">notify_ok: <span style="color: #888; font-size: 12px;">(comma-separated
                                 emails)</span></label>
                         <input type="text" id="notifyOk"
-                            value="ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org, jrstear@fcbhmail.org"
-                            placeholder="ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org, jrstear@fcbhmail.org">
+                            value="ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org"
+                            placeholder="ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org">
                     </div>
                 </div>
 
@@ -789,6 +821,7 @@
                 <div class="file-input" style="display: none;">
                     <input type="file" id="fileInput" accept=".yaml,.yml" onchange="handleFileLoad()">
                 </div>
+            </div>
         </form>
 
         <div class="loading" id="loading"></div>
@@ -1220,9 +1253,10 @@
             document.getElementById('timestamps_mms_align').checked = true;
             document.getElementById('training_mms_adapter').checked = true;
             document.getElementById('compare').checked = true;
+            document.getElementById('text_format_sfm').checked = true;
             // Set default email values
-            document.getElementById('notifyOk').value = 'ezornes@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org, jrstear@fcbhmail.org';
-            document.getElementById('notifyErr').value = 'gary@shortsands.com, ezornes@fcbhmail.org, jrstear@fcbhmail.org';
+            document.getElementById('notifyOk').value = 'ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org';
+            document.getElementById('notifyErr').value = 'gary@shortsands.com, ewallace@fcbhmail.org, jrstear@fcbhmail.org';
 
             // Restore username
             document.getElementById('username').value = username;
@@ -1293,7 +1327,12 @@
             if (data.username) document.getElementById('username').value = data.username;
             if (data.language_iso) document.getElementById('languageIso').value = data.language_iso;
             if (data.alt_language) document.getElementById('altLanguage').value = data.alt_language;
-            if (data.text_data && data.text_data.aws_s3) document.getElementById('textData').value = data.text_data.aws_s3;
+            if (data.text_data && data.text_data.aws_s3) {
+                document.getElementById('textData').value = data.text_data.aws_s3;
+                const pathLower = data.text_data.aws_s3.toLowerCase();
+                if (pathLower.includes('.usx')) document.getElementById('text_format_usx').checked = true;
+                else document.getElementById('text_format_sfm').checked = true;
+            }
             if (data.audio_data && data.audio_data.aws_s3) document.getElementById('audioData').value = data.audio_data.aws_s3;
             if (data.compare && data.compare.gordon_filter !== undefined) {
                 document.getElementById('gordonFilter').value = data.compare.gordon_filter;
@@ -1833,6 +1872,24 @@
                         }
                         updateUploadButtonState();
                         updateRequiredFieldStyling();
+                    }
+                });
+            });
+
+            // Update textData path when text_format radio changes
+            document.querySelectorAll('input[name="text_format"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const textData = document.getElementById('textData');
+                    if (currentFolderData && currentFolderInfo) {
+                        // Rebuild full path with correct subfolder and extension
+                        const textExt = this.value;
+                        const textSubfolder = textExt === 'sfm'
+                            ? (currentFolderData.sfmSubfolder || currentFolderData.usxSubfolder)
+                            : (currentFolderData.usxSubfolder || currentFolderData.sfmSubfolder);
+                        textData.value = `s3://${getAudioBucketName()}/${currentFolderData.folderName}/${textSubfolder}/*.${textExt}`;
+                    } else if (textData.value) {
+                        // No folder loaded — just swap the extension
+                        textData.value = textData.value.replace(/\*\.(usx|sfm)/i, `*.${this.value}`);
                     }
                 });
             });

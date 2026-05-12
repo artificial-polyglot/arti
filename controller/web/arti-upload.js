@@ -181,6 +181,7 @@ function getContentType(filename) {
         case 'mp3': return 'audio/mpeg';
         case 'wav': return 'audio/wav';
         case 'usx': return 'text/xml';
+        case 'sfm': return 'text/plain';
         default: return 'application/octet-stream';
     }
 }
@@ -198,7 +199,11 @@ function generateUploadYAML(folderData, folderInfo, audioBucketName) {
     
     // Override the paths for folder uploads
     const audioPath = `s3://${audioBucketName}/${folderData.folderName}/${folderData.audioSubfolder}/*.mp3`;
-    const textPath = `s3://${audioBucketName}/${folderData.folderName}/${folderData.textSubfolder}/*.usx`;
+    const textExt = getTextFormat();
+    const textSubfolder = textExt === 'sfm'
+        ? (folderData.sfmSubfolder || folderData.usxSubfolder)
+        : (folderData.usxSubfolder || folderData.sfmSubfolder);
+    const textPath = `s3://${audioBucketName}/${folderData.folderName}/${textSubfolder}/*.${textExt}`;
     
     yamlData.text_data = { aws_s3: textPath };
     yamlData.audio_data = { aws_s3: audioPath };

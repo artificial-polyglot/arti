@@ -217,45 +217,65 @@ function parseV4AudioFilename(filename) {
  * Format: {BOOKSEQ}{BOOKCODE}.usx or {BOOKCODE}.usx
  * Example: 040MAT.usx, 001GEN.usx, or MAT.usx
  */
-function parseUSXFilename(filename) {
-    if (!filename.endsWith('.usx')) {
-        return {
-            valid: false,
-            error: `USX file must end with .usx: ${filename}`
-        };
+/**
+ * Scan a list of text filenames (USX or SFM) and return the character position
+ * where a known book code consistently appears.  Scans every position in each
+ * filename stem looking for a 3-character substring that matches a known book
+ * code (including codes that start with a digit such as 1CO or 2KI).
+ * Requires at least two filenames to agree before trusting the position;
+ * returns -1 if no consensus is found.
+ */
+function discoverBookCodePosition(filenames) {
+    const positionCounts = {};
+
+    for (const filename of filenames) {
+        const nameWithoutExt = filename.replace(/\.[^.]+$/, '');
+        const foundInFile = new Set();
+        for (let i = 0; i <= nameWithoutExt.length - 3; i++) {
+            const candidate = nameWithoutExt.substring(i, i + 3).toUpperCase();
+            if (BOOK_SEQ_MAP.hasOwnProperty(candidate)) {
+                foundInFile.add(i);
+            }
+        }
+        for (const pos of foundInFile) {
+            positionCounts[pos] = (positionCounts[pos] || 0) + 1;
+        }
     }
-    
-    const nameWithoutExt = filename.replace('.usx', '');
-    let bookId, bookSeq;
-    
-    if (nameWithoutExt.length === 10) {
-        // Format: 001GEN.usx (3-digit sequence + 3-letter code + .usx = 10 chars)
-        bookSeq = nameWithoutExt.substring(0, 3);
-        bookId = nameWithoutExt.substring(3, 6);
-    } else if (nameWithoutExt.length === 7) {
-        // Format: GEN.usx (3-letter code + .usx = 7 chars)
-        bookId = nameWithoutExt.substring(0, 3);
-        bookSeq = BOOK_SEQ_MAP[bookId]?.toString() || '';
-    } else if (nameWithoutExt.length === 6) {
-        // Format: 040MAT.usx (3-digit sequence + 3-letter code = 6 chars, common format)
-        bookSeq = nameWithoutExt.substring(0, 3);
-        bookId = nameWithoutExt.substring(3, 6);
-    } else {
-        return {
-            valid: false,
-            error: `USX files expected in format 001GEN.usx, 040MAT.usx, or GEN.usx, got: ${filename}`
-        };
+
+    let bestPosition = -1;
+    let bestCount = 0; // accept even a single file
+    for (const [pos, count] of Object.entries(positionCounts)) {
+        if (count > bestCount) {
+            bestCount = count;
+            bestPosition = parseInt(pos);
+        }
     }
-    
-    // Validate book code
+    return bestPosition;
+}
+
+/**
+ * Parse a text filename (USX or SFM) using a pre-discovered book code position.
+ * Extracts 3 characters at bookCodePosition as the book ID and everything before
+ * it as the sequence prefix.
+ */
+function parseTextFilename(filename, bookCodePosition) {
+    if (bookCodePosition < 0) {
+        return { valid: false, error: `Book code position not discovered for: ${filename}` };
+    }
+
+    const nameWithoutExt = filename.replace(/\.[^.]+$/, '');
+    if (bookCodePosition + 3 > nameWithoutExt.length) {
+        return { valid: false, error: `Filename too short for book code at position ${bookCodePosition}: ${filename}` };
+    }
+
+    const bookId = nameWithoutExt.substring(bookCodePosition, bookCodePosition + 3).toUpperCase();
+    const bookSeq = nameWithoutExt.substring(0, bookCodePosition);
+
     const bookValidation = validateBookId(bookId);
     if (!bookValidation.valid) {
-        return {
-            valid: false,
-            error: bookValidation.error
-        };
+        return { valid: false, error: bookValidation.error };
     }
-    
+
     return {
         valid: true,
         bookId: bookValidation.bookId,
@@ -264,33 +284,20 @@ function parseUSXFilename(filename) {
     };
 }
 
+
 /**
- * Extract book code from any filename by looking for 3-letter patterns
+ * Extract book code from any filename by scanning every 3-character position
+ * against the known book code list.  Handles codes that start with a digit
+ * (1TH, 2CO, etc.) as well as all-letter codes.
  */
 function extractBookCodeFromFilename(filename) {
-    // Remove file extension
-    const nameWithoutExt = filename.replace(/\.(mp3|wav|usx)$/i, '');
-    
-    // Look for 3-letter book codes in the filename
-    // Common patterns: MAT_001, _MAT_, MAT001, 040MAT, etc.
-    const bookCodePatterns = [
-        /[^A-Za-z]([A-Z]{3})[^A-Za-z]/,  // _MAT_ or _MAT001
-        /^([A-Z]{3})[^A-Za-z]/,          // MAT_001 (start of string)
-        /[^A-Za-z]([A-Z]{3})$/,          // 040MAT (end of string)
-        /([A-Z]{3})/,                    // Any 3 uppercase letters
-    ];
-    
-    for (const pattern of bookCodePatterns) {
-        const match = nameWithoutExt.match(pattern);
-        if (match) {
-            const potentialBookCode = match[1];
-            // Validate that this is actually a valid book code
-            if (BOOK_SEQ_MAP.hasOwnProperty(potentialBookCode)) {
-                return potentialBookCode;
-            }
+    const nameWithoutExt = filename.replace(/\.[^.]+$/, '');
+    for (let i = 0; i <= nameWithoutExt.length - 3; i++) {
+        const candidate = nameWithoutExt.substring(i, i + 3).toUpperCase();
+        if (BOOK_SEQ_MAP.hasOwnProperty(candidate)) {
+            return candidate;
         }
     }
-    
     return null;
 }
 
@@ -338,23 +345,22 @@ function validateAudioFile(filename) {
 }
 
 /**
- * Validate text file (USX) - ROBUST VERSION
+ * Validate a text file (USX or SFM) using a pre-discovered book code position.
+ * Falls back to scanning the filename for any known book code if position is -1.
  */
-function validateTextFile(filename) {
-    if (!filename.toLowerCase().endsWith('.usx')) {
+function validateTextFile(filename, bookCodePosition = -1) {
+    const lower = filename.toLowerCase();
+    if (!lower.endsWith('.usx') && !lower.endsWith('.sfm')) {
         return {
             valid: false,
-            error: `Text file must be .usx format: ${filename}`
+            error: `Text file must be .usx or .sfm format: ${filename}`
         };
     }
-    
-    // Try specific USX patterns first
-    const usxResult = parseUSXFilename(filename);
-    if (usxResult.valid) {
-        return usxResult;
-    }
-    
-    // Fallback: Extract book code from any pattern
+
+    const result = parseTextFilename(filename, bookCodePosition);
+    if (result.valid) return result;
+
+    // Fallback: scan the whole filename for any known book code
     const bookCode = extractBookCodeFromFilename(filename);
     if (bookCode) {
         return {
@@ -362,13 +368,13 @@ function validateTextFile(filename) {
             bookId: bookCode,
             bookSeq: BOOK_SEQ_MAP[bookCode]?.toString() || '',
             testament: getTestament(bookCode),
-            mediaType: 'robust_usx'
+            mediaType: 'robust'
         };
     }
-    
+
     return {
         valid: false,
-        error: `No valid book code found in USX filename: ${filename}`
+        error: `No valid book code found in text filename: ${filename}`
     };
 }
 
@@ -404,7 +410,7 @@ function validateFolderStructure(folderData) {
     }
     
     if (!folderData.textFiles || folderData.textFiles.length === 0) {
-        errors.push('No text files found. Expected USX files (.usx format).');
+        errors.push('No text files found. Expected USX (.usx) or SFM (.sfm) files.');
     }
     
     if (errors.length > 0) {
@@ -421,8 +427,10 @@ function validateFolderStructure(folderData) {
         errors.push(...audioResult.errors);
     }
     
-    // Validate text files
-    const textResult = extractBooksFromFiles(folderData.textFiles, validateTextFile);
+    // Discover book code position from the batch, then validate each file with it
+    const bookCodePosition = discoverBookCodePosition(folderData.textFiles.map(f => f.name));
+    const textResult = extractBooksFromFiles(folderData.textFiles,
+        f => validateTextFile(f, bookCodePosition));
     if (textResult.errors.length > 0) {
         errors.push(...textResult.errors);
     }
