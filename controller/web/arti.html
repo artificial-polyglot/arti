@@ -813,8 +813,8 @@
                         <label for="notifyErr">notify_err: <span style="color: #888; font-size: 12px;">(comma-separated
                                 emails)</span></label>
                         <input type="text" id="notifyErr"
-                            value="gary@shortsands.com, ewallace@fcbhmail.org, jrstear@fcbhmail.org"
-                            placeholder="gary@shortsands.com, ewallace@fcbhmail.org, jrstear@fcbhmail.org">
+                            value="gary@shortsands.com, ewallace@fcbhmail.org"
+                            placeholder="gary@shortsands.com, ewallace@fcbhmail.org">
                     </div>
                 </div>
 
@@ -1181,10 +1181,10 @@
         const DEFAULT_CONFIG = {
             isNew: true,
             notifyOk: [
-                'jrstear@fcbhmail.org'
+                'gary@shortsands.com'
             ],
             notifyErr: [
-                'jrstear@fcbhmail.org'
+                'gary@shortsands.com'
             ],
             mmsAdapter: {
                 batch_mb: 4,
@@ -1256,7 +1256,7 @@
             document.getElementById('text_format_sfm').checked = true;
             // Set default email values
             document.getElementById('notifyOk').value = 'ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org';
-            document.getElementById('notifyErr').value = 'gary@shortsands.com, ewallace@fcbhmail.org, jrstear@fcbhmail.org';
+            document.getElementById('notifyErr').value = 'gary@shortsands.com, ewallace@fcbhmail.org';
 
             // Restore username
             document.getElementById('username').value = username;
