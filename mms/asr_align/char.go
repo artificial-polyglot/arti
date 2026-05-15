@@ -40,9 +40,17 @@ func (c Char) Colored() string {
 	}
 }
 
+// Debug program
 func DumpChars(chars []Char) {
 	for _, c := range chars {
 		fmt.Print(c.Colored())
 	}
 	fmt.Println()
+}
+
+// Debug program
+func DumpEndTS(chars []Char) {
+	for _, c := range chars {
+		fmt.Println(string(c.Char), c.EndTS)
+	}
 }

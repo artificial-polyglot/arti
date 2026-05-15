@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"unicode/utf8"
 
@@ -21,16 +20,16 @@ import (
 )
 
 type ASRAlign struct {
-	ctx          context.Context
-	conn         db.DBAdapter
-	lang         string
-	sttLang      string
-	adapter      bool
-	mmsAsrPy     *stdio_exec.StdioExec
-	diffMatch    *diffmatchpatch.DiffMatchPatch
-	versePattern *regexp.Regexp
-	testing      bool // set in asr_align_test.go
-	timer        performance.CodeTimer
+	ctx       context.Context
+	conn      db.DBAdapter
+	lang      string
+	sttLang   string
+	adapter   bool
+	mmsAsrPy  *stdio_exec.StdioExec
+	diffMatch *diffmatchpatch.DiffMatchPatch
+	//versePattern *regexp.Regexp
+	testing bool // set in asr_align_test.go
+	timer   performance.CodeTimer
 }
 
 func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool) ASRAlign {
@@ -41,7 +40,7 @@ func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang st
 	a.sttLang = sttLang
 	a.adapter = adapter
 	a.diffMatch = diffmatchpatch.New()
-	a.versePattern = regexp.MustCompile(`\{(\d+)\}`)
+	//a.versePattern = regexp.MustCompile(`\{(\d+)\}`)
 	a.timer = performance.NewCodeTimer()
 	return a
 }
@@ -110,8 +109,14 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 	DumpChars(textChars)
 	DumpChars(audioChars)
 	DumpChars(mergeChars)
+	//DumpEndTS(mergeChars)
 	words := a.summarizeCharsToWords(mergeChars)
+	//for _, w := range words {
+	//	word := selectWord(a.conn.DB, w.WordId)
+	//	fmt.Println(w.WordId, word, w.EndTS)
+	//}
 	scripts := a.summarizeWordsToScripts(words)
+	//checkForZeroScriptId(scripts)
 	err = a.updateWords(a.conn.DB, words)
 	if err != nil {
 		return log.Error(a.ctx, 500, err, "Error updating timestamps in word table")
@@ -119,6 +124,10 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 	err = a.updateScripts(a.conn.DB, scripts)
 	if err != nil {
 		return log.Error(a.ctx, 500, err, "Error updating timestamps in scripts table")
+	}
+	for _, s := range scripts {
+		text := selectScript(a.conn.DB, s.ScriptId)
+		fmt.Println(s.ScriptId, s.EndTS, text)
 	}
 	return nil
 }
@@ -197,6 +206,7 @@ func (a *ASRAlign) merge(audioChars []Char, textChars []Char) []Char {
 					selected.WordSeq = textChars[textIndex].WordSeq
 				}
 				results = append(results, selected)
+				//audioIndex++
 			}
 			audioIndex++
 		case diffmatchpatch.DiffInsert:
@@ -242,34 +252,74 @@ type Script struct {
 type Word struct {
 	ScriptId int64
 	WordId   int64
+	Word     string // or space
 	BeginTS  float64
 	EndTS    float64
 }
 
+/*
+	func (a *ASRAlign) summarizeCharsToWords(chars []Char) []Word {
+		var words []Word
+		if len(chars) == 0 {
+			return words
+		}
+		current := Word{
+			ScriptId: chars[0].ScriptId,
+			WordId:   chars[0].WordId,
+			BeginTS:  chars[0].BeginTS,
+			EndTS:    chars[0].EndTS,
+		}
+		for _, c := range chars[1:] {
+			if c.WordId != current.WordId {
+				words = append(words, current)
+				current = Word{
+					ScriptId: c.ScriptId,
+					WordId:   c.WordId,
+					BeginTS:  c.BeginTS,
+					EndTS:    c.EndTS,
+				}
+			}
+			current.EndTS = c.EndTS
+		}
+		return append(words, current)
+	}
+*/
 func (a *ASRAlign) summarizeCharsToWords(chars []Char) []Word {
 	var words []Word
-	if len(chars) == 0 {
-		return words
-	}
-	current := Word{
-		ScriptId: chars[0].ScriptId,
-		WordId:   chars[0].WordId,
-		BeginTS:  chars[0].BeginTS,
-		EndTS:    chars[0].EndTS,
-	}
-	for _, c := range chars[1:] {
-		if c.WordId != current.WordId {
-			words = append(words, current)
-			current = Word{
+	i := 0
+	for i < len(chars) {
+		c := chars[i]
+		if c.Char == 32 {
+			words = append(words, Word{
 				ScriptId: c.ScriptId,
 				WordId:   c.WordId,
+				Word:     " ",
 				BeginTS:  c.BeginTS,
 				EndTS:    c.EndTS,
+			})
+			i++
+		} else {
+			// Accumulate non-space chars into a word
+			j := i
+			for j < len(chars) && chars[j].Char != ' ' {
+				j++
 			}
+			segment := chars[i:j]
+			var sb []rune
+			for _, ch := range segment {
+				sb = append(sb, ch.Char)
+			}
+			words = append(words, Word{
+				ScriptId: segment[0].ScriptId,
+				WordId:   segment[0].WordId,
+				Word:     string(sb),
+				BeginTS:  segment[0].BeginTS,
+				EndTS:    segment[len(segment)-1].EndTS,
+			})
+			i = j
 		}
-		current.EndTS = c.EndTS
 	}
-	return append(words, current)
+	return words
 }
 
 func (a *ASRAlign) summarizeWordsToScripts(words []Word) []Script {
@@ -294,4 +344,17 @@ func (a *ASRAlign) summarizeWordsToScripts(words []Word) []Script {
 		current.EndTS = w.EndTS
 	}
 	return append(scripts, current)
+}
+
+// For debug only
+func checkForZeroScriptId(chars []Script) {
+	fmt.Println("\n\n\n ***** Zero check ****")
+	for _, c := range chars {
+		if c.ScriptId == 0 {
+			fmt.Println("zero scriptId", c)
+		}
+		//if c.WordId == 0 {
+		//	fmt.Println("zero wordId", c)
+		//}
+	}
 }

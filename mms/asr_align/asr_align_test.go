@@ -17,7 +17,7 @@ func TestASRAlign_ProcessFiles(t *testing.T) {
 	ctx := context.Background()
 	log.SetOutput("stderr")
 	user := request.GetTestUser()
-	conn, status := db.NewerDBAdapter(ctx, false, user, "N2MZJSIM") // is not used
+	conn, status := db.NewerDBAdapter(ctx, false, user, "N2MZJSIM")
 	asr := NewASRAlign(ctx, conn, "mzj", "", false)
 	asr.testing = true
 	var files []input.InputFile

@@ -2,6 +2,7 @@ package asr_align
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -86,4 +87,32 @@ func (a *ASRAlign) updateScripts(db *sql.DB, scripts []Script) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// This is solely for debugging
+func selectWord(db *sql.DB, wordId int64) string {
+	var word string
+	err := db.QueryRow("SELECT word from words where word_id = ?", wordId).Scan(&word)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return word
+		} else {
+			panic(err)
+		}
+	}
+	return word
+}
+
+// This is solely for debugging
+func selectScript(db *sql.DB, scriptId int64) string {
+	var text string
+	err := db.QueryRow("SELECT script_text from scripts where script_id = ?", scriptId).Scan(&text)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return text
+		} else {
+			panic(err)
+		}
+	}
+	return text
 }
