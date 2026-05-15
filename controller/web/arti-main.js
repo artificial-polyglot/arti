@@ -369,69 +369,74 @@ async function readDirectoryContentsWebkit(directoryEntry, currentPath = '') {
     return organizeFilesByType(allFiles);
 }
 
+// Add new extensions here as needed — no other code needs to change.
+const AUDIO_EXTS = new Set(['mp3', 'wav']);
+const TEXT_EXTS  = new Set(['usx', 'sfm']);
+
+/**
+ * Return the lowercase extension of a filename, or null if unrecognised.
+ */
+function fileCategory(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (AUDIO_EXTS.has(ext)) return 'audio';
+    if (TEXT_EXTS.has(ext))  return 'text';
+    return null;
+}
+
 /**
  * Organize files by type (audio, text).
  * Groups files by their actual parent directory path, validates that each
- * directory contains only one file type, and returns the discovered dirs.
+ * directory contains only one category (audio vs text), and returns the
+ * discovered dirs with the actual extension case preserved from the files.
  * No assumptions are made about subfolder names or nesting depth.
  */
 function organizeFilesByType(files) {
-    // Group known file types by parent directory; skip dotfiles
-    const dirMap = new Map(); // dirPath -> { mp3: [], wav: [], usx: [], sfm: [] }
+    // dirPath -> { category: 'audio'|'text'|null, files: [], extConflicts: Set }
+    const dirMap = new Map();
 
     for (const file of files) {
         if (file.name.startsWith('.')) continue;
+
+        const category = fileCategory(file.name);
+        if (!category) continue; // skip unrecognised extensions
 
         const path = file.customRelativePath || '';
         const pathParts = path.split('/');
         const dirPath = pathParts.length >= 2 ? pathParts.slice(0, -1).join('/') : '';
 
         if (!dirMap.has(dirPath)) {
-            dirMap.set(dirPath, { mp3: [], wav: [], usx: [], sfm: [] });
+            dirMap.set(dirPath, { category: null, files: [], categories: new Set() });
         }
 
         const entry = dirMap.get(dirPath);
-        if (file.name.match(/\.mp3$/i))      entry.mp3.push(file);
-        else if (file.name.match(/\.wav$/i)) entry.wav.push(file);
-        else if (file.name.match(/\.usx$/i)) entry.usx.push(file);
-        else if (file.name.match(/\.sfm$/i)) entry.sfm.push(file);
-        // other extensions ignored
+        entry.files.push(file);
+        entry.categories.add(category);
     }
 
-    const audioDirs = [];
-    const textDirs  = [];
-    const errors    = [];
+    const audioDirs  = [];
+    const textDirs   = [];
+    const errors     = [];
     const audioFiles = [];
     const textFiles  = [];
 
     for (const [dirPath, entry] of dirMap.entries()) {
-        const hasAudio = entry.mp3.length > 0 || entry.wav.length > 0;
-        const hasUsx   = entry.usx.length > 0;
-        const hasSfm   = entry.sfm.length > 0;
+        if (entry.categories.size === 0) continue;
 
-        const typeCount = (hasAudio ? 1 : 0) + (hasUsx ? 1 : 0) + (hasSfm ? 1 : 0);
-        if (typeCount === 0) continue; // no recognised files
-
-        if (typeCount > 1) {
-            const types = [];
-            if (hasAudio) types.push('audio (mp3/wav)');
-            if (hasUsx)   types.push('USX');
-            if (hasSfm)   types.push('SFM');
-            errors.push(`Directory "${dirPath || '(root)'}" contains mixed file types: ${types.join(', ')}`);
+        if (entry.categories.size > 1) {
+            errors.push(`Directory "${dirPath || '(root)'}" contains mixed file types: ${[...entry.categories].join(', ')}`);
             continue;
         }
 
-        if (hasAudio) {
-            const dirFiles = [...entry.mp3, ...entry.wav];
-            const ext = entry.wav.length > 0 && entry.mp3.length === 0 ? 'wav' : 'mp3';
-            audioDirs.push({ path: dirPath, ext, files: dirFiles });
-            audioFiles.push(...dirFiles);
-        } else if (hasUsx) {
-            textDirs.push({ path: dirPath, ext: 'usx', files: entry.usx });
-            textFiles.push(...entry.usx);
-        } else if (hasSfm) {
-            textDirs.push({ path: dirPath, ext: 'sfm', files: entry.sfm });
-            textFiles.push(...entry.sfm);
+        const category = [...entry.categories][0];
+        // Preserve the actual extension case from the first file in the directory
+        const actualExt = entry.files[0].name.split('.').pop();
+
+        if (category === 'audio') {
+            audioDirs.push({ path: dirPath, ext: actualExt, files: entry.files });
+            audioFiles.push(...entry.files);
+        } else {
+            textDirs.push({ path: dirPath, ext: actualExt, files: entry.files });
+            textFiles.push(...entry.files);
         }
     }
 
