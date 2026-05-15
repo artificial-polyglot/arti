@@ -247,11 +247,20 @@ async function handleFolderSelection(entry) {
 }
 
 /**
- * Handle file list from webkitdirectory input (older browsers)
+ * Handle file list from webkitdirectory input (older browsers).
+ * webkitRelativePath includes the root folder name (e.g. "N2MZJSIM/audio/a.mp3"),
+ * so strip that prefix and store the remainder as customRelativePath so paths
+ * are consistent with the drag-and-drop API path.
  */
 function handleFileList(files) {
-    const folderData = organizeFilesByType(files);
     const folderName = extractFolderNameFromPath(files[0]?.webkitRelativePath || '');
+    const prefix = folderName ? `${folderName}/` : '';
+    const normalised = Array.from(files).map(file => {
+        const rel = file.webkitRelativePath || '';
+        file.customRelativePath = rel.startsWith(prefix) ? rel.substring(prefix.length) : rel;
+        return file;
+    });
+    const folderData = organizeFilesByType(normalised);
     processFolderData(folderData, folderName);
 }
 
@@ -361,40 +370,78 @@ async function readDirectoryContentsWebkit(directoryEntry, currentPath = '') {
 }
 
 /**
- * Organize files by type (audio, text)
+ * Organize files by type (audio, text).
+ * Groups files by their actual parent directory path, validates that each
+ * directory contains only one file type, and returns the discovered dirs.
+ * No assumptions are made about subfolder names or nesting depth.
  */
 function organizeFilesByType(files) {
-    const audioFiles = [];
-    const textFiles = [];
-    let audioSubfolder = '';
-    let usxSubfolder = '';
-    let sfmSubfolder = '';
+    // Group known file types by parent directory; skip dotfiles
+    const dirMap = new Map(); // dirPath -> { mp3: [], wav: [], usx: [], sfm: [] }
 
     for (const file of files) {
-        const path = file.customRelativePath || file.webkitRelativePath || file.name;
-        const pathParts = path.split('/');
-        // Full relative path to the file's parent directory (may be multiple levels)
-        const parentPath = pathParts.length >= 2 ? pathParts.slice(0, -1).join('/') : '';
+        if (file.name.startsWith('.')) continue;
 
-        if (file.name.match(/\.(mp3|wav)$/i)) {
-            audioFiles.push(file);
-            if (!audioSubfolder && parentPath) audioSubfolder = parentPath;
-        } else if (file.name.match(/\.usx$/i)) {
-            textFiles.push(file);
-            if (!usxSubfolder && parentPath) usxSubfolder = parentPath;
-        } else if (file.name.match(/\.sfm$/i)) {
-            textFiles.push(file);
-            if (!sfmSubfolder && parentPath) sfmSubfolder = parentPath;
+        const path = file.customRelativePath || '';
+        const pathParts = path.split('/');
+        const dirPath = pathParts.length >= 2 ? pathParts.slice(0, -1).join('/') : '';
+
+        if (!dirMap.has(dirPath)) {
+            dirMap.set(dirPath, { mp3: [], wav: [], usx: [], sfm: [] });
+        }
+
+        const entry = dirMap.get(dirPath);
+        if (file.name.match(/\.mp3$/i))      entry.mp3.push(file);
+        else if (file.name.match(/\.wav$/i)) entry.wav.push(file);
+        else if (file.name.match(/\.usx$/i)) entry.usx.push(file);
+        else if (file.name.match(/\.sfm$/i)) entry.sfm.push(file);
+        // other extensions ignored
+    }
+
+    const audioDirs = [];
+    const textDirs  = [];
+    const errors    = [];
+    const audioFiles = [];
+    const textFiles  = [];
+
+    for (const [dirPath, entry] of dirMap.entries()) {
+        const hasAudio = entry.mp3.length > 0 || entry.wav.length > 0;
+        const hasUsx   = entry.usx.length > 0;
+        const hasSfm   = entry.sfm.length > 0;
+
+        const typeCount = (hasAudio ? 1 : 0) + (hasUsx ? 1 : 0) + (hasSfm ? 1 : 0);
+        if (typeCount === 0) continue; // no recognised files
+
+        if (typeCount > 1) {
+            const types = [];
+            if (hasAudio) types.push('audio (mp3/wav)');
+            if (hasUsx)   types.push('USX');
+            if (hasSfm)   types.push('SFM');
+            errors.push(`Directory "${dirPath || '(root)'}" contains mixed file types: ${types.join(', ')}`);
+            continue;
+        }
+
+        if (hasAudio) {
+            const dirFiles = [...entry.mp3, ...entry.wav];
+            const ext = entry.wav.length > 0 && entry.mp3.length === 0 ? 'wav' : 'mp3';
+            audioDirs.push({ path: dirPath, ext, files: dirFiles });
+            audioFiles.push(...dirFiles);
+        } else if (hasUsx) {
+            textDirs.push({ path: dirPath, ext: 'usx', files: entry.usx });
+            textFiles.push(...entry.usx);
+        } else if (hasSfm) {
+            textDirs.push({ path: dirPath, ext: 'sfm', files: entry.sfm });
+            textFiles.push(...entry.sfm);
         }
     }
 
     return {
         audioFiles,
         textFiles,
-        audioSubfolder: audioSubfolder || 'audio',
-        usxSubfolder: usxSubfolder || 'text',
-        sfmSubfolder: sfmSubfolder || 'text',
-        totalFiles: files.length
+        audioDirs,
+        textDirs,
+        errors,
+        totalFiles: audioFiles.length + textFiles.length
     };
 }
 
@@ -425,12 +472,23 @@ async function processFolderData(folderData, folderName) {
         return;
     }
     
+    // Check for mixed-type directory errors before deeper validation
+    if (folderData.errors && folderData.errors.length > 0) {
+        showFolderStatus(`❌ Directory validation failed - click to see details`, 'error');
+        showErrorModal(folderData.errors);
+        currentFolderData = null;
+        currentFolderInfo = null;
+        validationResult = null;
+        updateUploadButtonState();
+        return;
+    }
+
     // Validate folder structure
     updateFolderProgress(60, 100, 'Validating file structure');
-    
+
     // Add a small delay to show the progress
     await new Promise(resolve => setTimeout(resolve, 200));
-    
+
     const validation = validateFolderStructure(folderData);
     
     updateFolderProgress(90, 100, 'Finalizing validation');
@@ -465,38 +523,42 @@ async function processFolderData(folderData, folderName) {
 }
 
 /**
- * Populate form fields from folder data
+ * Populate form fields from folder data.
+ * Uses the discovered audioDirs/textDirs — paths reflect the actual folder
+ * structure with no assumptions about subfolder names or depth.
  */
 function populateFormFromFolder(folderInfo, folderData) {
-    // Get bucket name
-    const bucketName = getBucketName();
-    
-    // Populate basic fields
+    const audioBucketName = getAudioBucketName();
+
     document.getElementById('datasetName').value = folderInfo.datasetName;
     document.getElementById('languageIso').value = folderInfo.iso;
-    
-    // Populate S3 paths (using new bucket structure)
-    const audioBucketName = getAudioBucketName();
-    const textExt = getTextFormat();
-    const textSubfolder = textExt === 'sfm'
-        ? (folderData.sfmSubfolder || folderData.usxSubfolder)
-        : (folderData.usxSubfolder || folderData.sfmSubfolder);
-    const textPath = `s3://${audioBucketName}/${folderData.folderName}/${textSubfolder}/*.${textExt}`;
-    const audioPath = `s3://${audioBucketName}/${folderData.folderName}/${folderData.audioSubfolder}/*.mp3`;
-    
-    document.getElementById('textData').value = textPath;
-    document.getElementById('audioData').value = audioPath;
-    
-    // Clear any previous error styling
+
+    const audioDir = folderData.audioDirs && folderData.audioDirs[0];
+    const textDir  = folderData.textDirs  && folderData.textDirs[0];
+
+    const audioDirPart = audioDir && audioDir.path ? `${audioDir.path}/` : '';
+    const textDirPart  = textDir  && textDir.path  ? `${textDir.path}/`  : '';
+
+    document.getElementById('audioData').value = audioDir
+        ? `s3://${audioBucketName}/${folderData.folderName}/${audioDirPart}*.${audioDir.ext}`
+        : '';
+    document.getElementById('textData').value = textDir
+        ? `s3://${audioBucketName}/${folderData.folderName}/${textDirPart}*.${textDir.ext}`
+        : '';
+
+    // Set the text_format radio to match the discovered file type
+    if (textDir) {
+        const radioId = textDir.ext === 'usx' ? 'text_format_usx' : 'text_format_sfm';
+        document.getElementById(radioId).checked = true;
+    }
+
     clearFieldError('datasetName');
     clearFieldError('languageIso');
     clearFieldError('textData');
     clearFieldError('audioData');
-    
-    // Clear any upload celebration when fields change
+
     window.clearUploadCelebration();
-    
-    // Update field styling to show green (valid) state
+
     if (typeof updateRequiredFieldStyling === 'function') {
         updateRequiredFieldStyling();
     }

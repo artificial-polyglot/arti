@@ -1881,12 +1881,15 @@
                 radio.addEventListener('change', function() {
                     const textData = document.getElementById('textData');
                     if (currentFolderData && currentFolderInfo) {
-                        // Rebuild full path with correct subfolder and extension
+                        // Find the discovered directory for this extension, if any
                         const textExt = this.value;
-                        const textSubfolder = textExt === 'sfm'
-                            ? (currentFolderData.sfmSubfolder || currentFolderData.usxSubfolder)
-                            : (currentFolderData.usxSubfolder || currentFolderData.sfmSubfolder);
-                        textData.value = `s3://${getAudioBucketName()}/${currentFolderData.folderName}/${textSubfolder}/*.${textExt}`;
+                        const textDir = currentFolderData.textDirs &&
+                            currentFolderData.textDirs.find(d => d.ext === textExt);
+                        if (textDir) {
+                            const dirPart = textDir.path ? `${textDir.path}/` : '';
+                            textData.value = `s3://${getAudioBucketName()}/${currentFolderData.folderName}/${dirPart}*.${textExt}`;
+                        }
+                        // If no matching dir found, leave the field unchanged
                     } else if (textData.value) {
                         // No folder loaded — just swap the extension
                         textData.value = textData.value.replace(/\*\.(usx|sfm)/i, `*.${this.value}`);
