@@ -27,13 +27,13 @@ func SafeStringJoin(texts []string) string {
 	if len(texts) == 1 {
 		return texts[0]
 	}
-	var openPunctMap = map[rune]bool{'(': true,
+	var openPunctMap = map[rune]bool{'(': true, '[': true,
 		'\u2018': true, // opening single quote mark
 		'\u201C': true, // opening double quote
 		'\u2039': true, // something like <
 		'\u00AB': true, // something like <<
 	}
-	var endPunctMap = map[rune]bool{'?': true, '.': true, ',': true, ':': true, ';': true, ')': true,
+	var endPunctMap = map[rune]bool{'?': true, '.': true, ',': true, ':': true, ';': true, ')': true, ']': true,
 		'\u2019': true, // closing single quote mark
 		'\u201D': true, // closing double quote
 		'\u201E': true, // closing low double quote
