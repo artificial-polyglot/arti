@@ -75,7 +75,7 @@ func (r *RequestDecoder) checkSpeechToText(req *request.SpeechToText, fieldName 
 }
 
 func (r *RequestDecoder) checkDetail(req *request.Detail) {
-	if !req.Lines && !req.Words {
+	if !req.Lines && !req.Words && !req.Verses {
 		req.Lines = true
 	}
 }

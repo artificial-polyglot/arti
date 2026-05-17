@@ -400,6 +400,13 @@ func (c *Controller) readText(textFiles []input.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
+		if c.req.Detail.Verses {
+			versifier := read.NewScriptVersifier(c.database)
+			c.database, status = versifier.Process()
+			if status != nil {
+				return status
+			}
+		}
 	} else if textFiles[0].MediaType == request.TextCSV {
 		reader := read.NewCSVReader(c.database)
 		status = reader.ProcessFiles(textFiles)

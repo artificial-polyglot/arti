@@ -21,7 +21,7 @@ func TestScriptVersifier(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	filename := filepath.Join(os.Getenv(`HOME`), "Downloads", "N2IKHMLT Aokho (IKH)", "Text_Aokho_N2IKHMLT.xlsx")
+	filename := filepath.Join(os.Getenv(`FCBH_DATASET_DB`), request.GetTestUser(), "3d_script_versifier", "Text_Aokho_N2IKHMLT.xlsx")
 	fmt.Println(`Filename:`, filename)
 	testament := request.Testament{OT: true, NT: true}
 	reader := NewScriptReader(conn, testament)
@@ -43,7 +43,7 @@ func TestScriptVersifier(t *testing.T) {
 // Now create an equivalent database from USX data
 func TestEquivalentUSXFiles(t *testing.T) {
 	ctx := context.Background()
-	directory := filepath.Join(os.Getenv(`HOME`), "Downloads", "N2IKHMLT Aokho (IKH)", "N2IKHMLT Text", "USX")
+	directory := filepath.Join(os.Getenv(`FCBH_DATASET_DB`), request.GetTestUser(), "3d_script_versifier", "N2IKHMLT Text", "USX")
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatal(err)
@@ -54,7 +54,6 @@ func TestEquivalentUSXFiles(t *testing.T) {
 			var file input.InputFile
 			file.Directory = directory
 			file.Filename = entry.Name()
-			file.BookId = file.Filename[2:5]
 			files = append(files, file)
 		}
 	}
@@ -68,6 +67,39 @@ func TestEquivalentUSXFiles(t *testing.T) {
 		t.Fatal(status)
 	}
 	err = dumpScript(conn, "usx.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Now create an equivalent database from USX data
+func TestEquivalentUSFMFiles(t *testing.T) {
+	ctx := context.Background()
+	directory := filepath.Join(os.Getenv(`FCBH_DATASET_DB`), request.GetTestUser(), "3d_script_versifier", "N2IKHMLT Text", "SFM")
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []input.InputFile
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), "SFM") {
+			var file input.InputFile
+			file.Directory = directory
+			file.Filename = entry.Name()
+			file.BookId = file.Filename[2:5]
+			files = append(files, file)
+		}
+	}
+	conn, status := db.NewerDBAdapter(ctx, true, request.GetTestUser(), "script_versifier_usfm")
+	if status != nil {
+		t.Fatal(status)
+	}
+	parser := NewUSFMParser(conn)
+	status = parser.ProcessFiles(files)
+	if status != nil {
+		t.Error(status)
+	}
+	err = dumpScript(conn, "usfm.txt")
 	if err != nil {
 		t.Fatal(err)
 	}

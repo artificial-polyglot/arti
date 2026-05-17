@@ -247,8 +247,9 @@ func (w WhisperModel) String() string {
 }
 
 type Detail struct {
-	Lines bool `yaml:"lines,omitempty"`
-	Words bool `yaml:"words,omitempty"`
+	Lines  bool `yaml:"lines,omitempty"`
+	Verses bool `yaml:"verses,omitempty"`
+	Words  bool `yaml:"words,omitempty"`
 }
 
 type Timestamps struct {
