@@ -36,19 +36,19 @@ func NewStdioExec(ctx context.Context, command string, args ...string) (*StdioEx
 	stdio.cmd = exec.CommandContext(ctx, command, args...)
 	stdio.stdin, err = stdio.cmd.StdinPipe()
 	if err != nil {
-		return &stdio, log.Error(ctx, 500, err, `Unable to open stdin for reading`)
+		return &stdio, log.Error(ctx, 500, err, "Unable to create stdin pipe for process:", command)
 	}
 	stdio.stdout, err = stdio.cmd.StdoutPipe()
 	if err != nil {
-		return &stdio, log.Error(ctx, 500, err, `Unable to open stdout for writing`)
+		return &stdio, log.Error(ctx, 500, err, "Unable to create stdout pipe for process:", command)
 	}
 	stdio.stderr, err = stdio.cmd.StderrPipe()
 	if err != nil {
-		return &stdio, log.Error(ctx, 500, err, `Unable to open stderr for writing`)
+		return &stdio, log.Error(ctx, 500, err, "Unable to create stderr pipe for process:", command)
 	}
 	err = stdio.cmd.Start()
 	if err != nil {
-		return &stdio, log.Error(ctx, 500, err, `Unable to start writing`)
+		return &stdio, log.Error(ctx, 500, err, "Unable to start subprocess:", command)
 	}
 	stdio.handleStderr()
 	stdio.writer = bufio.NewWriterSize(stdio.stdin, 4096)

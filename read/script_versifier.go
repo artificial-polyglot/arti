@@ -68,7 +68,8 @@ func (s ScriptVersifier) Process() (db.DBAdapter, *log.Status) {
 	dbPath := s.conn.DatabasePath
 	err := os.Rename(tmpDB.DatabasePath, dbPath)
 	if err != nil {
-		return s.conn, log.Error(s.ctx, 500, err, "Error renaming tmp database")
+		return s.conn, log.Error(s.ctx, 500, err, "Error renaming tmp database from", tmpDB.DatabasePath,
+			"to", dbPath)
 	}
 	s.conn = db.NewDBAdapter(s.ctx, dbPath) // reopen new database
 	return s.conn, nil

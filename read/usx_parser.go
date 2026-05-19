@@ -3,6 +3,7 @@ package read
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func (p *USXParser) decode(ctx context.Context, filename string) ([]db.Script, t
 	var status *log.Status
 	xmlFile, err := os.Open(filename)
 	if err != nil {
-		return records, titles, log.Error(ctx, 500, err, "USXParser could not open USX File.")
+		return records, titles, log.Error(ctx, 500, err, "USXParser could not open USX file:", filename)
 	}
 	defer xmlFile.Close()
 	var stack Stack
@@ -79,7 +80,7 @@ func (p *USXParser) decode(ctx context.Context, filename string) ([]db.Script, t
 			break // End of file
 		}
 		if err != nil {
-			return records, titles, log.Error(ctx, 500, err, "Error parsing USX.")
+			return records, titles, log.Error(ctx, 500, err, "Error parsing XML token in USX file:", filename)
 		}
 		switch se := token.(type) {
 		//[StartElement], [EndElement], [CharData], [Comment], [ProcInst], [Directive].
@@ -100,7 +101,7 @@ func (p *USXParser) decode(ctx context.Context, filename string) ([]db.Script, t
 				} else {
 					err = decoder.Skip()
 					if err != nil {
-						status = log.Error(ctx, 500, err, "Error in USX parser")
+						status = log.Error(ctx, 500, err, "Error skipping element in USX file:", filename)
 						return records, titles, status
 					}
 				}
@@ -123,7 +124,10 @@ func (p *USXParser) decode(ctx context.Context, filename string) ([]db.Script, t
 			}
 		case xml.EndElement:
 			if hasStyle[se.Name.Local] {
-				stack, usfmStyle = stack.Pop()
+				stack, usfmStyle, err = stack.Pop()
+				if err != nil {
+					return records, titles, log.Error(p.ctx, 500, err, "Empty stack, Unable to parse:", filename)
+				}
 			}
 		}
 		if chapterNum != rec.ChapterNum || verseNum != rec.VerseNum {
@@ -214,10 +218,10 @@ func (s Stack) Push(v string) Stack {
 	return append(s, v)
 }
 
-func (s Stack) Pop() (Stack, string) {
+func (s Stack) Pop() (Stack, string, error) {
 	l := len(s)
 	if l < 1 {
-		panic("You tried to pop an empty stack.")
+		return s, "", errors.New("you tried to pop an empty stack")
 	}
-	return s[:l-1], s[l-1]
+	return s[:l-1], s[l-1], nil
 }

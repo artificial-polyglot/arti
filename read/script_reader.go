@@ -2,6 +2,9 @@ package read
 
 import (
 	"context"
+	"strconv"
+	"strings"
+
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
@@ -9,8 +12,6 @@ import (
 	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/safe"
 	"github.com/xuri/excelize/v2"
-	"strconv"
-	"strings"
 )
 
 // This program will read Excel data and load the audio_scripts table
@@ -48,7 +49,7 @@ func (r ScriptReader) Read(filePath string) *log.Status {
 	sheet := sheets[0]
 	rows, err := file.GetRows(sheet)
 	if err != nil {
-		return log.Error(r.ctx, 500, err, `Error reading excel file.`)
+		return log.Error(r.ctx, 500, err, "Error reading rows from Excel file:", filePath)
 	}
 	var uniqueRefs = make(map[string]bool)
 	var col ColIndex
@@ -68,7 +69,7 @@ func (r ScriptReader) Read(filePath string) *log.Status {
 		case `TTS`:
 			rec.BookId = `TIT`
 		case ``:
-			return log.ErrorNoErr(r.ctx, 500, `Error: Did not find book_id`)
+			return log.ErrorNoErr(r.ctx, 500, "Missing book_id in Excel row", i+1, "of file:", filePath)
 		default:
 			rec.BookId = row[col.BookCol]
 		}
@@ -179,5 +180,6 @@ func (r ScriptReader) uniqueVerse(uniqueRefs map[string]bool, rec db.Script) (st
 			return verse, nil
 		}
 	}
-	return verse, log.ErrorNoErr(r.ctx, 500, "Too many duplicate verse numbers in script")
+	return verse, log.ErrorNoErr(r.ctx, 500, "Too many duplicate script lines for verse", rec.VerseStr,
+		"in", rec.BookId, rec.ChapterNum)
 }

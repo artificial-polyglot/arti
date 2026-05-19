@@ -207,7 +207,7 @@ func (b *Courier) findLastRun(client *s3.Client) (int, *log.Status) {
 		var runNum int
 		runNum, err = strconv.Atoi(runStr)
 		if err != nil {
-			return result, log.Error(b.ctx, 500, err, "Error converting run number to int.")
+			return result, log.Error(b.ctx, 500, err, "Error converting run number to int; value:", runStr)
 		}
 		if runNum > maxRun {
 			maxRun = runNum
@@ -227,7 +227,7 @@ func (b *Courier) uploadString(client *s3.Client, run int, typ string, filename 
 	}
 	_, err := client.PutObject(b.ctx, input)
 	if err != nil {
-		status = log.Error(b.ctx, 500, err, "Error uploading string content.")
+		status = log.Error(b.ctx, 500, err, "Error uploading content to S3 key:", objectKey)
 	}
 	return objectKey, status
 }
@@ -237,7 +237,7 @@ func (b *Courier) uploadFile(client *s3.Client, run int, typ string, filePath st
 	var status *log.Status
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Warn(b.ctx, 500, err, "Error opening file to upload to S3.")
+		log.Warn(b.ctx, 500, err, "Error opening file: ", filePath, "to upload to S3.")
 		return objectKey, status
 	}
 	defer file.Close()
@@ -248,7 +248,7 @@ func (b *Courier) uploadFile(client *s3.Client, run int, typ string, filePath st
 		Body:   file,
 	})
 	if err != nil {
-		status = log.Error(b.ctx, 500, err, "Error uploading file to S3.")
+		status = log.Error(b.ctx, 500, err, "Error uploading file to S3 key:", objectKey)
 	}
 	return objectKey, status
 }

@@ -2,10 +2,11 @@ package input
 
 import (
 	"context"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"io"
 	"os"
 	"path/filepath"
+
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 /*
@@ -26,7 +27,7 @@ func NewPostFiles(ctx context.Context) PostFiles {
 	var err error
 	p.dir, err = os.MkdirTemp(os.Getenv("FCBH_DATASET_TMP"), "post*")
 	if err != nil {
-		log.Warn(ctx, "Failed to create temp dir in NewPostFiles")
+		log.Warn(ctx, "Failed to create temp dir under", os.Getenv("FCBH_DATASET_TMP"), ":", err)
 	}
 	return p
 }
@@ -36,12 +37,12 @@ func (p *PostFiles) ReadFile(ftype string, source io.Reader, filename string) *l
 	var file InputFile
 	target, err := os.Create(filepath.Join(p.dir, filename))
 	if err != nil {
-		return log.Error(p.ctx, 500, err, "Failed to create temp directory for post")
+		return log.Error(p.ctx, 500, err, "Failed to create temp file for uploaded content:", filename)
 	}
 	defer target.Close()
 	_, err = io.Copy(target, source)
 	if err != nil {
-		return log.Error(p.ctx, 500, err, "Failed to save audio file")
+		return log.Error(p.ctx, 500, err, "Failed to save uploaded file:", filename)
 	}
 	file.Filename = filename
 	file.Directory = filepath.Dir(target.Name())
@@ -50,7 +51,7 @@ func (p *PostFiles) ReadFile(ftype string, source io.Reader, filename string) *l
 	} else if ftype == "audio" {
 		p.audio = append(p.audio, file)
 	} else {
-		status = log.Error(p.ctx, 500, err, "Invalid file type")
+		status = log.ErrorNoErr(p.ctx, 400, "Invalid file type for uploaded file; expected 'text' or 'audio', got:", ftype)
 	}
 	return status
 }

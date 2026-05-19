@@ -3,15 +3,16 @@ package read
 import (
 	"context"
 	"encoding/json"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 type DBPTextReader struct {
@@ -52,7 +53,7 @@ func (d *DBPTextReader) ProcessFiles(files []input.InputFile) *log.Status {
 		var response TempResp
 		err = json.Unmarshal(content, &response)
 		if err != nil {
-			return log.Error(d.ctx, 500, err, "Error parsing JSON from plain_text")
+			return log.Error(d.ctx, 500, err, "Error parsing JSON in plain_text file:", filePath)
 		}
 		var verses = response.Data
 		for i, vs := range verses {

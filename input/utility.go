@@ -20,7 +20,7 @@ func Glob(ctx context.Context, search string) ([]InputFile, *log.Status) {
 	if search != `` {
 		files, err := filepath.Glob(search)
 		if err != nil {
-			return results, log.Error(ctx, 500, err, `Error reading directory`)
+			return results, log.Error(ctx, 500, err, "Error expanding file glob pattern:", search)
 		}
 		for _, file := range files {
 			var input InputFile
@@ -59,7 +59,7 @@ func unzip(ctx context.Context, files []InputFile) ([]InputFile, *log.Status) {
 	if len(files) == 1 && filepath.Ext(files[0].Filename) == `.zip` {
 		r, err := zip.OpenReader(files[0].FilePath())
 		if err != nil {
-			return results, log.Error(ctx, 500, err, `Error unzipping file`)
+			return results, log.Error(ctx, 500, err, "Error opening zip file:", files[0].FilePath())
 		}
 		defer r.Close()
 		dest := files[0].Directory
@@ -69,24 +69,27 @@ func unzip(ctx context.Context, files []InputFile) ([]InputFile, *log.Status) {
 			}
 			rc, err2 := f.Open()
 			if err2 != nil {
-				return results, log.Error(ctx, 500, err2, `Error reading zip file`)
+				return results, log.Error(ctx, 500, err2, "Error opening entry inside zip:", f.FileInfo().Name())
 			}
 			defer rc.Close()
 			if f.FileInfo().IsDir() {
 				dest = filepath.Join(dest, f.FileInfo().Name())
-				os.MkdirAll(dest, f.Mode())
+				err = os.MkdirAll(dest, f.Mode())
+				if err != nil {
+					return results, log.Error(ctx, 500, err, "Error creating directory during zip extraction:", dest)
+				}
 				continue
 			}
 			path := filepath.Join(dest, f.FileInfo().Name())
 			outFile, err3 := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err3 != nil {
-				return results, log.Error(ctx, 500, err3, `Error opening file to unzip into`)
+				return results, log.Error(ctx, 500, err3, "Error creating file during zip extraction:", path)
 			}
 			defer outFile.Close()
 			_, err = io.Copy(outFile, rc)
 			_ = rc.Close()
 			if err != nil {
-				return results, log.Error(ctx, 500, err, `Error copying file during unzip`)
+				return results, log.Error(ctx, 500, err, "Error extracting file from zip:", f.FileInfo().Name())
 			}
 			results = append(results, InputFile{Filename: f.FileInfo().Name(), Directory: dest})
 		}
@@ -162,7 +165,7 @@ func parseFilenames(ctx context.Context, file *InputFile) *log.Status {
 			tmpBookId = file.Filename[0:3]
 			tmpBookSeq = strconv.Itoa(db.BookSeqMap[tmpBookId])
 		} else {
-			return log.ErrorNoErr(ctx, 400, `USX files are expected like 001GEN.usx or GEN.usx USF file are expected like 01GEN.usfm`)
+			return log.ErrorNoErr(ctx, 400, "Unexpected USX/USFM filename format:", file.Filename, "— expected formats: 001GEN.usx, GEN.usx, or 01GEN.usfm")
 		}
 		file.BookId, status = validateBookId(ctx, tmpBookId)
 		if status != nil {
@@ -219,7 +222,8 @@ func parseV2AudioFilename(ctx context.Context, file *InputFile) *log.Status {
 	chapter := strings.Trim(filename[5:8], `_`)
 	file.Chapter, err = strconv.Atoi(chapter)
 	if err != nil {
-		return log.Error(ctx, 500, err, `Error convert chapter to int`, file.Filename[6:8])
+		return log.Error(ctx, 500, err, "Error converting chapter to int in audio filename:", file.Filename,
+			"chapter part:", chapter)
 	}
 	book := strings.Trim(filename[9:21], `_`)
 	file.BookId = db.USFMBookId(ctx, book)
@@ -382,7 +386,7 @@ func validateBookId(ctx context.Context, bookId string) (string, *log.Status) {
 	}
 	_, ok := db.BookChapterMap[bookId]
 	if !ok {
-		return bookId, log.ErrorNoErr(ctx, 500, "BookId", bookId, "is not known. Corrections:", corrections)
+		return bookId, log.ErrorNoErr(ctx, 500, "Unrecognised book ID:", bookId)
 	}
 	return bookId, nil
 }

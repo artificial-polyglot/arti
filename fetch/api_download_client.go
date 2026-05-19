@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 type APIDownloadClient struct {
@@ -36,7 +37,7 @@ func (d *APIDownloadClient) Download(info BibleInfoType) *log.Status {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(directory, 0755)
 		if err != nil {
-			return log.Error(d.ctx, 500, err, `Could not create directory to store downloaded files.`)
+			return log.Error(d.ctx, 500, err, "Could not create download directory:", directory)
 		}
 	}
 	var download []FilesetType
@@ -203,7 +204,7 @@ func (d *APIDownloadClient) downloadFiles(directory string, locations []Location
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(directory, 0755)
 		if err != nil {
-			return log.Error(d.ctx, 500, err, "Could not create directory to store downloaded files.")
+			return log.Error(d.ctx, 500, err, "Could not create download directory:", directory)
 		}
 	}
 	for _, loc := range locations {
@@ -230,15 +231,15 @@ func (d *APIDownloadClient) saveFile(filePath string, content []byte) *log.Statu
 	var status *log.Status
 	fp, err := os.Create(filePath)
 	if err != nil {
-		return log.Error(d.ctx, 500, err, "Error Creating file during download.")
+		return log.Error(d.ctx, 500, err, "Error creating file during download:", filePath)
 	}
 	_, err = fp.Write(content)
 	if err != nil {
-		return log.Error(d.ctx, 500, err, "Error writing to file during download.")
+		return log.Error(d.ctx, 500, err, "Error writing to file during download:", filePath)
 	}
 	err = fp.Close()
 	if err != nil {
-		return log.Error(d.ctx, 500, err, "Error closing file during download.")
+		return log.Error(d.ctx, 500, err, "Error closing file during download:", filePath)
 	}
 	return status
 }

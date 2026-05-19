@@ -43,7 +43,7 @@ func main() {
 
 		object, key, status := getOldestObject(ctx, client, bucketName)
 		if first && status != nil {
-			_, _ = fmt.Fprintln(os.Stderr, err, "Reading First Input Failed In Queue Main")
+			_, _ = fmt.Fprintln(os.Stderr, status.Error(), "Reading First Input Failed In Queue Main; bucket:", bucketName)
 			os.Exit(1)
 		}
 		first = false
@@ -75,7 +75,8 @@ func getOldestObject(ctx context.Context, client *s3.Client, bucket string) ([]b
 	}
 	result, err := client.ListObjectsV2(ctx, input)
 	if err != nil {
-		return content, key, log.Error(ctx, 500, err, "Error Listing Objects in Queue Input Folder")
+		return content, key, log.Error(ctx, 500, err, "Error listing objects in S3 queue bucket:", bucket,
+			"prefix:", inFolder)
 	}
 	if len(result.Contents) == 0 {
 		return content, key, nil
@@ -90,7 +91,7 @@ func getOldestObject(ctx context.Context, client *s3.Client, bucket string) ([]b
 	}
 	object, err := client.GetObject(ctx, getInput)
 	if err != nil {
-		return content, key, log.Error(ctx, 500, err, "Error Getting Object in Queue Input Folder")
+		return content, key, log.Error(ctx, 500, err, "Error getting object from S3 queue bucket:", bucket, "key:", key)
 	}
 	content, err = io.ReadAll(object.Body)
 	_ = object.Body.Close()

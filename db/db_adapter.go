@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
 	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/safe"
 	_ "github.com/mattn/go-sqlite3"
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 // GetDBPath is not correct with user/project database names
@@ -221,15 +221,15 @@ func (d *DBAdapter) CopyDatabase(suffix string) (DBAdapter, *log.Status) {
 	d.Close()
 	source, err := os.Open(d.DatabasePath)
 	if err != nil {
-		return result, log.Error(d.Ctx, 500, err, `Error Copying Database step 1`)
+		return result, log.Error(d.Ctx, 500, err, "Error opening source database for copy:", d.DatabasePath)
 	}
 	destination, err := os.Create(targetPath)
 	if err != nil {
-		return result, log.Error(d.Ctx, 500, err, `Error Copying Database step 2`)
+		return result, log.Error(d.Ctx, 500, err, "Error creating destination database file:", targetPath)
 	}
 	_, err = io.Copy(destination, source)
 	if err != nil {
-		return result, log.Error(d.Ctx, 500, err, `Error Copying Database step 3`)
+		return result, log.Error(d.Ctx, 500, err, "Error copying database content from", d.DatabasePath, "to", targetPath)
 	}
 	_ = destination.Close()
 	_ = source.Close()
@@ -241,7 +241,7 @@ func (d *DBAdapter) CopyDatabase(suffix string) (DBAdapter, *log.Status) {
 	result.Project = result.Database[:endName]
 	result.DB, err = sql.Open("sqlite3", result.DatabasePath)
 	if err != nil {
-		return result, log.Error(d.Ctx, 500, err, `Error Copying Database step 4`, result.DatabasePath)
+		return result, log.Error(d.Ctx, 500, err, "Error opening copied database:", result.DatabasePath)
 	}
 	log.Info(d.Ctx, "DB Copied", d.DatabasePath, "to", targetPath)
 	return result, nil
@@ -286,7 +286,7 @@ func (d *DBAdapter) closeDef(cls io.Closer, desc string) {
 func (d *DBAdapter) commitDML(tx *sql.Tx, query string) *log.Status {
 	err := tx.Commit()
 	if err != nil {
-		return log.Error(d.Ctx, 500, err, query)
+		return log.Error(d.Ctx, 500, err, "Error committing transaction for query:", query)
 	}
 	return nil
 }
@@ -1062,7 +1062,8 @@ func (d *DBAdapter) UpdateScriptFATimestamps(audio []Audio) *log.Status {
 		return status
 	}
 	if int(rowsUpdated) != len(audio) {
-		return log.ErrorNoErr(d.Ctx, 400, strconv.Itoa(len(audio))+" rows updated "+strconv.Itoa(int(rowsUpdated)))
+		return log.ErrorNoErr(d.Ctx, 400, "UpdateScriptFATimestamps: expected to update", len(audio),
+			"rows, but only updated", rowsUpdated)
 	}
 	return nil
 }
@@ -1086,7 +1087,7 @@ func (d *DBAdapter) UpdateWordFATimestamps(audio []Audio) *log.Status {
 		return status
 	}
 	if int(rowsUpdated) != len(audio) {
-		return log.ErrorNoErr(d.Ctx, 400, strconv.Itoa(len(audio))+" rows updated "+strconv.Itoa(int(rowsUpdated)))
+		return log.ErrorNoErr(d.Ctx, 400, "UpdateWordFATimestamps: expected to update", len(audio), "rows but only updated", rowsUpdated)
 	}
 	return nil
 }

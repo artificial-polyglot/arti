@@ -2,10 +2,11 @@ package read
 
 import (
 	"context"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"strconv"
 	"unicode"
+
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 /**
@@ -207,7 +208,7 @@ func (w *WordParser) addWord(scriptId int, verseNum int, ttype string, text []ru
 	}
 	w.wordSeq += 1
 	if ttype == `` || len(text) == 0 { // or rec.VerseNum == None:
-		return log.ErrorNoErr(w.ctx, 500, 0, `Aparant bug trying to addWord`)
+		return log.ErrorNoErr(w.ctx, 500, 0, "Apparent bug in addWord: empty ttype or text for script_id:", scriptId)
 	}
 	//fmt.Println("seq: ", w.wordSeq, " verse: ", verseNum, " type: ", ttype, " word: ", string(text))
 	var rec db.Word

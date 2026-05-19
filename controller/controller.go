@@ -332,7 +332,8 @@ func (c *Controller) collectTextInput() ([]input.InputFile, *log.Status) {
 		return files, status
 	}
 	if expectFiles && len(files) == 0 {
-		return files, log.ErrorNoErr(c.ctx, 400, `No text files found for`, c.ident.TextSource)
+		return files, log.ErrorNoErr(c.ctx, 400, "No text files found; source type:", c.ident.TextSource,
+			"OT fileset:", c.ident.TextOTId, "NT fileset:", c.ident.TextNTId)
 	}
 	return files, nil
 }
@@ -360,7 +361,8 @@ func (c *Controller) collectAudioInput() ([]input.InputFile, *log.Status) {
 		return files, status
 	}
 	if expectFiles && len(files) == 0 {
-		status = log.ErrorNoErr(c.ctx, 400, `No audio files found for`, c.ident.AudioNTId)
+		status = log.ErrorNoErr(c.ctx, 400, "No audio files found; OT fileset:", c.ident.AudioOTId,
+			"NT fileset:", c.ident.AudioNTId)
 	}
 	return files, status
 }

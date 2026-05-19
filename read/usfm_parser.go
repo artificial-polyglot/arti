@@ -29,7 +29,7 @@ type USFMParser struct {
 	text       []string
 	skipUntil  string
 	scripts    []db.Script
-	testOut    *os.File
+	//testOut    *os.File
 }
 
 func NewUSFMParser(conn db.DBAdapter) USFMParser {
@@ -37,7 +37,7 @@ func NewUSFMParser(conn db.DBAdapter) USFMParser {
 	p.ctx = conn.Ctx
 	p.conn = conn
 	p.styleMap = p.BuildUSFMMap()
-	p.testOut, _ = os.Create("out.txt")
+	//p.testOut, _ = os.Create("out.txt")
 	return p
 }
 
@@ -122,7 +122,8 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				style = string(ch)
 				styleNum = ""
 			} else {
-				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "Backslash, but no style")
+				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "USFM parse error in", filename,
+					"; backslash not followed by a style marker")
 			}
 		case STYLE:
 			if unicode.IsLetter(ch) {
@@ -141,7 +142,8 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				p.stack.Push(style, styleNum, true)
 
 			} else {
-				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "Failed to read style ")
+				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "USFM parse error in", filename,
+					"; unexpected character in style name")
 			}
 		case STYLENUM:
 			if unicode.IsSpace(ch) {
@@ -153,14 +155,15 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				p.stack.Push(style, styleNum, true)
 				text = []rune{}
 			} else {
-				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "failed to read USFM file")
+				return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "USFM parse error in", filename,
+					"; unexpected character after style number")
 			}
 		case TEXT:
 			if ch == '\\' {
 				state = SLASH
 				err = p.storeRecord(text)
 				if err != nil {
-					return nil, p.titleDesc, log.Error(p.ctx, 500, err)
+					return nil, p.titleDesc, log.Error(p.ctx, 500, err, "USFM parse error 1 in", filename)
 				}
 				text = []rune{}
 			} else { // state = TEXT
@@ -171,7 +174,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 				state = SLASH
 				err = p.storeRecord([]rune{})
 				if err != nil {
-					return nil, p.titleDesc, log.Error(p.ctx, 500, err)
+					return nil, p.titleDesc, log.Error(p.ctx, 500, err, "USFM parse error 2 in", filename)
 				}
 			} else {
 				state = TEXT
@@ -182,7 +185,7 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	if len(text) > 0 {
 		err = p.storeRecord(text)
 		if err != nil {
-			return nil, p.titleDesc, log.Error(p.ctx, 500, err)
+			return nil, p.titleDesc, log.Error(p.ctx, 500, err, "USFM parse error 3 in", filename)
 		}
 	}
 	p.flushPendingVerse()

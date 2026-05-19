@@ -2,15 +2,16 @@ package input
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 // DownloadFile is used by Controller to download a database file
@@ -72,7 +73,7 @@ func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 		Prefix: aws.String(prefix),
 	})
 	if err != nil {
-		status = log.Error(ctx, 400, err, `Failed to list AWSS3 objects`)
+		status = log.Error(ctx, 400, err, "Failed to list AWSS3 objects at path:", path)
 		return files, status
 	}
 	bibleId, mediaId := findBibleIdMediaId(prefix)
@@ -94,17 +95,15 @@ func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 					Key:    aws.String(objKey),
 				})
 				if getErr != nil {
-					log.Warn(ctx, getErr, `Failed to get object`, object.Key)
+					return files, log.Error(ctx, 400, getErr, `Failed to get object`, objKey)
 				}
 				file, filErr := os.Create(filePath)
 				if filErr != nil {
-					status = log.Error(ctx, 400, filErr, `Failed to create file`, filePath)
-					return files, status
+					return files, log.Error(ctx, 400, filErr, `Failed to create file`, filePath)
 				}
 				_, copErr := io.Copy(file, response.Body)
-				if err != nil {
-					status = log.Error(ctx, 400, copErr, `Failed to copy object`, object.Key)
-					return files, status
+				if copErr != nil {
+					return files, log.Error(ctx, 400, copErr, `Failed to copy S3 object to local file`, objKey)
 				}
 				err = response.Body.Close()
 				err = file.Close()
@@ -119,10 +118,10 @@ func EnsureDirectory(ctx context.Context, directory string) *log.Status {
 	if os.IsNotExist(err) {
 		err2 := os.MkdirAll(directory, os.ModePerm)
 		if err2 != nil {
-			return log.Error(ctx, 400, err2, `Failed to create directory to download files`)
+			return log.Error(ctx, 400, err2, "Failed to create local directory for S3 downloads:", directory)
 		}
 	} else if err != nil {
-		return log.Error(ctx, 400, err, `Failed to stat directory`)
+		return log.Error(ctx, 400, err, "Failed to stat local directory:", directory)
 	}
 	return nil
 }

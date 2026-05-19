@@ -2,11 +2,12 @@ package fetch
 
 import (
 	"context"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 const (
@@ -24,7 +25,7 @@ func httpGet(ctx context.Context, url string, ok403 bool, desc string) ([]byte, 
 	}
 	resp, err := http.Get(url)
 	if err != nil {
-		return body, log.Error(ctx, resp.StatusCode, err, "Error in DBP API request for:", desc)
+		return body, log.Error(ctx, 503, err, "HTTP GET failed for:", desc)
 	}
 	defer resp.Body.Close()
 	if ok403 && resp.StatusCode == 403 {

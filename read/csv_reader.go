@@ -3,13 +3,14 @@ package read
 import (
 	"context"
 	"encoding/csv"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
+	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
 )
 
 // This program will read Excel data and load the audio_scripts table
@@ -79,7 +80,8 @@ func (r CSVReader) Read(filePath string) *log.Status {
 				rec.VerseStr = row[col.VerseCol]
 				rec.VerseNum, err = strconv.Atoi(row[col.VerseCol])
 				if err != nil {
-					return log.Error(r.ctx, 500, err, `Error: verse num is not numeric`, row[3])
+					return log.Error(r.ctx, 500, err, "Error: verse number is not numeric in file", filePath,
+						"value:", row[col.VerseCol])
 				}
 			}
 			rec.ScriptNum = row[col.LineCol]
