@@ -7,6 +7,7 @@ type Request struct {
 	BibleId       string        `yaml:"bible_id"`
 	LanguageISO   string        `yaml:"language_iso"`
 	AltLanguage   string        `yaml:"alt_language,omitempty"`
+	Priority      int           `yaml:"priority,omitempty"`
 	NotifyOk      []string      `yaml:"notify_ok"`
 	NotifyErr     []string      `yaml:"notify_err"`
 	Output        Output        `yaml:"output,omitempty"`
