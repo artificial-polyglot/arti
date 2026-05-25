@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/ffmpeg"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/stdio_exec"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/uroman"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/mms"
+	"github.com/artificial-polyglot/arti/utility/ffmpeg"
+	"github.com/artificial-polyglot/arti/utility/stdio_exec"
+	"github.com/artificial-polyglot/arti/utility/uroman"
 )
 
 type MMSASR struct {

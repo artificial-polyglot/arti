@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 type APIDBPClient struct {

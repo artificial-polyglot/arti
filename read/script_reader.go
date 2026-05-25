@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/safe"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/safe"
 	"github.com/xuri/excelize/v2"
 )
 

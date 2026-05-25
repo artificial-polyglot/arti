@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml"
+	"github.com/artificial-polyglot/arti/decode_yaml"
 	"gopkg.in/yaml.v3"
 	"io"
 	"mime/multipart"

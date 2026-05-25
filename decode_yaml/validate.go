@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 )
 
 func (r *RequestDecoder) Validate(req *request.Request) {

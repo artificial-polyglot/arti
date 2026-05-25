@@ -2,8 +2,8 @@ package mms
 
 import (
 	"context"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/lang_tree/search"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/lang_tree/search"
 	"strings"
 )
 

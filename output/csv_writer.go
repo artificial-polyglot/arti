@@ -2,7 +2,7 @@ package output
 
 import (
 	"encoding/csv"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 	"os"
 	"path/filepath"
 	"reflect"

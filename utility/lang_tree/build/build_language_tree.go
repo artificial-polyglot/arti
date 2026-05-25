@@ -5,7 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/lang_tree/search"
+	"github.com/artificial-polyglot/arti/utility/lang_tree/search"
 	"io"
 	"os"
 	"path/filepath"

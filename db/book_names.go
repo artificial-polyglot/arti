@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func USFMBookId(ctx context.Context, bookName string) string {

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func CleanupDownloadDirectory(ctx context.Context) {

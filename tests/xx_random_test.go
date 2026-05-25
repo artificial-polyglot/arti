@@ -2,7 +2,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/controller"
+	"github.com/artificial-polyglot/arti/controller"
 	"os"
 	"path/filepath"
 	"testing"

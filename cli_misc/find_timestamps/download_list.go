@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/cli_misc"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/fetch"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/cli_misc"
+	"github.com/artificial-polyglot/arti/fetch"
+	log "github.com/artificial-polyglot/arti/logger"
 	"os"
 	"strconv"
 )

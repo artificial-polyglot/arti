@@ -2,8 +2,8 @@ package diff
 
 import (
 	"context"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"os"
 	"path/filepath"

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 

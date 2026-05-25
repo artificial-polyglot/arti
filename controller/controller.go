@@ -6,28 +6,27 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/bible_brain/timestamp/update"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/courier"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/encode"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/fetch"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/match/align"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/match/diff"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms/adapter"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms/asr_align"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms/mms_align"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/mms/mms_asr"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/output"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/read"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/speech_to_text"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/timestamp"
-	asr2 "github.com/faithcomesbyhearing/fcbh-dataset-io/wav2vec2/asr"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/wav2vec2/train"
+	"github.com/artificial-polyglot/arti/courier"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/encode"
+	"github.com/artificial-polyglot/arti/fetch"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/match/align"
+	"github.com/artificial-polyglot/arti/match/diff"
+	"github.com/artificial-polyglot/arti/mms"
+	"github.com/artificial-polyglot/arti/mms/adapter"
+	"github.com/artificial-polyglot/arti/mms/asr_align"
+	"github.com/artificial-polyglot/arti/mms/mms_align"
+	"github.com/artificial-polyglot/arti/mms/mms_asr"
+	"github.com/artificial-polyglot/arti/output"
+	"github.com/artificial-polyglot/arti/read"
+	"github.com/artificial-polyglot/arti/speech_to_text"
+	"github.com/artificial-polyglot/arti/timestamp"
+	asr2 "github.com/artificial-polyglot/arti/wav2vec2/asr"
+	"github.com/artificial-polyglot/arti/wav2vec2/train"
 )
 
 type OutputFiles struct {
@@ -268,14 +267,14 @@ func (c *Controller) processSteps() *log.Status {
 		c.bucket.AddOutput(filename)
 	}
 	// Update DBP Timestamps
-	if len(c.req.UpdateDBP.Timestamps) > 0 {
-		log.Info(c.ctx, "Update DBP timestamps.")
-		upd := update.NewUpdateTimestamps(c.ctx, c.req, c.database)
-		status = upd.Process()
-		if status != nil {
-			return status
-		}
-	}
+	//if len(c.req.UpdateDBP.Timestamps) > 0 {
+	//	log.Info(c.ctx, "Update DBP timestamps.")
+	//	upd := update.NewUpdateTimestamps(c.ctx, c.req, c.database)
+	//	status = upd.Process()
+	//	if status != nil {
+	//		return status
+	//	}
+	//}
 	// Prepare output
 	log.Info(c.ctx, "Generate output.")
 	if c.req.Output.Sqlite {

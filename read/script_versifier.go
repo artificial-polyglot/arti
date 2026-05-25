@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/safe"
+	"github.com/artificial-polyglot/arti/db"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/safe"
 )
 
 type ScriptVersifier struct {

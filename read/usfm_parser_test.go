@@ -15,9 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func TestUSFMParser(t *testing.T) {

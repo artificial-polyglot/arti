@@ -3,9 +3,9 @@ package timestamp
 import (
 	"context"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/read"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/read"
 	"os"
 	"testing"
 )

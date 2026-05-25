@@ -13,9 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/cleanup"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/controller"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/cleanup"
+	"github.com/artificial-polyglot/arti/controller"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const (

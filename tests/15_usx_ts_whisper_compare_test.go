@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"testing"
 )
 

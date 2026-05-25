@@ -2,7 +2,7 @@ package zero_shot_v1
 
 import (
 	"context"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/artificial-polyglot/arti/db"
 	"testing"
 )
 

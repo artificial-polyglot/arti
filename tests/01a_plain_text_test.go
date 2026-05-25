@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 )
 
 const plainTextScript = `is_new: yes

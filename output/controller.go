@@ -2,7 +2,7 @@ package output
 
 import (
 	"context"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/artificial-polyglot/arti/db"
 )
 
 type Output struct {

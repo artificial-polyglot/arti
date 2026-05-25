@@ -3,8 +3,8 @@ package fa_score_analysis
 import (
 	"context"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"testing"
 )
 

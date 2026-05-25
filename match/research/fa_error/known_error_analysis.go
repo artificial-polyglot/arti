@@ -5,7 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
+	"github.com/artificial-polyglot/arti/generic"
 	_ "github.com/mattn/go-sqlite3"
 	"gonum.org/v1/gonum/stat"
 	"math"

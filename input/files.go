@@ -2,7 +2,7 @@ package input
 
 import (
 	"context"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func FileInput(ctx context.Context, path string) ([]InputFile, *log.Status) {

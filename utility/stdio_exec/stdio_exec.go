@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 type StdioExec struct {

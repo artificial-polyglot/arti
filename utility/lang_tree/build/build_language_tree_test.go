@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/lang_tree/search"
+	"github.com/artificial-polyglot/arti/utility/lang_tree/search"
 	"os"
 	"path/filepath"
 	"sort"

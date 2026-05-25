@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func (a *ASRAlign) selectVersesByBookChapter(bookId string, chapter int) ([]Char, *log.Status) {

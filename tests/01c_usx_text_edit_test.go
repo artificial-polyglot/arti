@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/controller"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 )
 
 const uSXTextEditScript = `is_new: yes

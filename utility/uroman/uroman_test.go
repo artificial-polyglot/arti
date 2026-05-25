@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/artificial-polyglot/arti/db"
 )
 
 func TestURoman(t *testing.T) {

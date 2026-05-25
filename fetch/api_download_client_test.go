@@ -3,7 +3,7 @@ package fetch
 import (
 	"context"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"os"
 	"path/filepath"
 	"strings"

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/controller"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 )
 
 const scriptTextScript = `is_new: yes

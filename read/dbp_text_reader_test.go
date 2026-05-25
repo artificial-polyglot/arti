@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/decode_yaml/request"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/input"
 )
 
 func TestDBPTextReader1(t *testing.T) {

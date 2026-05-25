@@ -1,9 +1,9 @@
 package align
 
 import (
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"strings"
 )

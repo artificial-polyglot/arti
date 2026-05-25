@@ -6,9 +6,9 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/controller"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
 	//_ "net/http/pprof"
 	"os"
 	"strings"

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/safe"
+	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/safe"
 	_ "github.com/mattn/go-sqlite3"
 )
 

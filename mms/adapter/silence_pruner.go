@@ -2,8 +2,8 @@ package adapter
 
 import (
 	"context"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
+	"github.com/artificial-polyglot/arti/db"
+	log "github.com/artificial-polyglot/arti/logger"
 	"os"
 	"sort"
 )

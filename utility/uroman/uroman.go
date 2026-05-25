@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/stdio_exec"
+	"github.com/artificial-polyglot/arti/db"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 )
 
 // uroman.go requires a pip install uroman, but it uses the uroman.pl that is included

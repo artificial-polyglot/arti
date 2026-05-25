@@ -1,4 +1,4 @@
-module github.com/faithcomesbyhearing/fcbh-dataset-io
+module github.com/artificial-polyglot/arti
 
 go 1.23.0
 

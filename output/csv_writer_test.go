@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/artificial-polyglot/arti/db"
 	"gonum.org/v1/gonum/floats"
 	"os"
 	"strconv"

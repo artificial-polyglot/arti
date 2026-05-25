@@ -2,7 +2,7 @@ package diff
 
 import (
 	"database/sql"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"unicode/utf8"
 )

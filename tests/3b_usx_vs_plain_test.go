@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/generic"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 

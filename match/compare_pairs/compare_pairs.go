@@ -3,9 +3,9 @@ package compare_pairs
 import (
 	"context"
 	"encoding/json"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/input"
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/match/diff"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/match/diff"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/xuri/excelize/v2"
 	"os"

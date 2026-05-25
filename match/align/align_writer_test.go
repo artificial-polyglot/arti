@@ -3,7 +3,7 @@ package align
 import (
 	"context"
 	"fmt"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/db"
+	"github.com/artificial-polyglot/arti/db"
 	"os"
 	"path/filepath"
 	"testing"

@@ -5,8 +5,8 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/faithcomesbyhearing/fcbh-dataset-io/logger"
-	"github.com/faithcomesbyhearing/fcbh-dataset-io/utility/zip"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/zip"
 	"github.com/go-gomail/gomail"
 )
 
