@@ -16,7 +16,7 @@ func TestGetAudioDuration(t *testing.T) {
 		t.Fatal(status)
 	}
 	if result != 363.493878 {
-		t.Error("Result should be 363.493878")
+		t.Error("Result should be 363.493878", "result was:", result)
 	}
 }
 
