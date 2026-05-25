@@ -1,2 +1,0 @@
-FCBH_DATASET_QUEUE=fcbh-deep-learning-input-prod
-FCBH_DATASET_IO_BUCKET=xx
