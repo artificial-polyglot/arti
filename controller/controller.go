@@ -23,6 +23,7 @@ import (
 	"github.com/artificial-polyglot/arti/mms/mms_asr"
 	"github.com/artificial-polyglot/arti/output"
 	"github.com/artificial-polyglot/arti/read"
+	"github.com/artificial-polyglot/arti/read/script_reader"
 	"github.com/artificial-polyglot/arti/speech_to_text"
 	"github.com/artificial-polyglot/arti/timestamp"
 	asr2 "github.com/artificial-polyglot/arti/wav2vec2/asr"
@@ -396,7 +397,7 @@ func (c *Controller) readText(textFiles []input.InputFile) *log.Status {
 			return status
 		}
 	} else if textFiles[0].MediaType == request.TextScript {
-		reader := read.NewScriptReader(c.database, c.req.Testament)
+		reader := script_reader.NewScriptReader(c.database, c.req.Testament, c.req.SheetColumns)
 		status = reader.ProcessFiles(textFiles)
 		if status != nil {
 			return status

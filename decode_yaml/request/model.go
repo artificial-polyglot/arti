@@ -15,6 +15,7 @@ type Request struct {
 	Database      Database      `yaml:"database,omitempty"`
 	AudioData     AudioData     `yaml:"audio_data,omitempty"`
 	TextData      TextData      `yaml:"text_data,omitempty"`
+	SheetColumns  SheetColumns  `yaml:"sheet_columns,omitempty"`
 	Timestamps    Timestamps    `yaml:"timestamps,omitempty"`
 	Training      Training      `yaml:"training,omitempty"`
 	SpeechToText  SpeechToText  `yaml:"speech_to_text,omitempty"`
@@ -128,6 +129,35 @@ type TextData struct {
 	AWSS3      string         `yaml:"aws_s3,omitempty"`
 	POST       string         `yaml:"post,omitempty"`
 	NoText     bool           `yaml:"no_text,omitempty"`
+}
+
+type SheetColumns struct {
+	BookCol      int `yaml:"book_col,omitempty"`
+	ChapterCol   int `yaml:"chapter_col,omitempty"`
+	VerseCol     int `yaml:"verse_col,omitempty"`
+	CharacterCol int `yaml:"character_col,omitempty"`
+	ActorCol     int `yaml:"actor_col,omitempty"`
+	LineCol      int `yaml:"line_col,omitempty"`
+	TextCol      int `yaml:"text_col,omitempty"`
+}
+
+func (c SheetColumns) IsSet() bool {
+	if c.BookCol == 0 {
+		return false
+	}
+	if c.ChapterCol == 0 {
+		return false
+	}
+	if c.VerseCol == 0 {
+		return false
+	}
+	if c.LineCol == 0 {
+		return false
+	}
+	if c.TextCol == 0 {
+		return false
+	}
+	return true
 }
 
 func (t TextData) AnyBibleBrain() bool {

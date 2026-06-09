@@ -39,6 +39,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.11 // indirect
 	github.com/aws/smithy-go v1.22.2 // indirect
+	github.com/extrame/ole2 v0.0.0-20160812065207-d69429661ad7 // indirect
+	github.com/extrame/xls v0.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
