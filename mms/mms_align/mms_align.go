@@ -11,7 +11,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/divan/num2words"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input"
@@ -19,6 +18,7 @@ import (
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"github.com/artificial-polyglot/arti/utility/uroman"
+	"github.com/divan/num2words"
 	"golang.org/x/text/unicode/norm"
 )
 
