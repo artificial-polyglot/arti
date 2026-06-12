@@ -10,7 +10,9 @@ else
     git pull origin main
 fi
 go install -a ./controller/queue_server
+cp /home/ec2-user/go/bin/queue_server /var/app/current/queue_server
 cd
-nohup ~/go/bin/queue_server &
+#nohup ~/go/bin/queue_server &
+sudo systemctl restart queue_server.service
 EOF
 exit 0
