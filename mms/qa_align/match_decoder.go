@@ -1,4 +1,4 @@
-package decoder
+package qa_align
 
 import (
 	"container/heap"

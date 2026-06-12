@@ -477,17 +477,19 @@ func (c *Controller) speechToText(audioFiles []input.InputFile) *log.Status {
 	bibleId := c.req.BibleId
 	if c.req.SpeechToText.MMS {
 		var asr mms_asr.MMSASR
-		asr = mms_asr.NewMMSASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, false)
+		asr = mms_asr.NewMMSASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, false,
+			c.req.STTDecoder, c.database.DatabasePath)
 		status = asr.ProcessFiles(audioFiles)
 	} else if c.req.SpeechToText.MMSAdapter {
 		var asr mms_asr.MMSASR
-		asr = mms_asr.NewMMSASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, true)
+		asr = mms_asr.NewMMSASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, true,
+			c.req.STTDecoder, c.database.DatabasePath)
 		status = asr.ProcessFiles(audioFiles)
-	} else if c.req.SpeechToText.Wav2Vec2ASR {
+	} else if c.req.SpeechToText.Wav2Vec2ASR { // Experimental
 		var asr asr2.Wav2Vec2ASR
 		asr = asr2.NewWav2Vec2ASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage)
 		status = asr.ProcessFiles(audioFiles)
-	} else if c.req.SpeechToText.MMSASRAlign {
+	} else if c.req.SpeechToText.MMSASRAlign { // Experimental
 		var asr asr_align.ASRAlign
 		asr = asr_align.NewASRAlign(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, false)
 		status = asr.ProcessFiles(audioFiles)

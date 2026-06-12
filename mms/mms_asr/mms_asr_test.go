@@ -8,14 +8,18 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func TestMMSASR_ProcessFiles(t *testing.T) {
 	ctx := context.Background()
+	log.SetOutput("stderr")
 	//conn := db.NewDBAdapter(ctx, ":memory:")
 	user := request.GetTestUser()
 	conn, status := db.NewerDBAdapter(ctx, false, user, "PlainTextEditScript_ENGWEB")
-	asr := NewMMSASR(ctx, conn, "eng", "", false, "", "")
+	// types: greedy, simple, hotwords, kenlm
+	decoder := request.STTDecoder{Kenlm: true}
+	asr := NewMMSASR(ctx, conn, "eng", "", false, decoder, conn.DatabasePath)
 	var files []input.InputFile
 	var file input.InputFile
 	file.BookId = "MRK"

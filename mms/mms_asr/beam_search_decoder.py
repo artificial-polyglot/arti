@@ -33,7 +33,9 @@ def create_lm_corpus(db_path, corpus_file):
             f.write(row[0].lower() + '\n')
 
 def create_decoder(type, processor, db_path, directory="."):
-    if type == "simple":
+    if type == "greedy":
+        decoder = None
+    elif type == "simple":
         decoder = build_ctcdecoder(
             labels = create_labels(processor),
             kenlm_model = None,

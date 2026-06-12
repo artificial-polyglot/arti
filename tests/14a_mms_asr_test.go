@@ -1,8 +1,9 @@
 package tests
 
 import (
-	log "github.com/artificial-polyglot/arti/logger"
 	"testing"
+
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const mMSASRTest = `is_new: yes
@@ -24,6 +25,11 @@ testament:
   nt_books: [PHM]
 speech_to_text:
   mms_asr: yes
+stt_decoder:
+  greedy: no
+  simple: no
+  hotwords: no
+  kenlm: yes
 `
 
 func TestMMSASRDirect(t *testing.T) {

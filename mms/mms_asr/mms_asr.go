@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
@@ -21,13 +22,14 @@ type MMSASR struct {
 	lang        string
 	sttLang     string
 	adapter     bool
-	decoderType string
+	decoderType request.STTDecoder
 	dbPath      string
 	mmsAsrPy    *stdio_exec.StdioExec
 	uroman      *stdio_exec.StdioExec
 }
 
-func NewMMSASR(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool, decoderType string, dbPath string) MMSASR {
+func NewMMSASR(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool,
+	decoderType request.STTDecoder, dbPath string) MMSASR {
 	var a MMSASR
 	a.ctx = ctx
 	a.conn = conn
@@ -66,7 +68,8 @@ func (a *MMSASR) ProcessFiles(files []input.InputFile) *log.Status {
 	if a.adapter {
 		useAdapter = "adapter"
 	}
-	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, a.dbPath, a.decoderType, useAdapter)
+	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang,
+		a.dbPath, a.decoderType.String(), useAdapter)
 	if status != nil {
 		return status
 	}
@@ -93,7 +96,7 @@ func (a *MMSASR) processFile(file input.InputFile, tempDir string) *log.Status {
 		return status
 	}
 	var audioFiles []db.Audio
-	if file.ScriptLine != "" {
+	if file.ScriptLine != "" { // This is dangerously dependant upon code elsewhere to set this under right conditions
 		var audioFile db.Audio
 		audioFile, status = a.selectScriptLine(file.ScriptLine)
 		if status != nil {

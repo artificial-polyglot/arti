@@ -19,6 +19,7 @@ type Request struct {
 	Timestamps    Timestamps    `yaml:"timestamps,omitempty"`
 	Training      Training      `yaml:"training,omitempty"`
 	SpeechToText  SpeechToText  `yaml:"speech_to_text,omitempty"`
+	STTDecoder    STTDecoder    `yaml:"stt_decoder,omitempty"`
 	Detail        Detail        `yaml:"detail,omitempty"`
 	AudioEncoding AudioEncoding `yaml:"audio_encoding,omitempty"`
 	TextEncoding  TextEncoding  `yaml:"text_encoding,omitempty"`
@@ -248,6 +249,28 @@ type SpeechToText struct {
 	Whisper        Whisper `yaml:"whisper,omitempty"`
 	MMSASRAlign    bool    `yaml:"mms_asr_align,omitempty"`
 	NoSpeechToText bool    `yaml:"no_speech_to_text,omitempty"`
+}
+
+type STTDecoder struct {
+	Greedy       bool `yaml:"greedy,omitempty"`
+	Simple       bool `yaml:"simple,omitempty"`
+	Hotwords     bool `yaml:"hotwords,omitempty"`
+	Kenlm        bool `yaml:"kenlm,omitempty"`
+	NoSTTDecoder bool `yaml:"no_stt_decoder,omitempty"`
+}
+
+func (d STTDecoder) String() string {
+	if d.Greedy {
+		return "greedy"
+	} else if d.Simple {
+		return "simple"
+	} else if d.Hotwords {
+		return "hotwords"
+	} else if d.Kenlm {
+		return "kenlm"
+	} else {
+		return "greedy"
+	}
 }
 
 type Whisper struct {
