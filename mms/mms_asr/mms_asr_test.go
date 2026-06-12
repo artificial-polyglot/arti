@@ -15,7 +15,7 @@ func TestMMSASR_ProcessFiles(t *testing.T) {
 	//conn := db.NewDBAdapter(ctx, ":memory:")
 	user := request.GetTestUser()
 	conn, status := db.NewerDBAdapter(ctx, false, user, "PlainTextEditScript_ENGWEB")
-	asr := NewMMSASR(ctx, conn, "eng", "", false)
+	asr := NewMMSASR(ctx, conn, "eng", "", false, "", "")
 	var files []input.InputFile
 	var file input.InputFile
 	file.BookId = "MRK"

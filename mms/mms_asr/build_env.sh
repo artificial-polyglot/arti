@@ -22,3 +22,5 @@ cp /opt/conda/envs/mms_asr/bin/uroman /opt/conda/envs/mms_asr/bin/uroman.pl
 
 # recently added in dev for adapter loading
 #pip install peft
+
+pip install https://github.com/kpu/kenlm/archive/master.zip

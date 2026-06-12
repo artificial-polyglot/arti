@@ -16,22 +16,26 @@ import (
 )
 
 type MMSASR struct {
-	ctx      context.Context
-	conn     db.DBAdapter
-	lang     string
-	sttLang  string
-	adapter  bool
-	mmsAsrPy *stdio_exec.StdioExec
-	uroman   *stdio_exec.StdioExec
+	ctx         context.Context
+	conn        db.DBAdapter
+	lang        string
+	sttLang     string
+	adapter     bool
+	decoderType string
+	dbPath      string
+	mmsAsrPy    *stdio_exec.StdioExec
+	uroman      *stdio_exec.StdioExec
 }
 
-func NewMMSASR(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool) MMSASR {
+func NewMMSASR(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool, decoderType string, dbPath string) MMSASR {
 	var a MMSASR
 	a.ctx = ctx
 	a.conn = conn
 	a.lang = lang
 	a.sttLang = sttLang
 	a.adapter = adapter
+	a.decoderType = decoderType
+	a.dbPath = dbPath
 	return a
 }
 
@@ -62,7 +66,7 @@ func (a *MMSASR) ProcessFiles(files []input.InputFile) *log.Status {
 	if a.adapter {
 		useAdapter = "adapter"
 	}
-	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, useAdapter)
+	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, a.dbPath, a.decoderType, useAdapter)
 	if status != nil {
 		return status
 	}
