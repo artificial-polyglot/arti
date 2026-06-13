@@ -6,8 +6,8 @@ especially for low resource languages.
 ## Objective
 
 Artificial Polyglot is an open source software service that validates audio Bibles 
-by using AI to compare audio recordings against the original text.  
-Developed for Faith Comes by Hearing, it has reduced the time required to proof 
+by using AI to compare audio recordings against the original text. Developed for 
+Faith Comes by Hearing, it has reduced the time required to proof 
 an audio New Testament from 10-15 days to 2-3 hours.  The service, 
 which is nicknamed Arti, was developed pro bono.  And has an MIT license attached.  
 It is currently used to QA audio Bibles that are recorded in the field.
