@@ -9,12 +9,12 @@ Artificial Polyglot is an open source software service that validates audio Bibl
 by using AI to compare audio recordings against the original text. Developed for 
 Faith Comes by Hearing, it has reduced the time required to proof 
 an audio New Testament from 10-15 days to 2-3 hours.  The service, 
-which is nicknamed Arti, was developed pro bono.  And has an MIT license attached.  
-It is currently used to QA audio Bibles that are recorded in the field.
+which is nicknamed Arti, was developed pro bono and is MIT-licensed.
+It is currently used to validate audio Bibles that are recorded in the field.
 
 ## Features
 
-* Read Text - Supports USX, USFM (in test), Excel script, and CSV formats.  
+* Read Text - Supports USX, USFM, Excel script, and CSV formats.  
 All text absent from the audio recordings is automatically removed, 
 such as footnote and cross references.
 * Read Audio - Supports MP3, and WAV files, organized either as chapter files, 
@@ -35,33 +35,33 @@ integrated audio player, enabling human reviewers to identify and confirm errors
 
 ### Input Formats Supported
 
+**Text:**
 * USFM - Unified Standard Format, also called SFM
 * USX - Unified Scripture XML
 * XLSX - Audio Script Format
 * XLS - Legacy audio Script Format
 * CSV - Arti's Text Format
 
+**Audio:**
 * WAV - Waveform Audio File
-* MP3 - MPEG-1 Audio Layer III 
+* MP3 - MPEG-1 Audio Layer III
 
 ### Data Cleaning
 
 While an XLSX script contains exactly the text recorded in the audio, 
-the USFM and USX format contain additional text, such as introductory notes, 
+the USFM and USX formats contain additional text, such as introductory notes, 
 footnotes, and cross references.  When Arti processes these two file types, 
 it removes all of this text that will not be included in the audio so that 
 the text will be identical to what is found in a script.  
 
-It appears that other tools used require manual cleaning of USX or USFM 
-prior to use.  Some testing has been done comparing Arti's cleaning with the 
+Other tools require manual cleaning of USX or USFM prior to use.  Some testing has been done comparing Arti's cleaning with the 
 manual cleaning being done, and early results indicate that Arti's cleaning 
 is more accurate.
 
 ### Script Versification
 
-Scripts are organized by script line, not verse in order that each script line 
-contains the text of one speaker.  While the other text formats have data 
-organized by verse.  Arti has the ability to read a script into verses as 
+Scripts are organized by script line, not verse, in order that each script line 
+contains the text of one speaker.  The other text formats have data organized by verse.  Arti has the ability to read a script into verses as 
 well as script lines, which is useful for tasks like doing verse delineation 
 from a script.
 
@@ -82,16 +82,16 @@ way to check the accuracy of the various methods.
 developed the MMS model.
 * MMS_FA - The multilingual forced alignment method built into the torchaudio 
 library as a result of the MMS project.
-* In Dev - Another method is in development that should be able to find 
+* In Development - Another method is in development that should be able to find 
 timestamps for words in the audio that are not in the text. The two forced 
 alignment methods are not able to do this.
 
 ### Character Level Timestamps
 
 Arti uses an enhanced version of MMS_FA in order to capture timestamps for 
-each character of text. While, verse delineation is often thought of as 
-two numbers, a beginning and ending timestamp, this is an over simplification.  
-The timestamps that best synchronizes an audio player to text, might not be 
+each character of text. While verse delineation is often thought of as 
+two numbers, a beginning and ending timestamp, this is an oversimplification.  
+The timestamps that best synchronize an audio player to text, might not be 
 the best timestamps to use when training a model.
 
 Using character level timestamps, it is possible to deliver timestamps that 
@@ -116,7 +116,7 @@ The quality of speech to text is enhanced by using a choice of decoders.
 
 * Greedy - Not actually a decoder, it just returns the highest probability 
 result for each character.
-* Simple - A simple decoder
+* Simple - A bare bones decoder
 * Hotwords - A decoder that has access to known words in the target language, and
 attempts to return words in that language
 * Kenlm - A post processing language model that has the entire script being processed,
@@ -129,14 +129,14 @@ whose neurons are frozen and not altered by training, but an additional
 set of neurons are trained.  Hence it is called an adapter.
 
 The MMS_FA forced alignment method produces a probability for each character 
-that is is correct in the audio.  This data is used to identify verses that 
+that is correct in the audio.  This data is used to identify verses that 
 likely have errors, and these verses are removed from training, 
 so that the model does not learn the error, but will identify the error 
 when speech to text is done.
 
 A couple other training methods are under investigation, and partially complete:
 * Wav2Vec2CTC - verse samples - an investigation to see whether the presence 
-of the MMS model is really a help when the model has been trained in a singe 
+of the MMS model is really a help when the model has been trained in a single 
 language.
 * Wav2Vec2CTC - word samples - an investigation to see if training that 
 excludes word order and other factors will be more accurate for learning 
@@ -145,7 +145,7 @@ the relation of sounds to text.
 ## Comparison
 
 The original and official text is compared to the speech to text transcript 
-using a Google developed product call diffpatchmatch.  This tool uses the 
+using a Google-developed product called diffpatchmatch.  This tool uses the 
 Myers Diff Algorithm.
 
 The standard output of this process is an HTML report that highlights differences,
@@ -153,7 +153,7 @@ and presents an audio play button so that the reviewer can make a
 final decision by listening to the audio.
 
 This report is also available in json format for any use that needs to 
-develop their own a different report.
+develop their own different report.
 
 ## Processing
 
@@ -167,11 +167,11 @@ requests of Arti, for requests by human users, there is a web file interface
 where data to be processed is dragged into the form, and processes are 
 selected by clicking radio buttons.
 
-Each run of Arti produces a sqlite database that contains all of the interim 
+Each run of Arti produces a SQLite database that contains all of the interim 
 values used in the calculation.  These are saved after each run, because it 
-is an excellent resource for investigation problems or extracting additional data.
+is an excellent resource for investigating problems or extracting additional data.
 
-Because versification of a NT or speech to text take about 15 minutes each, 
+Because versification of an NT or speech to text take about 15 minutes each, 
 and training takes 4-6 hours, an API design was not feasible.  Jobs submitted 
 to Arti are placed in a queue; Arti does one job at a time, and delivers
 requested output, and archives all output.  Using this queue feature, 
@@ -202,7 +202,7 @@ document has been written to propose such changes.
 
 In summary, the RFC proposes a simple component architecture in which each
 module is a standalone executable written in the developer's language of choice.
-Each component reads a JSON input file or sqlite database from stdin and writes a 
+Each component reads a JSON input file or SQLite database from stdin and writes a 
 JSON output file to stdout. The schema of these JSON files would adhere to 
 standards agreed upon by the developers, so that modules developed independently 
 can be immediately integrated.
