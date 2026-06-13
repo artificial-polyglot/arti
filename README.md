@@ -51,6 +51,7 @@ the USFM and USX format contain additional text, such as introductory notes,
 footnotes, and cross references.  When Arti processes these two file types, 
 it removes all of this text that will not be included in the audio so that 
 the text will be identical to what is found in a script.  
+
 It appears that other tools used require manual cleaning of USX or USFM 
 prior to use.  Some testing has been done comparing Arti's cleaning with the 
 manual cleaning being done, and early results indicate that Arti's cleaning 
@@ -82,8 +83,8 @@ developed the MMS model.
 * MMS_FA - The multilingual forced alignment method built into the torchaudio 
 library as a result of the MMS project.
 * In Dev - Another method is in development that should be able to find 
-timestamps for words in the audio that are not in the text.  
-The two forced alignment methods are not able to do this.
+timestamps for words in the audio that are not in the text. The two forced 
+alignment methods are not able to do this.
 
 ### Character Level Timestamps
 
@@ -106,9 +107,8 @@ produced years ago, before MMS was developed.  The languages to be processed tod
 are only occasionally one of the MMS supported languages.  
 When a language to be processed is not supported by Arti, 
 it searches a database of languages imported from glottolog.org 
-to identify the closest language that is supported by MMS.  
-It then does speech to text in that language.  This usually works 
-surprisingly well.
+to identify the closest language that is supported by MMS. It then does speech 
+to text in that language.  This usually works surprisingly well.
 
 ### Decoders
 
@@ -118,7 +118,7 @@ The quality of speech to text is enhanced by using a choice of decoders.
 result for each character.
 * Simple - A simple decoder
 * Hotwords - A decoder that has access to known words in the target language, and
-attempt to return words in that language
+attempts to return words in that language
 * Kenlm - A post processing language model that has the entire script being processed,
 and uses it to return a more accurate result
 
