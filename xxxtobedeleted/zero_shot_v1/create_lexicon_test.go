@@ -2,8 +2,9 @@ package zero_shot_v1
 
 import (
 	"context"
-	"github.com/artificial-polyglot/arti/db"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/db"
 )
 
 func TestCreateLexicon(t *testing.T) {

@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	log "github.com/artificial-polyglot/arti/logger"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
+
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const TokenFile = "tokens.txt"

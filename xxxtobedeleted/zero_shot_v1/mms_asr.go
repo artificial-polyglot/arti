@@ -3,6 +3,9 @@ package zero_shot_v1
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -10,8 +13,6 @@ import (
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"github.com/artificial-polyglot/arti/utility/uroman"
-	"os"
-	"path/filepath"
 )
 
 type MMSASR struct {
