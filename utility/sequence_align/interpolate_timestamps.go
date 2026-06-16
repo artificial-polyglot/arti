@@ -1,4 +1,4 @@
-package needleman_wunsch
+package sequence_align
 
 // TimedChar is a character with associated audio timestamps and alignment error.
 type TimedChar struct {
