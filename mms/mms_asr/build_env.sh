@@ -24,3 +24,15 @@ cp /opt/conda/envs/mms_asr/bin/uroman /opt/conda/envs/mms_asr/bin/uroman.pl
 #pip install peft
 
 pip install https://github.com/kpu/kenlm/archive/master.zip
+
+========== instructions for kenlm ===============
+
+# Prerequisites
+sudo apt-get install cmake build-essential
+
+# Clone and build
+git clone https://github.com/kpu/kenlm.git
+cd kenlm
+mkdir build && cd build
+cmake ..
+make -j4
