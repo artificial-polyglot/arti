@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 
 	sa "github.com/artificial-polyglot/arti/utility/sequence_align"
 )
@@ -49,6 +50,9 @@ func ProcessFAResults(db *sql.DB, request FARequest, jsonData string) error {
 		}
 	}()
 
+	var scriptText []string
+	var scriptBegin float64
+	var scriptEnd float64
 	var scriptErrorSum float64
 	var scriptCharCount int
 
@@ -57,17 +61,24 @@ func ProcessFAResults(db *sql.DB, request FARequest, jsonData string) error {
 		if len(wChars) == 0 {
 			continue
 		}
-
+		var wordText string
 		var wordBegin, wordEnd, wordErrorSum float64
-		if wordBegin, wordEnd, wordErrorSum, err = insertCharsV2(tx, w.wordID, wChars); err != nil {
+		wordText, wordBegin, wordEnd, wordErrorSum, err = insertChars(tx, w.wordID, wChars)
+		if err != nil {
 			return err
 		}
 
 		wordScore := wordErrorSum / float64(len(wChars))
-		if err = updateWords(tx, w.wordID, wordBegin, wordEnd, wordScore); err != nil {
+		err = insertWords(tx, w.wordID, wordText, wordBegin, wordEnd, wordScore)
+		if err != nil {
 			return err
 		}
 
+		scriptText = append(scriptText, wordText)
+		if i == 0 {
+			scriptBegin = wordBegin
+		}
+		scriptEnd = wordEnd
 		scriptErrorSum += wordErrorSum
 		scriptCharCount += len(wChars)
 	}
@@ -77,11 +88,14 @@ func ProcessFAResults(db *sql.DB, request FARequest, jsonData string) error {
 		scriptScore = scriptErrorSum / float64(scriptCharCount)
 	}
 
-	if err = updateScript(tx, request.ScriptId, scriptScore); err != nil {
+	transcript := strings.Join(scriptText, " ")
+	err = insertScript(tx, request.ScriptId, transcript, scriptBegin, scriptEnd, scriptScore)
+	if err != nil {
 		return err
 	}
 
-	if err = tx.Commit(); err != nil {
+	err = tx.Commit()
+	if err != nil {
 		return fmt.Errorf("ProcessFAResults: commit: %w", err)
 	}
 	return nil
@@ -174,12 +188,10 @@ func selectWords(db *sql.DB, scriptID int64) ([]wordRecord, error) {
 	return words, nil
 }
 
-func createCharsV2(db *sql.DB) error {
-	_, err := db.Exec("DROP TABLE IF EXISTS charsV2")
-	if err != nil {
-		return fmt.Errorf("drop table charsV2: %w", err)
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS charsV2 (
+func createQAAlignTables(db *sql.DB) error {
+	var stmts []string
+	stmts = append(stmts, "DROP TABLE IF EXISTS chars_qa_align")
+	stmts = append(stmts, `CREATE TABLE chars_qa_align (
 				word_id INTEGER NOT NULL,
 				seq int NOT NULL,
 				char TEXT NOT NULL,
@@ -187,57 +199,77 @@ func createCharsV2(db *sql.DB) error {
 				end_ts REAL NOT NULL,
 				fa_score REAL NOT NULL,
 				PRIMARY KEY (word_id, seq))`)
-	if err != nil {
-		return fmt.Errorf("create charsV2 table: %w", err)
+	stmts = append(stmts, "DROP TABLE IF EXISTS words_qa_align")
+	stmts = append(stmts, `CREATE TABLE words_qa_align (
+				word_id INTEGER NOT NULL,
+				word TEXT NOT NULL,
+				begin_ts REAL NOT NULL,
+				end_ts REAL NOT NULL,
+				fa_score REAL NOT NULL,
+				PRIMARY KEY (word_id))`)
+	stmts = append(stmts, "DROP TABLE IF EXISTS scripts_qa_align")
+	stmts = append(stmts, `CREATE TABLE scripts_qa_align (
+				script_id INTEGER NOT NULL,
+				transcript TEXT NOT NULL,
+				begin_ts REAL NOT NULL,
+				end_ts REAL NOT NULL,
+				fa_score REAL NOT NULL,
+				PRIMARY KEY (script_id))`)
+	for _, s := range stmts {
+		_, err := db.Exec(s)
+		if err != nil {
+			return err // is formatted message needed
+		}
 	}
 	return nil
 }
 
 // insertCharsV2 inserts one charsV2 row per char for a single word and returns
 // the word's begin timestamp, end timestamp, and sum of fa_error values.
-func insertCharsV2(tx *sql.Tx, wordID int64, wordChars []sa.TimedChar) (begin, end, errorSum float64, err error) {
-	stmt, err := tx.Prepare(
-		`INSERT INTO charsV2 (word_id, seq, char, begin_ts, end_ts, fa_score)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-	)
+func insertChars(tx *sql.Tx, wordId int64, wordChars []sa.TimedChar) (word string, begin, end, errorSum float64, err error) {
+	stmt, err := tx.Prepare(`INSERT INTO chars_qa_align
+		 (word_id, seq, char, begin_ts, end_ts, fa_score)
+		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("insertCharsV2: prepare: %w", err)
+		return "", 0, 0, 0, fmt.Errorf("insert chars_qa_align: prepare: %w", err)
 	}
 	defer stmt.Close()
-
 	begin = wordChars[0].Begin
+	var chars []string
 	for seq, c := range wordChars {
-		if _, err = stmt.Exec(wordID, seq, c.Char, c.Begin, c.End, c.Error); err != nil {
-			return 0, 0, 0, fmt.Errorf("insertCharsV2: word_id=%d seq=%d: %w", wordID, seq, err)
+		_, err = stmt.Exec(wordId, seq, c.Char, c.Begin, c.End, c.Error)
+		if err != nil {
+			return "", 0, 0, 0, fmt.Errorf("insert chars_qa_align: word_id=%d seq=%d: %w", wordId, seq, err)
 		}
+		chars = append(chars, c.Char)
 		errorSum += c.Error
 		end = c.End
 	}
-	return begin, end, errorSum, nil
+	word = strings.Join(chars, "")
+	return word, begin, end, errorSum, nil
 }
 
 // updateWords sets the timing and FA score on one word row.
-func updateWords(tx *sql.Tx, wordID int64, begin, end, score float64) error {
+func insertWords(tx *sql.Tx, wordId int64, word string, begin, end, score float64) error {
 	_, err := tx.Exec(
-		`UPDATE words
-		 SET word_begin_ts = ?, word_end_ts = ?, fa_score = ?
-		 WHERE word_id = ?`,
-		begin, end, score, wordID,
+		`INSERT INTO words_qa_align (word_id, word, begin_ts, end_ts, fa_score)
+			VALUES (?,?,?,?,?)`,
+		wordId, word, begin, end, score,
 	)
 	if err != nil {
-		return fmt.Errorf("updateWords: word_id=%d: %w", wordID, err)
+		return fmt.Errorf("insert words_qa_align: word_id=%d: %w", wordId, err)
 	}
 	return nil
 }
 
 // updateScript sets the script-level FA score.
-func updateScript(tx *sql.Tx, scriptID int64, score float64) error {
+func insertScript(tx *sql.Tx, scriptId int64, transcript string, begin float64, end float64, score float64) error {
 	_, err := tx.Exec(
-		`UPDATE scripts SET fa_score = ? WHERE script_id = ?`,
-		score, scriptID,
-	)
+		`INSERT INTO scripts_qa_align(script_id, transcript, begin_ts, end_ts, fa_score) 
+			VALUES (?,?,?,?,?)`,
+		scriptId, transcript, begin, end, score)
 	if err != nil {
-		return fmt.Errorf("updateScript: script_id=%d: %w", scriptID, err)
+		return fmt.Errorf("updateScript: script_id=%d: %w", scriptId, err)
 	}
 	return nil
 }

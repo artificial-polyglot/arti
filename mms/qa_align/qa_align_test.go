@@ -31,6 +31,6 @@ func TestQAAlign(t *testing.T) {
 	files = append(files, file)
 	status = asr.ProcessFiles(files)
 	if status != nil {
-		t.Fatal(status)
+		t.Error(status)
 	}
 }

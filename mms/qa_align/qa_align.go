@@ -73,7 +73,7 @@ func (a *QAAlign) ProcessFiles(files []input.InputFile) *log.Status {
 	}
 	defer a.mmsAsrPy.Close()
 
-	if err = createCharsV2(a.conn.DB); err != nil {
+	if err = createQAAlignTables(a.conn.DB); err != nil {
 		return log.Error(a.ctx, 500, err, "Create table error")
 	}
 	for _, file := range files {
