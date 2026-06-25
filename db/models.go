@@ -97,3 +97,9 @@ type Audio struct {
 	AudioChapterWav string         `json:"-"`               // Transient
 	AudioVerseWav   string         `json:"-"`               // Transient
 }
+
+type Output struct {
+	Component string
+	Report    string
+	FilePath  string
+}

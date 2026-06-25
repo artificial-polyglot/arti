@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/safe"
@@ -99,7 +100,7 @@ func NewerDBAdapter(ctx context.Context, isNew bool, user string, project string
 	return d, nil
 }
 
-// NewDBAdapter should be used for  :memory: database and test.
+// NewDBAdapter should be used for  :memory: and when the database parameter is a path.
 func NewDBAdapter(ctx context.Context, database string) DBAdapter {
 	var databasePath = GetDBPath(database)
 	db, err := sql.Open("sqlite3", databasePath)
@@ -109,8 +110,8 @@ func NewDBAdapter(ctx context.Context, database string) DBAdapter {
 	var d DBAdapter
 	d.Ctx = ctx
 	d.User = ""
-	d.Database = database
-	d.Project = strings.Split(database, `.`)[0]
+	d.Database = filepath.Base(databasePath)
+	d.Project = strings.Split(d.Database, `.`)[0]
 	d.DatabasePath = databasePath
 	d.DB = db
 	createDatabase(db)
@@ -209,6 +210,29 @@ func createDatabase(db *sql.DB) {
 		end_ts REAL NOT NULL,
 		fa_score REAL NOT NULL,
 		FOREIGN KEY (word_id) REFERENCES words(word_id)) STRICT`
+	execDDL(db, query)
+	query = `CREATE TABLE IF NOT EXISTS audio_files (
+		file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		media_id TEXT NOT NULL DEFAULT '',
+		media_type TEXT NOT NULL DEFAULT '',
+		testament TEXT NOT NULL DEFAULT '',
+		book_id TEXT NOT NULL,
+		book_seq TEXT NOT NULL DEFAULT '',
+		chapter INTEGER NOT NULL,
+		script_line TEXT NOT NULL DEFAULT '',
+		filename TEXT NOT NULL,
+		file_ext TEXT NOT NULL DEFAULT '',
+		directory TEXT NOT NULL)`
+	execDDL(db, query)
+	query = `CREATE TABLE IF NOT EXISTS request (
+		request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		request TEXT NOT NULL)`
+	execDDL(db, query)
+	query = `CREATE TABLE IF NOT EXISTS outputs (
+		output_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		component TEXT NOT NULL,
+		report TEXT NOT NULL,
+		file_path TEXT NOT NULL)`
 	execDDL(db, query)
 }
 
@@ -1125,4 +1149,70 @@ func (d *DBAdapter) UpdateWordTimestamps(words []Timestamp) *log.Status {
 	}
 	status := d.commitDML(tx, query)
 	return status
+}
+
+/*********
+ Component Functions (started 6/24/2026
+*********/
+
+func (d *DBAdapter) InsertRequest(req request.Request) *log.Status {
+	jsonBytes, err := json.Marshal(req)
+	if err != nil {
+		return log.Error(d.Ctx, 500, err, "failed to marshal request to JSON")
+	}
+	query := `INSERT INTO request (request) VALUES (?)`
+	_, err = d.DB.ExecContext(d.Ctx, query, string(jsonBytes))
+	if err != nil {
+		return log.Error(d.Ctx, 500, err, "failed to insert request")
+	}
+	return nil
+}
+
+func (d *DBAdapter) SelectRequest() (request.Request, *log.Status) {
+	query := `SELECT request FROM request ORDER BY request_id DESC LIMIT 1`
+	row := d.DB.QueryRowContext(d.Ctx, query)
+	var jsonStr string
+	err := row.Scan(&jsonStr)
+	if err == sql.ErrNoRows {
+		return request.Request{}, nil
+	} else if err != nil {
+		return request.Request{}, log.Error(d.Ctx, 500, err, "failed to scan request row")
+	}
+	var req request.Request
+	err = json.Unmarshal([]byte(jsonStr), &req)
+	if err != nil {
+		return request.Request{}, log.Error(d.Ctx, 500, err, "failed to unmarshal request JSON")
+	}
+	return req, nil
+}
+
+func (d *DBAdapter) InsertOutput(component, report, filePath string) *log.Status {
+	query := `INSERT INTO outputs (component, report, file_path) VALUES (?, ?, ?)`
+	_, err := d.DB.ExecContext(d.Ctx, query, component, report, filePath)
+	if err != nil {
+		return log.Error(d.Ctx, 500, err, "failed to insert output for component: "+component)
+	}
+	return nil
+}
+
+func (d *DBAdapter) SelectOutputs() ([]Output, *log.Status) {
+	query := `SELECT component, report, file_path FROM outputs ORDER BY output_id`
+	rows, err := d.DB.QueryContext(d.Ctx, query)
+	if err != nil {
+		return nil, log.Error(d.Ctx, 500, err, "failed to query outputs")
+	}
+	defer rows.Close()
+	var results []Output
+	for rows.Next() {
+		var o Output
+		err = rows.Scan(&o.Component, &o.Report, &o.FilePath)
+		if err != nil {
+			return nil, log.Error(d.Ctx, 500, err, "failed to scan outputs row")
+		}
+		results = append(results, o)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, log.Error(d.Ctx, 500, err, "error iterating outputs rows")
+	}
+	return results, nil
 }

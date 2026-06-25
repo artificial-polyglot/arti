@@ -41,7 +41,7 @@ func NewQAAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang str
 }
 
 // ProcessFiles will perform Auto Speech Recognition on these files
-func (a *QAAlign) ProcessFiles(files []input.InputFile) *log.Status {
+func (a *QAAlign) ProcessFiles() *log.Status {
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "qa_align_")
 	if err != nil {
@@ -76,6 +76,8 @@ func (a *QAAlign) ProcessFiles(files []input.InputFile) *log.Status {
 	if err = createQAAlignTables(a.conn.DB); err != nil {
 		return log.Error(a.ctx, 500, err, "Create table error")
 	}
+	var files []input.InputFile
+	files, status = input.SelectAudioFiles(a.conn)
 	for _, file := range files {
 		status = a.processFile(file, tempDir)
 		if status != nil {

@@ -21,9 +21,6 @@ type HTMLWriter struct {
 	ctx         context.Context
 	datasetName string
 	out         *os.File
-	diffCount   int
-	insertSum   int
-	deleteSum   int
 }
 
 func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
@@ -97,10 +94,9 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
     <thead>
     <tr>
         <th>Line</th>
-		<!-- <th>Len</th> -->
 		<th>Button</th>
         <th>Ref</th>
-		<th>Text Comparison</th>
+		<th>Source Text</th>
     </tr>
     </thead>
     <tbody>
@@ -128,10 +124,13 @@ func (h *HTMLWriter) WriteLine(words []Word, verse Verse) {
 			span = fmt.Sprintf(`<span id="w-%d" data-begin="%.3f" data-end="%.3f">%s</span>`,
 				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word)
 		} else {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin="%.3f" data-end="%.3f" style="color:rgba(255,0,0,%f2);">%s</span>`,
+			span = fmt.Sprintf(`<span id="w-%d" data-begin="%.3f" data-end="%.3f" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
 				wd.WordId, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Word)
 		}
 		_, _ = h.out.WriteString(span)
+		if wd.Ttype == "W" && wd.FaScore < FA_SCORE_CUTOFF {
+			_, _ = h.out.WriteString(fmt.Sprintf("(%.2f)", wd.FaScore))
+		}
 	}
 	_, _ = h.out.WriteString("</td></tr>\n")
 }
@@ -180,7 +179,7 @@ func (h *HTMLWriter) WriteEnd() {
             ],
             "pageLength": 50,
             "lengthMenu": [[50, 500, -1], [50, 500, "All"]],
-			"order": [[ 1, "desc" ]]
+			"order": [[ 0, "asc" ]]
         });
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');

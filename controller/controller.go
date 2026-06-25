@@ -136,6 +136,10 @@ func (c *Controller) processSteps() *log.Status {
 	}
 	defer c.database.Close()
 	c.bucket.AddDatabase(c.database)
+	status = c.database.InsertRequest(c.req)
+	if status != nil {
+		return status
+	}
 	// Fetch Ident Data from Ident
 	c.ident, status = c.database.SelectIdent()
 	if status != nil {
@@ -173,6 +177,10 @@ func (c *Controller) processSteps() *log.Status {
 		if status != nil {
 			return status
 		}
+	}
+	status = input.InsertAudioFiles(c.database, audioFiles)
+	if status != nil {
+		return status
 	}
 	// Update Ident Table
 	status = input.UpdateIdent(c.database, &c.ident, textFiles, audioFiles)

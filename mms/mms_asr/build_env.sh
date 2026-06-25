@@ -36,3 +36,6 @@ cd kenlm
 mkdir build && cd build
 cmake ..
 make -j4
+
+pip install nltk
+pip install pyctcdecode

@@ -26,10 +26,10 @@ testament:
 speech_to_text:
   mms_asr: yes
 stt_decoder:
-  greedy: no
+  greedy: yes
   simple: no
   hotwords: no
-  kenlm: yes
+  kenlm: no
 `
 
 func TestMMSASRDirect(t *testing.T) {
