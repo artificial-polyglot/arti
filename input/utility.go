@@ -3,6 +3,7 @@ package input
 import (
 	"archive/zip"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -154,24 +155,14 @@ func parseFilenames(ctx context.Context, file *InputFile) *log.Status {
 	} else if file.MediaType == request.TextUSXEdit || file.MediaType == request.TextUSFMEdit {
 		parts := strings.Split(file.Directory, `/`)
 		file.MediaId = parts[len(parts)-1]
-		var tmpBookId, tmpBookSeq string
-		if file.MediaType == request.TextUSFMEdit {
-			tmpBookId = file.Filename[2:5]
-			tmpBookSeq = file.Filename[0:2]
-		} else if len(file.Filename) == 10 {
-			tmpBookId = file.Filename[3:6]
-			tmpBookSeq = file.Filename[0:3]
-		} else if len(file.Filename) == 7 {
-			tmpBookId = file.Filename[0:3]
-			tmpBookSeq = strconv.Itoa(db.BookSeqMap[tmpBookId])
-		} else {
-			return log.ErrorNoErr(ctx, 400, "Unexpected USX/USFM filename format:", file.Filename, "— expected formats: 001GEN.usx, GEN.usx, or 01GEN.usfm")
+		file.BookId = findTextBookId(file.Filename)
+		if file.BookId == "" {
+			return log.ErrorNoErr(ctx, 400, "Unable to find bookId in", file.Filename)
 		}
-		file.BookId, status = validateBookId(ctx, tmpBookId)
-		if status != nil {
-			return status
+		seq, found := db.BookSeqMap[file.BookId]
+		if found {
+			file.BookSeq = strconv.Itoa(seq)
 		}
-		file.BookSeq = tmpBookSeq
 		file.Testament = db.Testament(file.BookId)
 		file.FileExt = filepath.Ext(file.Filename)
 	} else if file.MediaType == request.TextScript {
@@ -286,13 +277,9 @@ func parseVOXAudioFilename(ctx context.Context, file *InputFile) *log.Status {
 	langCode := parts[1]
 	versionCode := parts[2]
 	file.BookSeq = parts[3]
-	file.BookId, status = validateBookId(ctx, parts[4])
-	if status != nil {
-		return status
-	}
-	file.Chapter, err = strconv.Atoi(parts[5])
+	file.BookId, file.Chapter, err = findAudioBookId(parts)
 	if err != nil {
-		return log.Error(ctx, 500, err, `Error convert chapter to int`, parts[5])
+		return log.Error(ctx, 500, err, "Unable to find book code or chapter in ", file.Filename)
 	}
 	if parts[0][0] == 'N' {
 		file.Testament = `NT`
@@ -353,6 +340,64 @@ func updateIdentAudio(ident *db.Ident, files []InputFile) bool {
 		}
 	}
 	return result
+}
+
+/*
+When this function finds a book code that starts with a numeric character,
+it checks the next three chars to see if that looks like a book code also.
+This is because 1TI and TIT are both valid book codes.
+*/
+func findTextBookId(filename string) string {
+	dot := strings.Index(filename, ".")
+	for i := 0; i <= dot-3; i++ {
+		code := filename[i : i+3]
+		bookId := isBookId(code)
+		if bookId != "" {
+			if bookId[0] >= 'A' || i+4 > dot {
+				return bookId
+			} else {
+				code = filename[i+1 : i+4]
+				bookId2 := isBookId(code)
+				if bookId2 != "" {
+					return bookId2
+				} else {
+					return bookId
+				}
+			}
+		}
+	}
+	return ""
+}
+
+/*
+This method searches an underscore delimited filename backwards.
+When it finds the bookId, it assumes the following one is the chapter
+*/
+func findAudioBookId(parts []string) (string, int, error) {
+	//baseName := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
+	//parts := strings.Split(baseName, "_")
+	for i := len(parts) - 2; i >= 0; i-- {
+		code := parts[i]
+		bookId := isBookId(code)
+		if bookId != "" {
+			chapter, err := strconv.Atoi(parts[i+1])
+			return bookId, chapter, err
+		}
+	}
+	return "", 0, errors.New("No valid book code on filename " + strings.Join(parts, "_"))
+}
+
+func isBookId(code string) string { //(string, int, int) {
+	corrected, found := corrections[code]
+	if found {
+		code = corrected
+	}
+	_, ok := db.BookChapterMap[code]
+	if ok {
+		return code
+	} else {
+		return ""
+	}
 }
 
 var corrections = map[string]string{

@@ -8,14 +8,15 @@ import (
 	"regexp"
 	"strings"
 
+	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	log "github.com/artificial-polyglot/arti/logger"
 )
 
 // DownloadFile is used by Controller to download a database file
 func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Status {
+	// deprecated, should use utility/s3_datastore
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return log.Error(ctx, 400, err, `Failed to load AWS configuration`)
@@ -55,7 +56,7 @@ func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Stat
 func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 	var files []InputFile
 	var status *log.Status
-	// Load the Shared AWS Configuration (~/.aws/config)
+	// deprecated, should use utility/s3_datastore
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		status = log.Error(ctx, 400, err, `Failed to load AWS configuration`)

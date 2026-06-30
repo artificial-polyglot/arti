@@ -2,10 +2,11 @@ package read
 
 import (
 	"context"
+	"testing"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
-	"testing"
 )
 
 func TestUSXParser(t *testing.T) {
@@ -36,4 +37,17 @@ func TestUSXParser(t *testing.T) {
 		t.Error(`Expected 11755, but got`, count)
 	}
 	conn.Close()
+}
+
+func TestUSXParserAdHoc(t *testing.T) {
+	ctx := context.Background()
+	var file = input.InputFile{Directory: "/Users/gary/Downloads", Filename: "044JHN.usx", BookId: "JHN"}
+	var files []input.InputFile
+	files = append(files, file)
+	var conn = db.NewDBAdapter(ctx, ":memory:")
+	parser := NewUSXParser(conn)
+	status := parser.ProcessFiles(files)
+	if status != nil {
+		t.Error(status)
+	}
 }

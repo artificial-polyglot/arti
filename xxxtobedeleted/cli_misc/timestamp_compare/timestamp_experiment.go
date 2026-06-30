@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/cli_misc"
+	"strings"
+
 	"github.com/artificial-polyglot/arti/controller"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml"
@@ -11,8 +12,8 @@ import (
 	"github.com/artificial-polyglot/arti/fetch"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/safe"
+	"github.com/artificial-polyglot/arti/xxxtobedeleted/cli_misc"
 	"gonum.org/v1/gonum/stat"
-	"strings"
 )
 
 // This needs to be written so that it could work with newly created datasets,

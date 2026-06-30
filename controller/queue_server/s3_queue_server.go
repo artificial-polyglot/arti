@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/artificial-polyglot/arti/cleanup"
 	"github.com/artificial-polyglot/arti/controller"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 const (
@@ -27,6 +27,7 @@ const (
 func main() {
 	ctx := context.WithValue(context.Background(), `runType`, `queue`)
 	cleanup.CleanupDownloadDirectory(ctx)
+	// deprecated, should use utility/s3_datastore
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("us-west-2"),
 		//config.WithLogger(logger),

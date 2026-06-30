@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 func TestUSFMParser(t *testing.T) {
@@ -134,6 +134,7 @@ func TestUSXUSFMCompare(t *testing.T) {
 }
 
 func newCompareClient(ctx context.Context) (*s3.Client, error) {
+	// deprecated, should use utility/s3_datastore
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, err

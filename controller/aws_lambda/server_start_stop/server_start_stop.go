@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -25,6 +26,7 @@ func handler(ctx context.Context, event map[string]any) error {
 	folder := event["folder"].(string)
 	var err error
 	var cfg aws.Config
+	// deprecated, should use utility/s3_datastore
 	cfg, err = config.LoadDefaultConfig(ctx, config.WithRegion("us-west-2"))
 	if err != nil {
 		return fmt.Errorf("error loading AWS config: %v", err)

@@ -11,12 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type Courier struct {
@@ -43,22 +41,12 @@ func NewCourier(ctx context.Context, yaml []byte) Courier {
 	b.username = b.parseYaml(`username`)
 	b.dataset = b.parseYaml(`dataset_name`)
 
-	// Check for new per-job logging directory first
-	logDir := os.Getenv("FCBH_DATASET_LOG_DIR")
-	if logDir != `` {
-		b.AddPerJobLogFile(logDir)
-	} else {
-		// Fall back to old single-file behavior for backward compatibility
-		logFile := os.Getenv("FCBH_DATASET_LOG_FILE")
-		if logFile != `` {
-			b.AddLogFile(logFile)
-		}
-	}
+	logFile := os.Getenv("FCBH_DATASET_LOG_FILE")
+	b.AddLogFile(logFile)
 	return b
 }
 
 // AddLogFile sets up single-file logging with truncation (legacy behavior)
-// Deprecated: Use AddPerJobLogFile with FCBH_DATASET_LOG_DIR instead
 func (b *Courier) AddLogFile(logPath string) {
 	b.logFile = logPath
 	if !b.IsUnitTest {
@@ -67,29 +55,6 @@ func (b *Courier) AddLogFile(logPath string) {
 			log.Warn(b.ctx, "Failed to truncate log file", err)
 		}
 	}
-}
-
-// AddPerJobLogFile creates a new log file for each job in the specified directory
-func (b *Courier) AddPerJobLogFile(logDir string) {
-	// Create logs directory if it doesn't exist
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		log.Warn(b.ctx, "Failed to create log directory:", err)
-		return
-	}
-
-	// Create per-job log file with timestamp first for easy sorting
-	timestamp := time.Now().Format("20060102_150405")
-	jobLogFile := filepath.Join(logDir, fmt.Sprintf("%s-%s-%s.log",
-		timestamp, b.username, b.dataset))
-
-	// Set this as the log file (no truncation needed!)
-	b.logFile = jobLogFile
-	log.SetOutput(jobLogFile)
-
-	// Create or update symlink to latest log for convenience
-	latestLink := filepath.Join(logDir, "latest.log")
-	_ = os.Remove(latestLink)                             // Ignore error if doesn't exist
-	_ = os.Symlink(filepath.Base(jobLogFile), latestLink) // Ignore error on systems without symlink support
 }
 
 func (b *Courier) AddDatabase(conn db.DBAdapter) {
@@ -132,15 +97,13 @@ func (b *Courier) GetOutputByExt() []string {
 
 func (b *Courier) PersistToBucket() *log.Status {
 	var allStatus []*log.Status
-	var status *log.Status
 	if !testing.Testing() || b.IsUnitTest {
-		cfg, err := config.LoadDefaultConfig(b.ctx, config.WithRegion("us-west-2"))
-		if err != nil {
-			return log.Error(b.ctx, 500, err, "Error loading AWS config.")
+		client, status := s3_datastore.NewS3Client(b.ctx)
+		if status != nil {
+			return status
 		}
-		client := s3.NewFromConfig(cfg)
 		var run int
-		run, status = b.findLastRun(client)
+		run, status = b.findLastRun(client.Client)
 		allStatus = append(allStatus, status)
 		run++
 		_, status = b.uploadString(client, run, "request", b.dataset+".yaml", b.yamlContent)
@@ -158,8 +121,7 @@ func (b *Courier) PersistToBucket() *log.Status {
 		}
 
 		loc, _ := time.LoadLocation("America/Denver")
-		info := b.ServerInfo(cfg)
-		_, status = b.uploadString(client, run, "runtime", b.start.In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`), info)
+		_, status = b.uploadString(client, run, "runtime", b.start.In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`), "")
 		allStatus = append(allStatus, status)
 		_, status = b.uploadString(client, run, "duration", time.Since(b.start).String(), "")
 		allStatus = append(allStatus, status)
@@ -170,7 +132,7 @@ func (b *Courier) PersistToBucket() *log.Status {
 			}
 		}
 	}
-	return status
+	return nil
 }
 
 func (b *Courier) parseYaml(name string) string {
@@ -216,39 +178,24 @@ func (b *Courier) findLastRun(client *s3.Client) (int, *log.Status) {
 	return maxRun, status
 }
 
-func (b *Courier) uploadString(client *s3.Client, run int, typ string, filename string, content string) (string, *log.Status) {
+func (b *Courier) uploadString(client s3_datastore.S3Client, run int, typ string, filename string, content string) (string, *log.Status) {
 	var objectKey string
 	var status *log.Status
 	objectKey = b.createKey(run, typ, filename)
-	input := &s3.PutObjectInput{
-		Bucket: &b.bucket,
-		Key:    &objectKey,
-		Body:   strings.NewReader(content),
-	}
-	_, err := client.PutObject(b.ctx, input)
-	if err != nil {
-		status = log.Error(b.ctx, 500, err, "Error uploading content to S3 key:", objectKey)
+	status = client.PutString(b.bucket, objectKey, content)
+	if status != nil {
+		return objectKey, status
 	}
 	return objectKey, status
 }
 
-func (b *Courier) uploadFile(client *s3.Client, run int, typ string, filePath string) (string, *log.Status) {
+func (b *Courier) uploadFile(client s3_datastore.S3Client, run int, typ string, filePath string) (string, *log.Status) {
 	var objectKey string
 	var status *log.Status
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Warn(b.ctx, 500, err, "Error opening file: ", filePath, "to upload to S3.")
-		return objectKey, status
-	}
-	defer file.Close()
 	objectKey = b.createKey(run, typ, filePath)
-	_, err = client.PutObject(b.ctx, &s3.PutObjectInput{
-		Bucket: &b.bucket,
-		Key:    &objectKey,
-		Body:   file,
-	})
-	if err != nil {
-		status = log.Error(b.ctx, 500, err, "Error uploading file to S3 key:", objectKey)
+	status = client.PutFile(b.bucket, objectKey, filePath)
+	if status != nil {
+		return objectKey, status
 	}
 	return objectKey, status
 }
@@ -257,37 +204,4 @@ func (b *Courier) createKey(run int, typ string, filename string) string {
 	runStr := fmt.Sprintf("%05d", run)
 	filename = filepath.Base(filename)
 	return b.username + "/" + b.dataset + "/" + runStr + "/" + typ + "/" + filename
-}
-
-func (b *Courier) ServerInfo(cfg aws.Config) string {
-	var results []string
-	paths := []string{
-		"instance-id",
-		"hostname",
-		"ami-id",
-		"instance-type",
-		"placement/availability-zone",
-		"placement/region",
-		"local-ipv4",
-		"public-ipv4",
-	}
-	client := imds.NewFromConfig(cfg)
-	for _, path := range paths {
-		result, err := client.GetMetadata(b.ctx, &imds.GetMetadataInput{
-			Path: path,
-		})
-		if err != nil {
-			if path == "instance-id" {
-				return ""
-			}
-			log.Info(b.ctx, "Could not get", path, err.Error())
-			continue
-		}
-		defer result.Content.Close()
-
-		var value string
-		_, _ = fmt.Fscanf(result.Content, "%s", &value)
-		results = append(results, path+": "+value)
-	}
-	return strings.Join(results, "\n")
 }

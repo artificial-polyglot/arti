@@ -13,23 +13,29 @@ func (b *Courier) Notification(req request.Request, status *log.Status, duration
 	//var st *log.Status
 	if !testing.Testing() || b.IsUnitTest {
 		var emailRecip []string
+		var ntfyTopics []string
 		var sqsURLS []string
 		var subject string
 		var message string
 		var attachments []string
 		if status == nil {
-			emailRecip, sqsURLS = b.groupRecipients(req.NotifyOk)
+			emailRecip, ntfyTopics, sqsURLS = b.groupRecipients(req.NotifyOk)
 			subject = "SUCCESS: " + b.dataset
 			message = b.successMsg(duration)
 			attachments = b.GetOutputByExt()
 		} else {
-			emailRecip, sqsURLS = b.groupRecipients(req.NotifyErr)
+			emailRecip, ntfyTopics, sqsURLS = b.groupRecipients(req.NotifyErr)
 			subject = "FAILED: " + b.dataset
 			message = b.failureMsg(status, duration)
 			attachments = append(attachments, b.logFile)
 		}
 		if len(emailRecip) > 0 {
 			_ = GoMailSendMail(b.ctx, emailRecip, subject, message, attachments)
+		}
+		if len(ntfyTopics) > 0 {
+			for _, fy := range ntfyTopics {
+				_ = SendNtfy(b.ctx, fy, status == nil, message, subject, "", "")
+			}
 		}
 		if len(sqsURLS) > 0 {
 			jsonMessage := b.jsonMsg(duration, status == nil)
@@ -99,17 +105,20 @@ func (b *Courier) jsonMsg(duration time.Duration, success bool) CompletionMsg {
 	return msg
 }
 
-func (b *Courier) groupRecipients(recipients []string) ([]string, []string) {
+func (b *Courier) groupRecipients(recipients []string) ([]string, []string, []string) {
 	var email []string
+	var ntfy []string
 	var sqs []string
 	for _, recip := range recipients {
 		if strings.HasPrefix(recip, "sqs/") {
 			sqs = append(sqs, recip)
+		} else if strings.HasPrefix(recip, "ntfy/") {
+			ntfy = append(ntfy, recip[5:])
 		} else {
 			email = append(email, recip)
 		}
 	}
-	return email, sqs
+	return email, ntfy, sqs
 }
 
 //sqs/vessel_AP
