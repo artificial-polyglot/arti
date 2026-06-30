@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/artificial-polyglot/arti/cli_misc"
 	"github.com/artificial-polyglot/arti/fetch"
 	log "github.com/artificial-polyglot/arti/logger"
-	"os"
-	"strconv"
 )
 
 /*
