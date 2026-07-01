@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestS3ClientAWS(t *testing.T) {
+func TestS3Client(t *testing.T) {
 	const BUCKET = "arti-output"
 
 	ctx := context.Background()
@@ -44,5 +44,17 @@ func TestS3ClientAWS(t *testing.T) {
 		t.Error(err4)
 	}
 	fmt.Println("GetObject", string(bytes))
+}
 
+func TestPutDirectory(t *testing.T) {
+	const BUCKET = "arti-output"
+	ctx := context.Background()
+	s3, err := NewS3Client(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	err = s3.PutDirectory(ctx, BUCKET, "LEICA", "/Users/gary/Desktop/Leica")
+	if err != nil {
+		t.Error(err)
+	}
 }
