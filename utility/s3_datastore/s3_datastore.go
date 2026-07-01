@@ -1,7 +1,11 @@
 package s3_datastore
 
 import (
+	"bytes"
 	"context"
+	"io/fs"
+	"path/filepath"
+
 	"io"
 	"os"
 	"strings"
@@ -133,5 +137,36 @@ func (t S3Client) PutFile(bucket string, key string, filePath string) *log.Statu
 	if err != nil {
 		status = log.Error(t.ctx, 500, err, "Error uploading file to S3 key:", key)
 	}
+	return status
+}
+
+func (t S3Client) PutDirectory(bucket, prefix, localDir string) *log.Status {
+	var status *log.Status
+	filepath.WalkDir(localDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			status = log.Error(t.ctx, 500, err, "UploadDirectory walk error")
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, _ := filepath.Rel(localDir, path)
+		key := prefix + "/" + filepath.ToSlash(rel)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			status = log.Error(t.ctx, 500, err, "UploadDirectory read file: "+path)
+			return err
+		}
+		_, err = t.Client.PutObject(t.ctx, &s3.PutObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(key),
+			Body:   bytes.NewReader(data),
+		})
+		if err != nil {
+			status = log.Error(t.ctx, 500, err, "UploadDirectory put object: "+key)
+			return err
+		}
+		return nil
+	})
 	return status
 }

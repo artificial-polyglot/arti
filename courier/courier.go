@@ -17,6 +17,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+type model struct {
+	modelType   string
+	languageISO string
+}
+
 type Courier struct {
 	ctx         context.Context
 	IsUnitTest  bool // Set to true by run_bucket_test.
@@ -30,6 +35,7 @@ type Courier struct {
 	databases   []string
 	outputs     []string
 	outputKeys  []string
+	models      []model
 }
 
 func NewCourier(ctx context.Context, yaml []byte) Courier {
@@ -81,6 +87,10 @@ func (b *Courier) AddJson(records any, filePath string) {
 	}
 }
 
+func (b *Courier) AddModel(modelType string, languageISO string) {
+	b.models = append(b.models, model{modelType: modelType, languageISO: languageISO})
+}
+
 func (b *Courier) GetOutputPaths() []string {
 	return b.outputs
 }
@@ -118,6 +128,12 @@ func (b *Courier) PersistToBucket() *log.Status {
 			outputKey, status2 := b.uploadFile(client, run, "output", output)
 			allStatus = append(allStatus, status2)
 			b.outputKeys = append(b.outputKeys, outputKey)
+		}
+		for _, modl := range b.models {
+			prefix := filepath.Join(modl.modelType, modl.languageISO)
+			localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+			status3 := client.PutDirectory(b.bucket, prefix, localDir)
+			allStatus = append(allStatus, status3)
 		}
 
 		loc, _ := time.LoadLocation("America/Denver")
