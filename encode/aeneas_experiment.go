@@ -3,16 +3,17 @@ package encode
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/read"
 	"github.com/artificial-polyglot/arti/xxxtobedeleted/cli_misc"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 // This unfinished code was an attempt to organize scripts by verse in order
