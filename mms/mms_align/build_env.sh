@@ -14,6 +14,7 @@ pip3 install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
 #conda install -y pytorch torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 # On Mac
 # conda install -y pytorch::pytorch torchaudio -c pytorch
+pip install torchcodec --index-url=https://download.pytorch.org/whl/cu126
 
 conda install -y pysoundfile -c conda-forge
 
