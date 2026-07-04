@@ -11,7 +11,7 @@ username: GaryNTest
 output:
   sqlite: yes
 text_data:
-  aws_s3: s3://pretest-audio/O2NHEWYI Nahuatl Huasteca, Eastern (NHE)/O2NHEWYI Text/O2NHEWYI SFM/*.SFM
+  aws_s3: s3://arti-input/N2QAEBSP/Text Files/SFM Text/*.SFM
 detail:
   words: yes
 `
@@ -20,7 +20,7 @@ detail:
 
 func TestUSFMReadDirect(t *testing.T) {
 	var tests1 []SqliteTest
-	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM scripts", 23790})
-	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM words where ttype='W'", 574228})
+	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM scripts", 3866})
+	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM words where ttype='W'", 101151})
 	_ = DirectSqlTest(usfmVsUSX, tests1, t)
 }

@@ -268,7 +268,7 @@ func compareScriptDatabases(ctx context.Context, usxDBPath, sfmDBPath string) (b
 }
 
 func dumpScriptDB(ctx context.Context, dbPath, outPath string) *log.Status {
-	conn, err := sql.Open("sqlite3", dbPath)
+	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return log.Error(ctx, 500, err, "Failed to open database", dbPath)
 	}

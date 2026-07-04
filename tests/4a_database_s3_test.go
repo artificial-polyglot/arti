@@ -11,8 +11,11 @@ username: GaryNTest
 output:
   sqlite: yes
 database:
-  aws_s3: s3://dataset-io/GaryNTest/01a_plain_text_ENGWEB/00004/database/01a_plain_text_ENGWEB.db
+  aws_s3: s3://arti-output/GaryNTest/N2QAEBSP/00011/database/N2QAEBSP.db
 `
+
+// Prior test
+//   aws_s3: s3://dataset-io/GaryNTest/01a_plain_text_ENGWEB/00004/database/01a_plain_text_ENGWEB.db
 
 func TestDatabaseS3Direct(t *testing.T) {
 	var tests []SqliteTest

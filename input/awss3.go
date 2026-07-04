@@ -2,49 +2,34 @@ package input
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // DownloadFile is used by Controller to download a database file
 func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Status {
-	// deprecated, should use utility/s3_datastore
-	cfg, err := config.LoadDefaultConfig(ctx)
+	client, err := s3_datastore.NewS3Client(ctx)
 	if err != nil {
-		return log.Error(ctx, 400, err, `Failed to load AWS configuration`)
+		return log.Error(ctx, 400, err, "Failed to load S3 configuration")
 	}
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.Region = "us-west-2"
-	})
 	bucket, objectKey, _, status := parseGlob(ctx, s3Path)
 	if status != nil {
 		return status
 	}
 	log.Info(ctx, `Downloading file`, objectKey)
-	response, getErr := client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(objectKey),
-	})
+	response, getErr := client.GetObject(bucket, objectKey)
 	if getErr != nil {
-		return log.Error(ctx, 400, getErr, `Failed to get object`, objectKey)
+		return log.Error(ctx, 400, getErr, `Failed to get S3 object`, objectKey)
 	}
-	defer response.Body.Close()
-	file, filErr := os.Create(filePath)
+	filErr := os.WriteFile(filePath, response, 0644)
 	if filErr != nil {
-		return log.Error(ctx, 400, filErr, `Failed to create file`, filePath)
-	}
-	defer file.Close()
-	_, copErr := io.Copy(file, response.Body)
-	if copErr != nil {
-		return log.Error(ctx, 400, copErr, `Failed to copy object`, objectKey)
+		return log.Error(ctx, 400, filErr, `Failed to create file of S3 object`, filePath)
 	}
 	return nil
 }
@@ -56,31 +41,22 @@ func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Stat
 func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 	var files []InputFile
 	var status *log.Status
-	// deprecated, should use utility/s3_datastore
-	cfg, err := config.LoadDefaultConfig(ctx)
+	client, err := s3_datastore.NewS3Client(ctx)
 	if err != nil {
-		status = log.Error(ctx, 400, err, `Failed to load AWS configuration`)
-		return files, status
+		return files, log.Error(ctx, 400, err, "Failed to load S3 configuration")
 	}
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.Region = "us-west-2"
-	})
 	bucket, prefix, glob, status := parseGlob(ctx, path)
 	if status != nil {
 		return files, status
 	}
-	list, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(prefix),
-	})
+	list, err := client.ListObjects(bucket, prefix)
 	if err != nil {
-		status = log.Error(ctx, 400, err, "Failed to list AWSS3 objects at path:", path)
-		return files, status
+		return files, log.Error(ctx, 400, err, "Failed to list S3 objects at path:", path)
 	}
 	bibleId, mediaId := findBibleIdMediaId(prefix)
 	directory := filepath.Join(os.Getenv(`FCBH_DATASET_FILES`), bibleId, mediaId)
 	status = EnsureDirectory(ctx, directory)
-	for _, object := range list.Contents {
+	for _, object := range list {
 		objKey := aws.ToString(object.Key)
 		if glob == nil || glob.MatchString(objKey) {
 			var inFile InputFile
@@ -91,23 +67,14 @@ func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 			fileInfo, stErr := os.Stat(filePath)
 			if os.IsNotExist(stErr) || fileInfo.Size() != *object.Size {
 				log.Info(ctx, `Downloading file`, objKey)
-				response, getErr := client.GetObject(ctx, &s3.GetObjectInput{
-					Bucket: aws.String(bucket),
-					Key:    aws.String(objKey),
-				})
+				response, getErr := client.GetObject(bucket, objKey)
 				if getErr != nil {
 					return files, log.Error(ctx, 400, getErr, `Failed to get object`, objKey)
 				}
-				file, filErr := os.Create(filePath)
+				filErr := os.WriteFile(filePath, response, 0644)
 				if filErr != nil {
 					return files, log.Error(ctx, 400, filErr, `Failed to create file`, filePath)
 				}
-				_, copErr := io.Copy(file, response.Body)
-				if copErr != nil {
-					return files, log.Error(ctx, 400, copErr, `Failed to copy S3 object to local file`, objKey)
-				}
-				err = response.Body.Close()
-				err = file.Close()
 			}
 		}
 	}

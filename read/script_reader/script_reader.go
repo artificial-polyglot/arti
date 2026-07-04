@@ -2,7 +2,6 @@ package script_reader
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -108,9 +107,6 @@ func (r ScriptReader) Read(filePath string) *log.Status {
 			records = append(records, rec)
 		}
 	}
-	fmt.Println("length", len(records))
-	last := records[len(records)-1]
-	fmt.Println("Print Last", last)
 	status = r.db.InsertScripts(records)
 	return status
 }

@@ -7,15 +7,16 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/artificial-polyglot/arti/controller"
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 )
 
 const (
@@ -44,7 +45,7 @@ func DirectSqlTest(request string, tests []SqliteTest, t *testing.T) string {
 		}
 	}
 	fmt.Println("Test output", database)
-	conn, err := sql.Open("sqlite3", database)
+	conn, err := sql.Open("sqlite", database)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/safe"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // GetDBPath is not correct with user/project database names
@@ -89,7 +89,7 @@ func NewerDBAdapter(ctx context.Context, isNew bool, user string, project string
 	if !isNew && !doesExist {
 		return d, log.Error(ctx, 400, err, `The database does not exist`, d.DatabasePath)
 	}
-	d.DB, err = sql.Open("sqlite3", d.DatabasePath)
+	d.DB, err = sql.Open("sqlite", d.DatabasePath)
 	if err != nil {
 		return d, log.Error(ctx, 500, err, `Failed to open database`, d.DatabasePath)
 	}
@@ -103,7 +103,7 @@ func NewerDBAdapter(ctx context.Context, isNew bool, user string, project string
 // NewDBAdapter should be used for  :memory: and when the database parameter is a path.
 func NewDBAdapter(ctx context.Context, database string) DBAdapter {
 	var databasePath = GetDBPath(database)
-	db, err := sql.Open("sqlite3", databasePath)
+	db, err := sql.Open("sqlite", databasePath)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -263,7 +263,7 @@ func (d *DBAdapter) CopyDatabase(suffix string) (DBAdapter, *log.Status) {
 	ext = filepath.Ext(result.Database)
 	endName = len(result.Database) - len(ext)
 	result.Project = result.Database[:endName]
-	result.DB, err = sql.Open("sqlite3", result.DatabasePath)
+	result.DB, err = sql.Open("sqlite", result.DatabasePath)
 	if err != nil {
 		return result, log.Error(d.Ctx, 500, err, "Error opening copied database:", result.DatabasePath)
 	}

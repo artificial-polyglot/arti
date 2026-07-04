@@ -3,13 +3,12 @@ package read
 import (
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/cli_misc"
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
-	"github.com/xuri/excelize/v2"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
 )
 
 func TestScriptReader(t *testing.T) {
@@ -26,40 +25,4 @@ func TestScriptReader(t *testing.T) {
 		t.Fatal(status)
 	}
 	conn.Close()
-}
-
-// TestScriptHeaders is to investigate the format of script columns for position of items
-func TestScriptHeaders(t *testing.T) {
-	ctx := context.Background()
-	ts := cli_misc.NewTSBucket(ctx)
-	list := ts.ListPrefix(cli_misc.TSBucketName, cli_misc.LatinN2)
-	for count, item := range list {
-		if count > 400 {
-			break
-		}
-		//fmt.Println(item)
-		objs := ts.ListObjects(cli_misc.TSBucketName, item+cli_misc.Script)
-		key := objs[0]
-		//fmt.Println(key)
-		filename := filepath.Base(key)
-		filePath := filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), filename)
-		//fmt.Println(filePath)
-		ts.DownloadObject(cli_misc.TSBucketName, key, filePath)
-		file, err := excelize.OpenFile(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer file.Close()
-		sheets := file.GetSheetList()
-		rows, err := file.GetRows(sheets[0])
-		if err != nil {
-			t.Fatal(err)
-		}
-		for col, cell := range rows[0] {
-			fmt.Print(col, `:`, cell, ` `)
-		}
-		fmt.Print("\n")
-		_ = file.Close()
-		_ = os.Remove(filePath)
-	}
 }

@@ -5,15 +5,16 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/artificial-polyglot/arti/generic"
-	_ "github.com/mattn/go-sqlite3"
-	"gonum.org/v1/gonum/stat"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/artificial-polyglot/arti/generic"
+	"gonum.org/v1/gonum/stat"
+	_ "modernc.org/sqlite"
 )
 
 type AudioError struct {
@@ -37,7 +38,7 @@ func main() {
 	//	fmt.Println(ae)
 	//}
 	var DB *sql.DB
-	DB, err = sql.Open("sqlite3", filepath.Join(directory, "N2CUL_MNT.db"))
+	DB, err = sql.Open("sqlite", filepath.Join(directory, "N2CUL_MNT.db"))
 	if err != nil {
 		panic(err)
 	}

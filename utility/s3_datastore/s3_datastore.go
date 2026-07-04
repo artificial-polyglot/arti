@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type S3Client struct {
@@ -75,8 +76,8 @@ func (t S3Client) GetObject(bucket string, key string) ([]byte, *log.Status) {
 	return body, nil
 }
 
-func (t S3Client) ListObjects(bucket, prefix string) ([]string, *log.Status) {
-	var results []string
+func (t S3Client) ListObjects(bucket, prefix string) ([]types.Object, *log.Status) {
+	var results []types.Object
 	list, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
@@ -86,8 +87,8 @@ func (t S3Client) ListObjects(bucket, prefix string) ([]string, *log.Status) {
 		return results, status
 	}
 	for _, obj := range list.Contents {
-		key := aws.ToString(obj.Key)
-		results = append(results, key)
+		//key := aws.ToString(obj.Key)
+		results = append(results, obj)
 	}
 	return results, nil
 }

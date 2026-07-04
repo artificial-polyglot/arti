@@ -53,7 +53,7 @@ func TestPutDirectory(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = s3.PutDirectory(ctx, BUCKET, "LEICA", "/Users/gary/Desktop/Leica")
+	err = s3.PutDirectory(BUCKET, "LEICA", "/Users/gary/Desktop/Leica")
 	if err != nil {
 		t.Error(err)
 	}
