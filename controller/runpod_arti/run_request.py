@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 import requests
 
 def main():
@@ -24,32 +25,47 @@ def main():
     # Build the structure the handler expects
     payload = {
         "input": {
-            "request_yaml": yaml_text
+            "request_yaml": yaml_text,
+            "timeout_minutes": 120
         }
     }
 
     if run_local:
-        # Write it as a JSON file alongside the input, with a .json extension
-        out_path = os.path.splitext(yaml_path)[0] + ".json"
+        out_path = os.path.join(os.path.dirname(yaml_path), "test_input.json")
         with open(out_path, "w") as f:
             json.dump(payload, f, indent=2)
         print(f"wrote {out_path}")
 
     else:
-        endpoint = "c9ct1wa5n9wxyq"  # RunPod endpoint ID
-        api_key = os.environ["RUNPOD_API_KEY"]
+        endpoint = "fzfyyzux8a5dhi"
+        api_key = os.environ["RUNNING_PHESANT"]
 
-        url = f"https://api.runpod.ai/v2/{endpoint}/runsync"
+        url = f"https://api.runpod.ai/v2/{endpoint}/run"
         headers = {
             "Content-Type": "application/json",
             "Authorization": api_key,
         }
-
-        #payload = {"input": {"request_yaml": "..."}}  # your constructed JSON goes here
-
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         print(response.json())
+        job = response.json()
+        job_id = job["id"]
+        print(f"submitted job {job_id}")
+        requests.post("https://ntfy.sh/artificial-polyglot", data=f"Job {job_id} submitted: {yaml_path}")
+
+        # Poll for completion
+        status_url = f"https://api.runpod.ai/v2/{endpoint}/status/{job_id}"
+        while True:
+            time.sleep(30)
+            status_response = requests.get(status_url, headers=headers)
+            status_response.raise_for_status()
+            status = status_response.json()
+            print(status["status"])
+            if status["status"] in ("COMPLETED", "FAILED"):
+                break
+
+        print(status)
+        requests.post("https://ntfy.sh/artificial-polyglot", data=f"Job {job_id} finished: {status['status']}")
 
 if __name__ == "__main__":
     main()

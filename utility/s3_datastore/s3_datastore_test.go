@@ -58,3 +58,21 @@ func TestPutDirectory(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestGetOutput(t *testing.T) {
+	const BUCKET = "arti-output"
+	ctx := context.Background()
+	s3, err := NewS3Client(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	bytes, err1 := s3.GetObject(BUCKET, "GaryNTest/N2QAEBSP/00037/log/arti.log")
+	if err1 != nil {
+		t.Error(err1)
+	}
+	pathFile := filepath.Join(os.Getenv("HOME"), "Downloads", "N2QAEBSP_00037_log_arti.log")
+	err2 := os.WriteFile(pathFile, bytes, 0644)
+	if err2 != nil {
+		t.Error(err2)
+	}
+}

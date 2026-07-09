@@ -34,8 +34,50 @@ ENV FCBH_DATASET_IO_BUCKET=arti-output
 RUN mkdir -p "$FCBH_DATASET_DB" "$FCBH_DATASET_FILES" "$FCBH_DATASET_TMP"
 
 WORKDIR /app
-RUN pip install --no-cache-dir runpod
+
+# Install curl (needed to fetch the Miniforge installer)
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniforge
+RUN curl -L -o /tmp/miniforge.sh \
+    https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh && \
+    bash /tmp/miniforge.sh -b -p ${BASE}/miniforge3 && \
+    rm /tmp/miniforge.sh
+
+# Install runpod
+RUN ${BASE}/miniforge3/bin/pip install --no-cache-dir runpod
+
+# Install base executables into the base environment (no activation needed)
+RUN ${BASE}/miniforge3/bin/conda install -y -n base -c conda-forge ffmpeg sox sqlite && \
+    ${BASE}/miniforge3/bin/conda clean -afy
+ENV PATH=${BASE}/miniforge3/bin/:$PATH
+
+# Create and populate the mms_fa environment
+ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin
+
+RUN ${BASE}/miniforge3/bin/conda create -y -n mms_fa python=3.11
+
+RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
+    --index-url https://download.pytorch.org/whl/cu128
+
+RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 120 torchcodec \
+    --index-url https://download.pytorch.org/whl/cu128
+
+RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile ffmpeg-python sox && \
+    ${MMS_FA}/pip install sox && \
+    ${MMS_FA}/pip install uroman && \
+    cp ${MMS_FA}/uroman ${MMS_FA}/uroman.pl && \
+    ${MMS_FA}/pip cache purge && \
+    ${BASE}/miniforge3/bin/conda clean -afy
+RUN ${MMS_FA}/pip install --no-cache-dir nvidia-npp-cu12
+ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
+
+# Copy over python code
+ENV GOPROJ=/app/arti
+COPY --from=build /src ${GOPROJ}
+RUN find ${GOPROJ} -name "*.go" -delete
+
 COPY --from=build /app/runpod_arti /app/runpod_arti
 COPY controller/runpod_arti/handler.py /app/handler.py
-COPY controller/runpod_arti/env.secret /app/env.secret
 CMD ["python", "-u", "/app/handler.py"]
