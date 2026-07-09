@@ -34,7 +34,7 @@ func (b *Courier) Notification(req request.Request, status *log.Status, duration
 		}
 		if len(ntfyTopics) > 0 {
 			for _, fy := range ntfyTopics {
-				_ = SendNtfy(b.ctx, fy, status == nil, message, subject, "", "")
+				_ = SendNtfy(b.ctx, fy, status == nil, message, subject, "", b.logFile)
 			}
 		}
 		if len(sqsURLS) > 0 {
