@@ -37,6 +37,7 @@ var errorLog *log.Logger
 var warnLog *log.Logger
 var infoLog *log.Logger
 var debugLog *log.Logger
+var logToFile bool
 
 func init() {
 	setFile(os.Stderr)
@@ -60,8 +61,10 @@ func init() {
 func SetOutput(filePath string) {
 	if filePath == "stdout" {
 		setFile(os.Stdout)
+		logToFile = false
 	} else if filePath == "stderr" {
 		setFile(os.Stderr)
+		logToFile = false
 	} else {
 		file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
@@ -69,6 +72,7 @@ func SetOutput(filePath string) {
 		} else {
 			setFile(file)
 		}
+		logToFile = true
 	}
 }
 
@@ -99,11 +103,17 @@ func SetDumpSkipLines(lines int) {
 
 // Panic will log the message with Println and then call panic()
 func Panic(ctx context.Context, param ...any) {
+	if logToFile {
+		_, _ = fmt.Fprintln(os.Stderr, param, requestInfo(ctx))
+	}
 	panicLog.Panicln(param, requestInfo(ctx))
 }
 
 // Fatal will log the message with Println and call os.Exit is in background
 func Fatal(ctx context.Context, param ...any) {
+	if logToFile {
+		_, _ = fmt.Fprintln(os.Stderr, param, requestInfo(ctx))
+	}
 	fatalLog.Println(param, requestInfo(ctx))
 	fatalLog.Println(dumpLines())
 	runType := ctx.Value(`runType`)
@@ -159,6 +169,9 @@ func errorImpl(ctx context.Context, http int, err string, param ...any) *Status 
 	e.Message = strings.TrimSpace(string(result))
 	e.Trace = dumpLines()
 	e.Request = requestInfo(ctx)
+	if logToFile {
+		_, _ = fmt.Fprintf(os.Stderr, "%+v\n", e)
+	}
 	errorLog.Printf("%+v", e)
 	return &e
 }
@@ -166,6 +179,9 @@ func errorImpl(ctx context.Context, http int, err string, param ...any) *Status 
 // Warn will log the message with Println and then continue
 func Warn(ctx context.Context, param ...any) {
 	if logLevel >= LOGWARN {
+		if logToFile {
+			_, _ = fmt.Fprintln(os.Stderr, param...)
+		}
 		warnLog.Println(param...)
 		//warnLog.Println(dumpLines())
 	}
@@ -174,6 +190,9 @@ func Warn(ctx context.Context, param ...any) {
 // Info will log the message with Println and then continue
 func Info(ctx context.Context, param ...any) {
 	if logLevel >= LOGINFO {
+		if logToFile {
+			_, _ = fmt.Fprintln(os.Stderr, param...)
+		}
 		infoLog.Println(param...)
 	}
 }
@@ -190,7 +209,10 @@ func Debug(ctx context.Context, param ...any) {
 		msg = append(msg, fmt.Sprintf("Frees = %v mb,", bToMb(m.Frees)))
 		msg = append(msg, fmt.Sprintf("NumGC = %v", m.NumGC))
 		param = append(param, strings.Join(msg, " "))
-		debugLog.Println(param)
+		if logToFile {
+			_, _ = fmt.Fprintln(os.Stderr, param...)
+		}
+		debugLog.Println(param...)
 	}
 }
 
@@ -215,7 +237,7 @@ func dumpLines() string {
 	var ok = true
 	for i := 2; ok; i++ {
 		_, file, line, ok = runtime.Caller(i)
-		pos := strings.Index(file, `fcbh-dataset-io`)
+		pos := strings.Index(file, "arti")
 		if pos >= 0 {
 			results = append(results, file[pos:]+":"+strconv.Itoa(line))
 		}
