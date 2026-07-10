@@ -8,12 +8,13 @@ if [ $# -ne 1 ]; then
 fi
 cd $GOPROJ
 version="$1"
-docker build --platform linux/amd64 -f controller/runpod_arti/Dockerfile -t runpod_arti .
+docker build --platform linux/amd64 -f Docker/runpod_arti/Dockerfile -t runpod_arti .
 docker login
 docker tag runpod_arti garyngriswold/runpod_arti:${version}
 docker push garyngriswold/runpod_arti:${version}
 runpodctl template update "42n2voxks5" --image "garyngriswold/runpod_arti:${version}"
-curl -d "build ${version} finished" https://ntfy.sh/artificial-polyglot
+curl -d "build ${version} finished" https://ntfy.sh/arti2
 sleep 15
-python controller/runpod_arti/run_request.py $HOME/arti2/N2QAEBSP_trainonly.yaml PROD
+python Docker/runpod_arti/run_request.py $HOME/arti2/N2QAEBSP_trainonly.yaml PROD
+curl -d "run pod ${version} finished" https://ntfy.sh/arti2
 

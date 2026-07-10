@@ -3,6 +3,7 @@ import sys
 import torch
 import torchaudio
 import numpy as np
+import soundfile as sf
 from transformers import Wav2Vec2Processor
 from io import BytesIO
 from sqlite_utility import *
@@ -49,8 +50,8 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
         audioFile = audioFile.replace(".mp3", ".wav")
         audioPath = os.path.join(audioDir, audioFile)
 
-        info = torchaudio.info(audioPath, format="wav")
-        if info.sample_rate != 16000:
+        sample_rate = sf.info(audioPath).samplerate
+        if sample_rate != 16000:
             print("Audio sample rate must be 16000", file=sys.stderr, flush=True)
             sys.exit(1)
 

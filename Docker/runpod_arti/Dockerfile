@@ -1,3 +1,4 @@
+# check=skip=UndefinedVar
 # ---- Stage 1: build the Go binary ----
 FROM golang:1.26 AS build
 WORKDIR /src
@@ -5,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -o /app/runpod_arti ./controller/runpod_arti
+    go build -o /app/runpod_arti ./Docker/runpod_arti
 
 # ---- Stage 2: runtime with Python for the RunPod handler ----
 FROM python:3.11-slim
@@ -55,15 +56,11 @@ ENV PATH=${BASE}/miniforge3/bin/:$PATH
 
 # Create and populate the mms_fa environment
 ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin
-
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_fa python=3.11
-
 RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
-
 RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 120 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
-
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile ffmpeg-python sox && \
     ${MMS_FA}/pip install sox && \
     ${MMS_FA}/pip install uroman && \
@@ -76,6 +73,7 @@ ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/
 # Create and populate the mms_adapter environment
 ARG MMS_ADAPTER=${BASE}/miniforge3/envs/mms_adapter/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_adapter python=3.11
+RUN ${BASE}/miniforge3/bin/conda install -y -n mms_adapter -c conda-forge pysoundfile ffmpeg-python sox
 RUN ${MMS_ADAPTER}/pip install numpy
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
@@ -87,6 +85,7 @@ RUN ${MMS_ADAPTER}/pip install peft
 RUN ${MMS_ADAPTER}/pip install jiwer
 RUN ${MMS_ADAPTER}/pip install evaluate
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir nvidia-npp-cu12
+ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
 
 # Pre-download the MMS_FA model weights so the container never fetches them
 # over the network at runtime.
@@ -99,5 +98,5 @@ COPY --from=build /src ${GOPROJ}
 RUN find ${GOPROJ} -name "*.go" -delete
 
 COPY --from=build /app/runpod_arti /app/runpod_arti
-COPY controller/runpod_arti/handler.py /app/handler.py
+COPY Docker/runpod_arti/handler.py /app/handler.py
 CMD ["python", "-u", "/app/handler.py"]

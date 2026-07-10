@@ -105,7 +105,7 @@ func (b *Courier) GetOutputByExt() []string {
 	return results
 }
 
-func (b *Courier) PersistToBucket() *log.Status {
+func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 	var allStatus []*log.Status
 	if !testing.Testing() || b.IsUnitTest {
 		client, status := s3_datastore.NewS3Client(b.ctx)
@@ -129,11 +129,13 @@ func (b *Courier) PersistToBucket() *log.Status {
 			allStatus = append(allStatus, status2)
 			b.outputKeys = append(b.outputKeys, outputKey)
 		}
-		for _, modl := range b.models {
-			prefix := filepath.Join(modl.modelType, modl.languageISO)
-			localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
-			status3 := client.PutDirectory(b.bucket, prefix, localDir)
-			allStatus = append(allStatus, status3)
+		if runStatus == nil {
+			for _, modl := range b.models {
+				prefix := filepath.Join(modl.modelType, modl.languageISO)
+				localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+				status3 := client.PutDirectory(b.bucket, prefix, localDir)
+				allStatus = append(allStatus, status3)
+			}
 		}
 
 		loc, _ := time.LoadLocation("America/Denver")
