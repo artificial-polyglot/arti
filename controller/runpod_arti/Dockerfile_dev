@@ -1,0 +1,38 @@
+
+
+
+
+# Create and populated the mms_asr environment
+ARG MMS_ASR=${BASE}/miniforge3/envs/mms_asr/bin
+RUN ${BASE}/miniforge3/bin/conda create -y -n mms_asr python=3.11
+RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio
+RUN ${MMS_ASR}/pip install accelerate
+RUN ${MMS_ASR}/pip install datasets
+RUN ${MMS_ASR}/pip install transformers
+RUN ${MMS_ASR}/pip install soundfile
+RUN ${MMS_ASR}/pip install librosa
+RUN ${MMS_ASR}/pip install uroman
+RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
+
+
+pip install https://github.com/kpu/kenlm/archive/master.zip
+
+========== instructions for kenlm ===============
+
+# Prerequisites
+sudo apt install cmake build-essential
+apt -y install libboost-all-dev
+
+# Clone and build
+git clone https://github.com/kpu/kenlm.git
+cd kenlm
+mkdir build && cd build
+cmake ..
+make -j4
+
+pip install nltk
+pip install pyctcdecode
+
+
+
+

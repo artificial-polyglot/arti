@@ -73,6 +73,21 @@ RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile
 RUN ${MMS_FA}/pip install --no-cache-dir nvidia-npp-cu12
 ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
 
+# Create and populate the mms_adapter environment
+ARG MMS_ADAPTER=${BASE}/miniforge3/envs/mms_adapter/bin
+RUN ${BASE}/miniforge3/bin/conda create -y -n mms_adapter python=3.11
+RUN ${MMS_ADAPTER}/pip install numpy
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
+    --index-url https://download.pytorch.org/whl/cu128
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 120 torchcodec \
+    --index-url https://download.pytorch.org/whl/cu128
+RUN ${MMS_ADAPTER}/pip install soundfile
+RUN ${MMS_ADAPTER}/pip install adapters
+RUN ${MMS_ADAPTER}/pip install peft
+RUN ${MMS_ADAPTER}/pip install jiwer
+RUN ${MMS_ADAPTER}/pip install evaluate
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir nvidia-npp-cu12
+
 # Pre-download the MMS_FA model weights so the container never fetches them
 # over the network at runtime.
 ENV TORCH_HOME=${BASE}/torch_cache

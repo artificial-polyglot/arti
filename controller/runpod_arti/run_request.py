@@ -51,7 +51,7 @@ def main():
         job = response.json()
         job_id = job["id"]
         print(f"submitted job {job_id}")
-        requests.post("https://ntfy.sh/artificial-polyglot", data=f"Job {job_id} submitted: {yaml_path}")
+        requests.post("https://ntfy.sh/arti2", data=f"Job {job_id} submitted: {yaml_path}")
 
         # Poll for completion
         status_url = f"https://api.runpod.ai/v2/{endpoint}/status/{job_id}"
@@ -65,7 +65,7 @@ def main():
                 break
 
         print(status)
-        requests.post("https://ntfy.sh/artificial-polyglot", data=f"Job {job_id} finished: {status['status']}")
+        requests.post("https://ntfy.sh/arti2", data=f"Job {job_id} finished: {status['status']}")
 
 if __name__ == "__main__":
     main()

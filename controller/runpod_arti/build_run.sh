@@ -15,5 +15,5 @@ docker push garyngriswold/runpod_arti:${version}
 runpodctl template update "42n2voxks5" --image "garyngriswold/runpod_arti:${version}"
 curl -d "build ${version} finished" https://ntfy.sh/artificial-polyglot
 sleep 15
-python controller/runpod_arti/run_request.py $HOME/arti2/N2QAEBSP_fa.yaml PROD
+python controller/runpod_arti/run_request.py $HOME/arti2/N2QAEBSP_trainonly.yaml PROD
 
