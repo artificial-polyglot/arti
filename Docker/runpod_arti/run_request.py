@@ -3,12 +3,22 @@ import os
 import sys
 import time
 import requests
+from pathlib import Path
+
+
+def notify(message):
+    requests.post(
+        "https://ntfy.sh/arti2",
+        data=message.encode("utf-8"),
+        headers = {"Authorization": f"Bearer {os.environ['NTFY_API_TOKEN']}"}
+)
 
 def main():
     if len(sys.argv) < 2:
         print("usage: build_request.py <path-to-request.yaml>", file=sys.stderr)
         sys.exit(1)
     yaml_path = sys.argv[1]
+    yaml_file = Path(yaml_path).name
     if len(sys.argv) == 3:
         run_local = False
     else:
@@ -51,7 +61,8 @@ def main():
         job = response.json()
         job_id = job["id"]
         print(f"submitted job {job_id}")
-        requests.post("https://ntfy.sh/arti3", data=f"Job {job_id} submitted: {yaml_path}")
+        notify(f"Task {yaml_file} submitted job: {job_id}")
+        #requests.post("https://ntfy.sh/arti2", data=f"Job {job_id} submitted: {yaml_path}")
 
         # Poll for completion
         status_url = f"https://api.runpod.ai/v2/{endpoint}/status/{job_id}"
@@ -65,7 +76,8 @@ def main():
                 break
 
         print(status)
-        requests.post("https://ntfy.sh/arti3", data=f"Job {job_id} finished: {status['status']}")
+        #requests.post("https://ntfy.sh/arti2", data=f"Job {job_id} finished: {status['status']}")
+        notify(f"Task {yaml_file} finished: {status['status']}")
 
 if __name__ == "__main__":
     main()

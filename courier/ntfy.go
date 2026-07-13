@@ -2,6 +2,7 @@ package courier
 
 import (
 	"context"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +18,9 @@ func SendNtfy(ctx context.Context, topic string, success bool, message string, s
 
 	var req *http.Request
 	var err error
+	if len(message) > 4000 {
+		message = message[:4000]
+	}
 	switch {
 	case attachment != "" && isURL(attachment):
 		// Remote attachment: ntfy fetches the URL itself, so the body stays free for the message.
@@ -38,7 +42,10 @@ func SendNtfy(ctx context.Context, topic string, success bool, message string, s
 		}
 		req.Header.Set("Filename", filepath.Base(attachment))
 		if message != "" {
-			req.Header.Set("Message", message)
+			safe := strings.ReplaceAll(message, "\r\n", "\n")
+			safe = strings.ReplaceAll(safe, "\n", "\\n")
+			safe = mime.QEncoding.Encode("utf-8", safe)
+			req.Header.Set("Message", safe)
 		}
 	default:
 		req, err = http.NewRequest("POST", dest, strings.NewReader(message))
@@ -57,7 +64,7 @@ func SendNtfy(ctx context.Context, topic string, success bool, message string, s
 	if priority != "" {
 		req.Header.Set("Priority", priority)
 	}
-	nftyAPIToken := os.Getenv("NFTY_API_TOKEN")
+	nftyAPIToken := os.Getenv("NTFY_API_TOKEN")
 	req.Header.Set("Authorization", "Bearer "+nftyAPIToken)
 	_, err = http.DefaultClient.Do(req)
 	if err != nil {

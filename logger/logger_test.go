@@ -35,4 +35,5 @@ AudioData:
 	_, err := strconv.Atoi("12c")
 	derr := Error(ctx, 500, err, "Error Message", 123, "part3", 34.5)
 	fmt.Println(derr)
+	fmt.Println(derr.Trace)
 }

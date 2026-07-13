@@ -205,7 +205,7 @@ func (c *Controller) processSteps() *log.Status {
 				if status != nil {
 					return status
 				}
-				c.bucket.AddModel("mms_adapter", c.ident.LanguageISO)
+				c.bucket.AddModel("mms_adapters", c.ident.LanguageISO)
 			}
 		}
 		if c.req.Training.Wav2Vec2Word.NumEpochs != 0 {

@@ -143,7 +143,7 @@ func ExecError(ctx context.Context, http int, stderr string, param ...any) *Stat
 		jsonErr := json.Unmarshal([]byte(stderr), &s)
 		if jsonErr != nil {
 			Warn(ctx, jsonErr.Error())
-			Warn(ctx, param)
+			Warn(ctx, param...)
 			return nil
 		}
 		s.Status = http
@@ -171,8 +171,14 @@ func errorImpl(ctx context.Context, http int, err string, param ...any) *Status 
 	e.Request = requestInfo(ctx)
 	if logToFile {
 		_, _ = fmt.Fprintf(os.Stderr, "%+v\n", e)
+		if e.Trace != "" {
+			_, _ = fmt.Fprintln(os.Stderr, e.Trace)
+		}
 	}
 	errorLog.Printf("%+v", e)
+	if e.Trace != "" {
+		errorLog.Println(e.Trace)
+	}
 	return &e
 }
 

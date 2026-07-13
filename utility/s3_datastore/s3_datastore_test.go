@@ -66,11 +66,11 @@ func TestGetOutput(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	bytes, err1 := s3.GetObject(BUCKET, "GaryNTest/N2QAEBSP/00037/log/arti.log")
+	bytes, err1 := s3.GetObject(BUCKET, "GaryNTest/N2QAEBSP/00038/output/N2QAEBSP.csv")
 	if err1 != nil {
 		t.Error(err1)
 	}
-	pathFile := filepath.Join(os.Getenv("HOME"), "Downloads", "N2QAEBSP_00037_log_arti.log")
+	pathFile := filepath.Join(os.Getenv("HOME"), "Downloads", "N2QAEBSP_00038.csv")
 	err2 := os.WriteFile(pathFile, bytes, 0644)
 	if err2 != nil {
 		t.Error(err2)
