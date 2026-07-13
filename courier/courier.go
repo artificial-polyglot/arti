@@ -130,10 +130,11 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 			b.outputKeys = append(b.outputKeys, outputKey)
 		}
 		if runStatus == nil {
+			bucket := os.Getenv("FCBH_MODELS_BUCKET")
 			for _, modl := range b.models {
 				prefix := filepath.Join(modl.modelType, modl.languageISO)
 				localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
-				status3 := client.PutDirectory(b.bucket, prefix, localDir)
+				status3 := client.PutDirectory(bucket, prefix, localDir)
 				allStatus = append(allStatus, status3)
 			}
 		}
