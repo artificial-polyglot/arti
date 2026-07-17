@@ -21,10 +21,10 @@ type Component struct {
 	database db.DBAdapter
 }
 
-func NewComponent(ctx context.Context, request string, name string) Component {
+func NewComponent(request string, name string) Component {
 	var c Component
-	c.ctx = ctx
-	c.courier = NewCourier(ctx, []byte(request))
+	c.ctx = context.Background()
+	c.courier = NewCourier(c.ctx, []byte(request))
 	c.courier.Component = name
 	c.start = time.Now()
 	return c
@@ -32,6 +32,7 @@ func NewComponent(ctx context.Context, request string, name string) Component {
 
 func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
 	var status *log.Status
+	c.ctx = context.WithValue(c.ctx, "runType", c.courier.Component)
 	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
 	reqDecoder := decode_yaml.NewRequestDecoder(c.ctx)
 	c.req, status = reqDecoder.Process([]byte(c.courier.yamlContent))

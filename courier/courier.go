@@ -54,7 +54,6 @@ func NewCourier(ctx context.Context, yaml []byte) Courier {
 	return b
 }
 
-// AddLogFile sets up single-file logging with truncation (legacy behavior)
 func (b *Courier) AddLogFile(logPath string) {
 	b.logFile = logPath
 	if !b.IsUnitTest {

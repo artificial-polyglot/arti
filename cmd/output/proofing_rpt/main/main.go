@@ -10,20 +10,27 @@ import (
 )
 
 func main() {
-	var ctx = context.WithValue(context.Background(), "runType", "proofing_rpt")
-	if len(os.Args) != 2 {
-		log.Fatal(ctx, "usage: proofing_rpt <request.yaml>")
-	}
-	yamlContent := os.Args[1]
-	component := courier.NewComponent(ctx, yamlContent, "proofing_rpt")
-	database, status := component.StartComponent()
+	status := run(os.Args[1:])
 	if status != nil {
 		os.Exit(1)
+	}
+}
+
+func run(args []string) *log.Status {
+	if len(args) != 1 {
+		return log.ErrorNoErr(context.Background(), 500, "usage: proofing_rpt <request.yaml>")
+	}
+	yamlContent := args[0]
+	component := courier.NewComponent(yamlContent, "proofing_rpt")
+	database, status := component.StartComponent()
+	if status != nil {
+		return status
 	}
 	defer database.Close()
 	output, status := proofing_rpt.Process(database)
 	if status != nil {
-		os.Exit(1)
+		return status
 	}
 	component.FinishComponent(output, status)
+	return nil
 }

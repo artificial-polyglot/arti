@@ -11,23 +11,15 @@ import (
 
 func TestRun(t *testing.T) {
 	log.SetOutput("stderr")
-	dbPath := "/Users/gary/FCBH2024/GaryNTest/PlainTextEditScript_ENGWEB.db"
-	r, w, _ := os.Pipe()
-	_, _ = w.WriteString(dbPath + "\n")
-	_ = w.Close()
-	os.Stdin = r
-
-	outR, outW, _ := os.Pipe()
-	os.Stdout = outW
-
-	// Call main
-	main()
-
-	// Read the output
-	_ = outW.Close()
-	var buf bytes.Buffer
-	_, _ = buf.ReadFrom(outR)
-	output := strings.TrimRight(buf.String(), "\n")
-
-	t.Logf("output: %s", output)
+	content, err := os.ReadFile("/Users/gary/arti2/N2QAEBSP_rpt.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	status := run([]string{string(content)})
+	if status != nil {
+		t.Error(status)
+		t.Fatal(status)
+	}
+	t.Logf("output: %s", strings.TrimRight(out.String(), "\n"))
 }

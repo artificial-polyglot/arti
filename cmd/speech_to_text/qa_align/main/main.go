@@ -17,12 +17,11 @@ func main() {
 }
 
 func run(args []string) *log.Status {
-	var ctx = context.WithValue(context.Background(), "runType", "qa_align")
 	if len(args) != 1 {
-		return log.ErrorNoErr(ctx, 500, "usage: qa_align <request.yaml>")
+		return log.ErrorNoErr(context.Background(), 500, "usage: qa_align <request.yaml>")
 	}
 	yamlContent := args[0]
-	component := courier.NewComponent(ctx, yamlContent, "qa_align")
+	component := courier.NewComponent(yamlContent, "qa_align")
 	database, status := component.StartComponent()
 	if status != nil {
 		return status

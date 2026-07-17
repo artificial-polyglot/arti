@@ -54,7 +54,7 @@ func TestCourier(t *testing.T) {
 		NotifyOk:  []string{"gary@shortsands.com"},
 		NotifyErr: []string{"gary.griswold@gmail.com"},
 	}
-	status = b.PersistToBucket()
+	status = b.PersistToBucket(nil)
 	if status != nil {
 		t.Fatal(status)
 	}
