@@ -1,0 +1,73 @@
+package courier
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/decode_yaml"
+	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/input"
+	log "github.com/artificial-polyglot/arti/logger"
+)
+
+type Component struct {
+	ctx      context.Context
+	courier  Courier
+	start    time.Time
+	req      request.Request
+	database db.DBAdapter
+}
+
+func NewComponent(ctx context.Context, request string, name string) Component {
+	var c Component
+	c.ctx = ctx
+	c.courier = NewCourier(ctx, []byte(request))
+	c.courier.Component = name
+	c.start = time.Now()
+	return c
+}
+
+func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
+	var status *log.Status
+	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
+	reqDecoder := decode_yaml.NewRequestDecoder(c.ctx)
+	c.req, status = reqDecoder.Process([]byte(c.courier.yamlContent))
+	if status != nil {
+		return c.database, status
+	}
+	if !c.req.IsNew {
+		dbPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), c.req.Username, c.req.DatasetName+".db")
+		if c.req.Database.AWSS3 != "" {
+			status = input.DownloadFile(c.ctx, c.req.Database.AWSS3, dbPath)
+			if status != nil {
+				return c.database, status
+			}
+		} else if c.req.Database.File != "" {
+			err := os.Rename(c.req.Database.File, dbPath)
+			if err != nil {
+				return c.database, log.Error(c.ctx, 500, err, "Could not move the database file.")
+			}
+		}
+	}
+	c.database, status = db.NewerDBAdapter(c.ctx, c.req.IsNew, c.req.Username, c.req.DatasetName)
+	if status != nil {
+		return c.database, status
+	}
+	status = c.database.InsertRequest(c.req)
+	if status != nil {
+		return c.database, status
+	}
+	c.courier.AddDatabase(c.database)
+	return c.database, nil
+}
+
+func (c *Component) FinishComponent(outputs []db.Output, runStatus *log.Status) {
+	for _, out := range outputs {
+		c.courier.AddOutput(out.FilePath)
+	}
+	_ = c.courier.PersistToBucket(runStatus)                          // do not propagate error
+	_ = c.courier.Notification(c.req, runStatus, time.Since(c.start)) // do not propagate error
+}

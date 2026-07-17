@@ -14,9 +14,13 @@ import (
 
 // DownloadFile is used by Controller to download a database file
 func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Status {
-	client, err := s3_datastore.NewS3Client(ctx)
+	err := os.MkdirAll(filepath.Dir(filePath), 0o755)
 	if err != nil {
-		return log.Error(ctx, 400, err, "Failed to load S3 configuration")
+		return log.Error(ctx, 500, err, "Attempt to overwrite a file with a directory.")
+	}
+	client, status := s3_datastore.NewS3Client(ctx)
+	if status != nil {
+		return status
 	}
 	bucket, objectKey, _, status := parseGlob(ctx, s3Path)
 	if status != nil {
@@ -60,6 +64,7 @@ func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 		objKey := aws.ToString(object.Key)
 		if glob == nil || glob.MatchString(objKey) {
 			var inFile InputFile
+			inFile.BaseURL = "s3://" + bucket + "/" + prefix
 			inFile.Directory = directory
 			inFile.Filename = filepath.Base(objKey)
 			files = append(files, inFile)

@@ -171,3 +171,51 @@ func (t S3Client) PutDirectory(bucket, prefix, localDir string) *log.Status {
 	})
 	return status
 }
+
+func (t S3Client) DownloadFileTree(bucket string, prefix string, localDir string) *log.Status {
+	list, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{
+		Bucket: &bucket,
+		Prefix: &prefix,
+	})
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Could not download", bucket, prefix)
+	}
+	for _, obj := range list.Contents {
+		key := *obj.Key
+		if strings.HasSuffix(key, "/") { // skip "folder" placeholder keys
+			continue
+		}
+		rel := strings.TrimPrefix(key, prefix)
+		localPath := filepath.Join(localDir, rel)
+		err1 := t.DownloadFile(bucket, key, localPath)
+		if err1 != nil {
+			return err1
+		}
+	}
+	return nil
+}
+
+func (t S3Client) DownloadFile(bucket, key, localPath string) *log.Status {
+	err := os.MkdirAll(filepath.Dir(localPath), 0o755)
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Could not create path", filepath.Dir(localPath))
+	}
+	out, err := t.Client.GetObject(t.ctx, &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Could not get object", bucket, key)
+	}
+	defer out.Body.Close()
+	f, err := os.Create(localPath)
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Could not create file", localPath)
+	}
+	defer f.Close()
+	_, err = io.Copy(f, out.Body)
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Could not copy file", localPath)
+	}
+	return nil
+}

@@ -27,6 +27,7 @@ type Courier struct {
 	IsUnitTest  bool // Set to true by run_bucket_test.
 	start       time.Time
 	bucket      string
+	Component   string
 	username    string
 	dataset     string
 	run         int
@@ -43,6 +44,7 @@ func NewCourier(ctx context.Context, yaml []byte) Courier {
 	b.ctx = ctx
 	b.start = time.Now()
 	b.bucket = os.Getenv("FCBH_DATASET_IO_BUCKET")
+	b.Component = "arti" // default
 	b.yamlContent = string(yaml)
 	b.username = b.parseYaml(`username`)
 	b.dataset = b.parseYaml(`dataset_name`)
@@ -170,7 +172,7 @@ func (b *Courier) parseYaml(name string) string {
 func (b *Courier) findLastRun(client *s3.Client) (int, *log.Status) {
 	var result int
 	var status *log.Status
-	prefix := b.username + "/" + b.dataset + "/"
+	prefix := b.username + "/" + b.dataset + "/" + b.Component + "/"
 	output, err := client.ListObjectsV2(b.ctx, &s3.ListObjectsV2Input{
 		Bucket: &b.bucket,
 		Prefix: &prefix,
@@ -181,10 +183,10 @@ func (b *Courier) findLastRun(client *s3.Client) (int, *log.Status) {
 	maxRun := 0
 	for _, obj := range output.Contents {
 		parts := strings.Split(*obj.Key, "/")
-		if len(parts) < 4 {
+		if len(parts) < 5 {
 			continue
 		}
-		runStr := parts[2]
+		runStr := parts[3]
 		var runNum int
 		runNum, err = strconv.Atoi(runStr)
 		if err != nil {
@@ -222,5 +224,5 @@ func (b *Courier) uploadFile(client s3_datastore.S3Client, run int, typ string, 
 func (b *Courier) createKey(run int, typ string, filename string) string {
 	runStr := fmt.Sprintf("%05d", run)
 	filename = filepath.Base(filename)
-	return b.username + "/" + b.dataset + "/" + runStr + "/" + typ + "/" + filename
+	return strings.Join([]string{b.username, b.dataset, b.Component, runStr, typ, filename}, "/")
 }

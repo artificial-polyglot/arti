@@ -174,6 +174,7 @@ func errorImpl(ctx context.Context, http int, err string, param ...any) *Status 
 		if e.Trace != "" {
 			_, _ = fmt.Fprintln(os.Stderr, e.Trace)
 		}
+		//jsonError(e)
 	}
 	errorLog.Printf("%+v", e)
 	if e.Trace != "" {
@@ -249,4 +250,19 @@ func dumpLines() string {
 		}
 	}
 	return strings.Join(results, "\n")
+}
+
+// An Experiment, json logging is TBD
+func jsonError(status Status) {
+	var msg []string
+	msg = append(msg, `"level":`)
+	msg = append(msg, `"ERROR",`)
+	msg = append(msg, `"msg":`)
+	msg = append(msg, `"`+strings.ReplaceAll(status.Message, `"`, `\"`)+`",`)
+	msg = append(msg, `"err":`)
+	msg = append(msg, `"`+strings.ReplaceAll(status.Err, `"`, `\"`)+`",`)
+	msg = append(msg, `"trace":`)
+	msg = append(msg, `"`+status.Trace+`"`)
+	result := "{" + strings.Join(msg, "") + "}"
+	_, _ = fmt.Fprintln(os.Stderr, result)
 }

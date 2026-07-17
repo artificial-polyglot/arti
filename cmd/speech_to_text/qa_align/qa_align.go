@@ -12,6 +12,7 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 )
 
@@ -27,6 +28,7 @@ type QAAlign struct {
 	lang     string
 	sttLang  string
 	adapter  bool
+	s3Client s3_datastore.S3Client
 	mmsAsrPy *stdio_exec.StdioExec
 }
 
@@ -62,7 +64,20 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	if status != nil {
 		return status
 	}
-	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/qa_align/qa_align.py")
+
+	bucket := os.Getenv("FCBH_MODELS_BUCKET")
+	prefix := "mms_adapters/" + lang
+	localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+	a.s3Client, status = s3_datastore.NewS3Client(a.ctx)
+	if status != nil {
+		return status
+	}
+	status = a.s3Client.DownloadFileTree(bucket, prefix, localDir)
+	if status != nil {
+		return status
+	}
+
+	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "cmd/speech_to_text/qa_align/qa_align.py")
 	var useAdapter string
 	if a.adapter {
 		useAdapter = "adapter"
@@ -78,17 +93,24 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	}
 	var files []input.InputFile
 	files, status = input.SelectAudioFiles(a.conn)
+	if status != nil {
+		return status
+	}
 	for _, file := range files {
 		status = a.processFile(file, tempDir)
 		if status != nil {
 			return status
 		}
 	}
-	return status
+	return nil
 }
 
 func (a *QAAlign) processFile(file input.InputFile, tempDir string) *log.Status {
 	var status *log.Status
+	status = file.Download(a.ctx, a.s3Client, tempDir)
+	if status != nil {
+		return status
+	}
 	wavFile, status := ffmpeg.ConvertMp3ToWav(a.ctx, tempDir, file.FilePath())
 	if status != nil {
 		return status
@@ -113,6 +135,9 @@ func (a *QAAlign) processFile(file input.InputFile, tempDir string) *log.Status 
 			return status
 		}
 		audioFiles, status = ffmpeg.ChopByTimestamp(a.ctx, tempDir, wavFile, audioFiles)
+		if status != nil {
+			return status
+		}
 	}
 	for i, ts := range audioFiles {
 		fmt.Println(ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)

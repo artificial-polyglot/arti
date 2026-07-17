@@ -1,37 +1,37 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
-	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/courier"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func main() {
-	ctx := context.Background()
-	reader := bufio.NewReader(os.Stdin)
-	dbPathname, _ := reader.ReadString('\n')
-	conn := db.NewDBAdapter(ctx, strings.TrimSpace(dbPathname))
-	req, status := conn.SelectRequest()
+	status := run(os.Args[1:])
 	if status != nil {
-		goodbye(status)
+		os.Exit(1)
 	}
-
-	// how is adapter set from req
-	asr := qa_align.NewQAAlign(ctx, conn, req.LanguageISO, req.AltLanguage, false)
-	status = asr.ProcessFiles()
-	if status != nil {
-		goodbye(status)
-	}
-	fmt.Println(dbPathname)
 }
 
-func goodbye(status *log.Status) {
-	_, _ = fmt.Fprintln(os.Stderr, status)
-	os.Exit(1)
+func run(args []string) *log.Status {
+	var ctx = context.WithValue(context.Background(), "runType", "qa_align")
+	if len(args) != 1 {
+		return log.ErrorNoErr(ctx, 500, "usage: qa_align <request.yaml>")
+	}
+	yamlContent := args[0]
+	component := courier.NewComponent(ctx, yamlContent, "qa_align")
+	database, status := component.StartComponent()
+	if status != nil {
+		return status
+	}
+	defer database.Close()
+	output, status := qa_align.Process(database)
+	component.FinishComponent(output, status)
+	if status != nil {
+		return status
+	}
+	return nil
 }

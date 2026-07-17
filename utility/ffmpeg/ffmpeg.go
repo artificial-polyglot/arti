@@ -86,7 +86,7 @@ func ConvertMp3ToWav(ctx context.Context, tempDir string, inputFile string) (str
 			"ac":     "1",
 		}).Silent(true).OverWriteOutput().Run()
 		if err != nil {
-			return outputPath, log.Error(ctx, 500, err, "Error in ffmpeg call.")
+			return outputPath, log.Error(ctx, 500, err, "Error in ffmpeg call.", outputPath)
 		}
 	}
 	return outputPath, nil

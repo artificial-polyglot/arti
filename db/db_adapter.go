@@ -222,7 +222,7 @@ func createDatabase(db *sql.DB) {
 		script_line TEXT NOT NULL DEFAULT '',
 		filename TEXT NOT NULL,
 		file_ext TEXT NOT NULL DEFAULT '',
-		directory TEXT NOT NULL)`
+		base_url TEXT NOT NULL)`
 	execDDL(db, query)
 	query = `CREATE TABLE IF NOT EXISTS request (
 		request_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1186,11 +1186,13 @@ func (d *DBAdapter) SelectRequest() (request.Request, *log.Status) {
 	return req, nil
 }
 
-func (d *DBAdapter) InsertOutput(component, report, filePath string) *log.Status {
+func (d *DBAdapter) InsertOutput(outputs []Output) *log.Status {
 	query := `INSERT INTO outputs (component, report, file_path) VALUES (?, ?, ?)`
-	_, err := d.DB.ExecContext(d.Ctx, query, component, report, filePath)
-	if err != nil {
-		return log.Error(d.Ctx, 500, err, "failed to insert output for component: "+component)
+	for _, out := range outputs {
+		_, err := d.DB.ExecContext(d.Ctx, query, out.Component, out.Report, out.FilePath)
+		if err != nil {
+			return log.Error(d.Ctx, 500, err, "failed to insert output for component: "+out.Component)
+		}
 	}
 	return nil
 }

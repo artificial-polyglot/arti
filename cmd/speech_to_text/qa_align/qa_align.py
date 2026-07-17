@@ -53,7 +53,7 @@ if adapter:
     outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), 'mms_adapters', lang)
     processorDir = os.path.join(outputDir, f"processor_{lang}")
     processor = AutoProcessor.from_pretrained(processorDir)
-    model = Wav2Vec2ForCTC.from_pretrained(modelId)
+    model = Wav2Vec2ForCTC.from_pretrained(modelId, local_files_only=True)
     vocabSize = len(processor.tokenizer)
     hiddenSize = model.lm_head.weight.shape[1]
     model.lm_head = torch.nn.Linear(hiddenSize, vocabSize)
