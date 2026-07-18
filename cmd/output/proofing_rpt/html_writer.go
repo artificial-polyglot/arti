@@ -191,7 +191,7 @@ func (h *HTMLWriter) WriteEnd() {
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');
         	if (!hideZeros) return true;
-        	return !data[2].endsWith(":0"); 
+        	return !data[3].endsWith(":0"); 
     	});
     	$('#hideVerse0').prop('checked', true);
     	table.draw();
@@ -212,7 +212,8 @@ function playVerse(button, audioFile, beginTS, endTS) {
     }
     currentEndTS = endTS;                 // <-- store it for onTimeUpdate
 
-    currentSpans = Array.from(document.querySelectorAll('span[data-begin]')).filter(span => {
+    const scope = button.closest('tr');
+    currentSpans = Array.from(scope.querySelectorAll('span[data-begin]')).filter(span => {
         const start = parseFloat(span.dataset.begin);
         return start >= beginTS && start < endTS;
     });
