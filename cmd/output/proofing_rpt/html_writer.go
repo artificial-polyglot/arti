@@ -11,6 +11,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
 
 // Versions used:
@@ -20,6 +21,7 @@ import (
 type HTMLWriter struct {
 	ctx         context.Context
 	datasetName string
+	s3Client    s3_datastore.S3Client
 	out         *os.File
 }
 
@@ -27,11 +29,12 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	var h HTMLWriter
 	h.ctx = ctx
 	h.datasetName = datasetName
+	h.s3Client, _ = s3_datastore.NewS3Client(ctx)
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, languageISO string,
-	asr request.SpeechToText) (string, *log.Status) {
+func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, baseURL string,
+	languageISO string, asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
 	switch asr {
@@ -51,7 +54,7 @@ func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, langu
 	filename := h.WriteHeading(languageISO, model)
 	for _, words := range records {
 		verse := verses[words[0].ScriptId]
-		h.WriteLine(words, verse)
+		h.WriteLine(words, verse, baseURL)
 	}
 	h.WriteEnd()
 	return filename, nil
@@ -84,11 +87,6 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	</div>
 `
 	_, _ = h.out.WriteString(checkbox)
-	directoryInput := `<div style="text-align: center; margin: 10px;">
-		<label for="directory">Directory of Audio Files: </label><input type="text" id="directory" size="100" value="./">
-	</div>`
-
-	_, _ = h.out.WriteString(directoryInput)
 	_, _ = h.out.WriteString("<audio id='validateAudio'></audio>\n")
 	table := `<table id="diffTable" class="display">
     <thead>
@@ -105,14 +103,15 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	return h.out.Name()
 }
 
-func (h *HTMLWriter) WriteLine(words []Word, verse Verse) {
+func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 	_, _ = h.out.WriteString("<tr>\n")
 	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
 	var params []string
 	params = append(params, "this")
-	params = append(params, "'"+verse.AudioFile+"'")
+	signedURL := h.s3Client.SignAudioURL(baseURL, verse.AudioFile)
+	params = append(params, "'"+signedURL+"'")
 	params = append(params, strconv.FormatFloat(words[0].BeginTS, 'f', 4, 64))
-	params = append(params, strconv.FormatFloat(words[len(words)-1].EndTS, 'f', 4, 64))
+	params = append(params, strconv.FormatFloat(h.findEndTS(words), 'f', 4, 64))
 	h.writeCell("<button title=\"" + h.minSecFormat(words[0].BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
 	h.writeCell(verse.Ref.Description())
 	_, _ = h.out.WriteString(`<td>`)
@@ -120,17 +119,18 @@ func (h *HTMLWriter) WriteLine(words []Word, verse Verse) {
 	for _, wd := range words {
 		if wd.Ttype != "W" {
 			span = wd.Word
+			//span = fmt.Sprintf(`<span>%s</span>`, wd.Word)
 		} else if wd.Opacity == 0 {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin="%.3f" data-end="%.3f">%s</span>`,
+			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f>%s</span>`,
 				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word)
 		} else {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin="%.3f" data-end="%.3f" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
+			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
 				wd.WordId, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Word)
 		}
 		_, _ = h.out.WriteString(span)
-		if wd.Ttype == "W" && wd.FaScore < FA_SCORE_CUTOFF {
-			_, _ = h.out.WriteString(fmt.Sprintf("(%.2f)", wd.FaScore))
-		}
+		//if wd.Ttype == "W" && wd.FaScore < FA_SCORE_CUTOFF {
+		//	_, _ = h.out.WriteString(fmt.Sprintf("(%.2f)", wd.FaScore))
+		//}
 	}
 	_, _ = h.out.WriteString("</td></tr>\n")
 }
@@ -164,6 +164,11 @@ func (h *HTMLWriter) WriteEnd() {
 		border-radius: 4px;
 		border: 1px solid #ccc;
 	}
+	.highlight {
+    	background-color: #ffe680;   /* soft yellow */
+    	border-radius: 3px;
+    	padding: 0 1px;              /* tiny breathing room around the word */
+	}
 	.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter {
 		margin-bottom: 20px;
 	}
@@ -195,40 +200,53 @@ func (h *HTMLWriter) WriteEnd() {
 `
 	_, _ = h.out.WriteString(script)
 	script = `let currentSpans = null;
-	let currentAudio = null;
-	function playVerse(button, filename, beginTS, endTS) {
-		// Stop any currently playing audio
-		if (currentAudio) {
-			currentAudio.pause();
-			clearHighlight();
-		}
-		// Load and play the audio
-		let directory = document.getElementById("directory").value
-		audioFile = directory + '/' + filename;
-    	currentSpans = Array.from(document.querySelectorAll('span[data-begin]')).filter(span => {
-        	const start = parseFloat(span.dataset.begin);
-        	return start >= beginTS && start < endTS;
-    	});
-		currentAudio = new Audio(audioFile);
-		currentAudio.addEventListener('timeupdate', onTimeUpdate);
-		currentAudio.addEventListener('ended', clearHighlight);
-		currentAudio.play();
-	}
-	function onTimeUpdate() {
-		const t = currentAudio.currentTime;
-		clearHighlight();
-    	const word = currentSpans.find(span => {
-        	return t >= parseFloat(span.dataset.begin) && t < parseFloat(span.dataset.end);
-    	});
-    	if (word) {
-        	word.classList.add('highlight');
-    	}
-	}
-	function clearHighlight() {
-		if (currentSpans) {
-			currentSpans.forEach(span => span.classList.remove('highlight'));
-		}
-	}
+let currentAudio = null;
+let currentEndTS = null;                 // <-- remember where to stop
+
+function playVerse(button, audioFile, beginTS, endTS) {
+    if (currentAudio) {
+        currentAudio.pause();
+        clearHighlight();
+    }
+    currentEndTS = endTS;                 // <-- store it for onTimeUpdate
+
+    currentSpans = Array.from(document.querySelectorAll('span[data-begin]')).filter(span => {
+        const start = parseFloat(span.dataset.begin);
+        return start >= beginTS && start < endTS;
+    });
+
+    currentAudio = new Audio(audioFile);
+
+    // seek to the verse start once the browser knows the file's duration
+    currentAudio.addEventListener('loadedmetadata', () => {
+        currentAudio.currentTime = beginTS;
+    });
+    currentAudio.addEventListener('timeupdate', onTimeUpdate);
+    currentAudio.addEventListener('ended', clearHighlight);
+    currentAudio.play().catch(err => console.error('play failed', err));
+}
+
+function onTimeUpdate() {
+    const t = currentAudio.currentTime;
+
+    if (currentEndTS !== null && t >= currentEndTS) {
+        currentAudio.pause();
+        clearHighlight();
+        return;
+    }
+    clearHighlight();
+    // the current word is the LAST one whose begin time has been reached
+    const word = currentSpans
+        .filter(span => parseFloat(span.dataset.begin) <= t)
+        .pop();
+    if (word) word.classList.add('highlight');
+}
+
+function clearHighlight() {
+    if (currentSpans) {
+        currentSpans.forEach(span => span.classList.remove('highlight'));
+    }
+}
 	</script>
 </body>
 </html>
@@ -253,4 +271,13 @@ func (h *HTMLWriter) minSecFormat(duration float64) string {
 	}
 	secStr := strconv.FormatFloat(secs, 'f', 0, 64)
 	return minStr + delim + secStr
+}
+
+func (h *HTMLWriter) findEndTS(words []Word) float64 {
+	for i := len(words) - 1; i >= 0; i-- {
+		if words[i].Ttype == "W" {
+			return words[i].EndTS
+		}
+	}
+	return words[0].EndTS
 }

@@ -14,13 +14,13 @@ func Process(database db.DBAdapter) ([]db.Output, *log.Status) {
 
 	// get uroman from request?, or make it a report option
 	rpt := NewProofingRpt(database.Ctx, database, req.LanguageISO, false)
-	records, verses, status := rpt.Process()
+	records, verses, baseURL, status := rpt.Process()
 	if status != nil {
 		return output, status
 	}
 
 	writer := NewHTMLWriter(database.Ctx, req.DatasetName)
-	filename, status := writer.WriteReport(records, verses, req.LanguageISO, req.SpeechToText)
+	filename, status := writer.WriteReport(records, verses, baseURL, req.LanguageISO, req.SpeechToText)
 	if status != nil {
 		return output, status
 	}

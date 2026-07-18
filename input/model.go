@@ -124,3 +124,30 @@ func SelectAudioFiles(db db.DBAdapter) ([]InputFile, *log.Status) {
 	}
 	return files, nil
 }
+
+func SelectBaseURL(db db.DBAdapter) (string, *log.Status) {
+	var url string
+	query := `SELECT distinct base_url FROM audio_files`
+	rows, err := db.DB.QueryContext(db.Ctx, query)
+	if err != nil {
+		return url, log.Error(db.Ctx, 500, err, "failed to query distinct base_url")
+	}
+	defer rows.Close()
+	var urls []string
+	for rows.Next() {
+		err = rows.Scan(&url)
+		if err != nil {
+			return url, log.Error(db.Ctx, 500, err, "failed to scan baseURL")
+		}
+		if url != "" {
+			urls = append(urls, url)
+		}
+	}
+	if err = rows.Err(); err != nil {
+		return url, log.Error(db.Ctx, 500, err, "error iterating baseURL rows")
+	}
+	if len(urls) > 1 {
+		return url, log.ErrorNoErr(db.Ctx, 500, "Multiple file URLs", strings.Join(urls, ","))
+	}
+	return url, nil
+}

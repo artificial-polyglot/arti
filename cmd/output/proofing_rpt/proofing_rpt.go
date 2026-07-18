@@ -12,6 +12,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 )
@@ -51,26 +52,28 @@ func NewProofingRpt(ctx context.Context, conn db.DBAdapter, languageISO string, 
 	return p
 }
 
-func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, *log.Status) {
+func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, string, *log.Status) {
 	var result [][]Word
 	var verses map[int64]Verse
-	words, err := p.SelectWords(FA_SCORE_CUTOFF)
-	if err != nil {
-		return result, verses, err
+	var baseURL string
+	words, status := p.SelectWords(FA_SCORE_CUTOFF)
+	if status != nil {
+		return result, verses, baseURL, status
 	}
 	if p.uRoman && !p.IsLatin(words) {
-		words, err = p.UromanConversion(words, p.languageISO)
-		if err != nil {
-			return result, verses, err
+		words, status = p.UromanConversion(words, p.languageISO)
+		if status != nil {
+			return result, verses, baseURL, status
 		}
 	}
 	result = words
 	p.computeOpacity(result, FA_SCORE_CUTOFF)
-	verses, err = p.findVerseReferences(result)
-	if err != nil {
-		return result, verses, err
+	verses, status = p.findVerseReferences(result)
+	if status != nil {
+		return result, verses, baseURL, status
 	}
-	return result, verses, nil
+	baseURL, status = input.SelectBaseURL(p.conn)
+	return result, verses, baseURL, status
 }
 
 func (p *ProofingRpt) SelectWords(cutoff float64) ([][]Word, *log.Status) {
