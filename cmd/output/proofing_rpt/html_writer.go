@@ -92,6 +92,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
     <thead>
     <tr>
         <th>Line</th>
+		<th>Accuracy</th
 		<th>Button</th>
         <th>Ref</th>
 		<th>Source Text</th>
@@ -106,6 +107,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 	_, _ = h.out.WriteString("<tr>\n")
 	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
+	h.writeCell(strconv.FormatFloat(h.computeAccuracy(words), 'f', 3, 64))
 	var params []string
 	params = append(params, "this")
 	signedURL := h.s3Client.SignAudioURL(baseURL, verse.AudioFile)
@@ -179,12 +181,12 @@ func (h *HTMLWriter) WriteEnd() {
     $(document).ready(function() {
         var table = $('#diffTable').DataTable({
             "columnDefs": [
-                { "orderable": false, "targets": [1,3] }
+                { "orderable": false, "targets": [2,4] }
 				// { "visible": false, "targets": [8] }  
             ],
             "pageLength": 50,
             "lengthMenu": [[50, 500, -1], [50, 500, "All"]],
-			"order": [[ 0, "asc" ]]
+			"order": [[ 1, "asc" ]]
         });
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');
@@ -280,4 +282,16 @@ func (h *HTMLWriter) findEndTS(words []Word) float64 {
 		}
 	}
 	return words[0].EndTS
+}
+
+func (h *HTMLWriter) computeAccuracy(words []Word) float64 {
+	var sum float64
+	var minimum = 1.0
+	for _, w := range words {
+		sum += w.FaScore
+		if minimum > w.FaScore {
+			minimum = w.FaScore
+		}
+	}
+	return sum/float64(len(words)) + minimum
 }
