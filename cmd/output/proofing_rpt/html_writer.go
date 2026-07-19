@@ -82,10 +82,15 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	loc, _ := time.LoadLocation("America/Denver")
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
-	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 10px;">
-		<input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label>
-		<input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label>
-		<input type="text" id="accuracyCutoff"><label for="accuracyCutoff">Accuracy Cutoff</label>
+	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 30px; width=90%">
+		<span><input type="number" id="accuracyCutoff" min="0" step="0.01" style="width: 40px;" value=0.45><label for="accuracyCutoff"> Accuracy Cutoff</label></span>
+		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
+		<span><input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label></span>
+		<span><select id="playSpeed">
+        	<option value="1">Normal</option>
+        	<option value="0.75">Slower (0.75×)</option>
+        	<option value="0.5">Slowest (0.5×)</option>
+    		</select><label for="playSpeed">Speed</label></span>
 	</div>
 `
 	_, _ = h.out.WriteString(controls)
@@ -213,10 +218,27 @@ func (h *HTMLWriter) WriteEnd() {
 		}
 		$('#showUroman').on('change', applyUroman);   // user toggles
 		table.on('draw', applyUroman);
+		$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+			var cutoff = parseFloat($('#accuracyCutoff').val());
+			if (isNaN(cutoff)) return true;          // empty/invalid → show all
+			var accuracy = parseFloat(data[1]);      // column 1 = Accuracy
+			if (isNaN(accuracy)) return true;        // non-numeric cell → don't filter
+			return accuracy <= cutoff;               // keep at/below cutoff, drop above
+		});
+		table.draw();
+		$('#accuracyCutoff').on('change', function() {
+			table.draw();
+		});
 	});
+
 `
 	_, _ = h.out.WriteString(script)
-	script = `let currentSpans = null;
+	script = `let playbackRate = 1;
+$('#playSpeed').on('change', function () {
+	playbackRate = parseFloat(this.value);
+	if (currentAudio) currentAudio.playbackRate = playbackRate;   // change speed live
+});
+let currentSpans = null;
 let currentAudio = null;
 let currentEndTS = null;                 // <-- remember where to stop
 
@@ -234,6 +256,10 @@ function playVerse(button, audioFile, beginTS, endTS) {
     });
 
     currentAudio = new Audio(audioFile);
+	currentAudio.playbackRate = playbackRate;      // <-- apply the chosen speed
+	currentAudio.addEventListener('loadedmetadata', () => {
+    	currentAudio.currentTime = beginTS;
+	});
 
     // seek to the verse start once the browser knows the file's duration
     currentAudio.addEventListener('loadedmetadata', () => {

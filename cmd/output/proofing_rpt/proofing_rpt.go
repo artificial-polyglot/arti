@@ -36,7 +36,7 @@ type Verse struct {
 	AudioFile string
 }
 
-const FA_SCORE_CUTOFF = 0.95
+const FA_SCORE_CUTOFF = 1.0
 
 type ProofingRpt struct {
 	ctx         context.Context
