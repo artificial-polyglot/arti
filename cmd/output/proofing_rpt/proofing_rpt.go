@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -21,6 +22,7 @@ type Word struct {
 	ScriptId int64
 	WordId   int64
 	Word     string  // reference word
+	URoman   string  // uroman equivalent of word
 	Ttype    string  // reference ttype
 	BeginTS  float64 // reference TS
 	EndTS    float64 // reference TS
@@ -60,12 +62,12 @@ func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, string, *log.Status)
 	if status != nil {
 		return result, verses, baseURL, status
 	}
-	if p.uRoman && !p.IsLatin(words) {
-		words, status = p.UromanConversion(words, p.languageISO)
-		if status != nil {
-			return result, verses, baseURL, status
-		}
+	start := time.Now()
+	words, status = p.UromanConversion(words, p.languageISO)
+	if status != nil {
+		return result, verses, baseURL, status
 	}
+	log.Info(p.ctx, "Uroman duration", time.Since(start))
 	result = words
 	p.computeOpacity(result, FA_SCORE_CUTOFF)
 	verses, status = p.findVerseReferences(result)
@@ -139,6 +141,7 @@ func (c *ProofingRpt) IsLatin(records [][]Word) bool {
 }
 
 func (p *ProofingRpt) UromanConversion(wordsIn [][]Word, lang string) ([][]Word, *log.Status) {
+	var cache = make(map[string]string)
 	words := wordsIn
 	scriptPath := filepath.Join(os.Getenv("GOPROJ"), "utility", "uroman", "uroman_stdio.py")
 	uromanPkg, status := stdio_exec.NewStdioExec(p.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), scriptPath, "-l", lang)
@@ -146,20 +149,26 @@ func (p *ProofingRpt) UromanConversion(wordsIn [][]Word, lang string) ([][]Word,
 		return words, status
 	}
 	defer uromanPkg.Close()
-	var uroman string
 	for i := range words {
 		for j := range words[i] {
 			word := words[i][j].Word
-			uroman, status = uromanPkg.Process(word)
-			if status != nil {
-				return words, status
+			uroman, ok := cache[word]
+			if !ok {
+				uroman, status = uromanPkg.Process(word)
+				if status != nil {
+					return words, status
+				}
+				//uroman = matchCapitalization(word, uroman)
+				uroman = strings.ToLower(uroman)
+				cache[word] = uroman
 			}
-			words[i][j].Word = matchCapitalization(word, uroman)
+			words[i][j].URoman = uroman
 		}
 	}
 	return words, status
 }
 
+// This is not needed the uroman conversion is not changing capitalization
 func matchCapitalization(source, target string) string {
 	if source == "" || target == "" {
 		return target

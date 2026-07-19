@@ -82,11 +82,13 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	loc, _ := time.LoadLocation("America/Denver")
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
-	checkbox := `<div style="text-align: center; margin: 10px;">
+	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 10px;">
 		<input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label>
+		<input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label>
+		<input type="text" id="accuracyCutoff"><label for="accuracyCutoff">Accuracy Cutoff</label>
 	</div>
 `
-	_, _ = h.out.WriteString(checkbox)
+	_, _ = h.out.WriteString(controls)
 	_, _ = h.out.WriteString("<audio id='validateAudio'></audio>\n")
 	table := `<table id="diffTable" class="display">
     <thead>
@@ -121,13 +123,18 @@ func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 	for _, wd := range words {
 		if wd.Ttype != "W" {
 			span = wd.Word
-			//span = fmt.Sprintf(`<span>%s</span>`, wd.Word)
-		} else if wd.Opacity == 0 {
+		} else if wd.Word == wd.URoman && wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f>%s</span>`,
 				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word)
-		} else {
+		} else if wd.Word == wd.URoman {
 			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
 				wd.WordId, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Word)
+		} else if wd.Opacity == 0 {
+			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s">%s</span>`,
+				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Word)
+		} else {
+			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
+				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Opacity, wd.Word)
 		}
 		_, _ = h.out.WriteString(span)
 		//if wd.Ttype == "W" && wd.FaScore < FA_SCORE_CUTOFF {
@@ -193,12 +200,20 @@ func (h *HTMLWriter) WriteEnd() {
         	if (!hideZeros) return true;
         	return !data[3].endsWith(":0"); 
     	});
-    	$('#hideVerse0').prop('checked', true);
-    	table.draw();
-    	$('#hideVerse0').on('change', function() {
-        	table.draw(); 
-    	});
-    });
+		$('#hideVerse0').prop('checked', true);
+		table.draw();
+		$('#hideVerse0').on('change', function() {
+			table.draw();
+		});
+		function applyUroman() {
+			var showU = $('#showUroman').prop('checked');
+			document.querySelectorAll('span[data-word]').forEach(function(sp) {
+				sp.textContent = showU ? sp.dataset.uroman : sp.dataset.word;
+			});
+		}
+		$('#showUroman').on('change', applyUroman);   // user toggles
+		table.on('draw', applyUroman);
+	});
 `
 	_, _ = h.out.WriteString(script)
 	script = `let currentSpans = null;
