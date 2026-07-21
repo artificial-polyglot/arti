@@ -21,7 +21,7 @@ func TestS3Client(t *testing.T) {
 		t.Error(err)
 	}
 	filePath := filepath.Join(os.Getenv("GOPROJ"), "utility", "s3_datastore", "s3_datastore.go")
-	err1 := s3.PutFile(BUCKET, "GaryNTest1", filePath)
+	err1 := s3.PutFile(BUCKET, "GaryNTest1", filePath, "text/plain", true)
 	if err1 != nil {
 		t.Error(err1)
 	}

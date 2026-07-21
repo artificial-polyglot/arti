@@ -119,14 +119,30 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 		run++
 		_, status = b.uploadString(client, run, "request", b.dataset+".yaml", b.yamlContent)
 		allStatus = append(allStatus, status)
-		_, status = b.uploadFile(client, run, "log", b.logFile)
+		_, status = b.uploadFile(client, run, "log", b.logFile, "text/plain", true)
 		allStatus = append(allStatus, status)
 		for _, database := range b.databases {
-			_, status = b.uploadFile(client, run, "database", database)
+			_, status = b.uploadFile(client, run, "database", database, "application/x-sqlite3", false)
 			allStatus = append(allStatus, status)
 		}
 		for _, output := range b.outputs {
-			outputKey, status2 := b.uploadFile(client, run, "output", output)
+			var mimeType string
+			var inline bool
+			switch strings.ToLower(filepath.Ext(output)) {
+			case ".html":
+				mimeType = "text/html"
+				inline = true
+			case ".csv":
+				mimeType = "text/csv"
+				inline = true
+			case ".json":
+				mimeType = "text/json"
+				inline = true
+			default:
+				mimeType = ""
+				inline = false
+			}
+			outputKey, status2 := b.uploadFile(client, run, "output", output, mimeType, inline)
 			allStatus = append(allStatus, status2)
 			b.outputKeys = append(b.outputKeys, outputKey)
 		}
@@ -209,11 +225,12 @@ func (b *Courier) uploadString(client s3_datastore.S3Client, run int, typ string
 	return objectKey, status
 }
 
-func (b *Courier) uploadFile(client s3_datastore.S3Client, run int, typ string, filePath string) (string, *log.Status) {
+func (b *Courier) uploadFile(client s3_datastore.S3Client, run int, typ string, filePath string,
+	mimeType string, inline bool) (string, *log.Status) {
 	var objectKey string
 	var status *log.Status
 	objectKey = b.createKey(run, typ, filePath)
-	status = client.PutFile(b.bucket, objectKey, filePath)
+	status = client.PutFile(b.bucket, objectKey, filePath, mimeType, inline)
 	if status != nil {
 		return objectKey, status
 	}

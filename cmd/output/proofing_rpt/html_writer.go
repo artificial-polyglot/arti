@@ -376,7 +376,7 @@ func startTime(words []Word) float64 {
 }
 func duration(words []Word) float64 {
 	if len(words) > 0 {
-		return findEndTS(words) - words[0].BeginTS
+		return findEndTS(words) - startTime(words)
 	} else {
 		return 0.0
 	}

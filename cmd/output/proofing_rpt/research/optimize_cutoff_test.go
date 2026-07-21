@@ -40,7 +40,7 @@ func TestOptimizeCutoff(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	found := testByAccuracy(words, 0.636)
+	found := testByAccuracy(words, 0.3242)
 	//found := testVersesByMinimum(words, 0.188)
 	//found := testVersesByAverage(words, 0.4)
 	//found := testVerseByProduct(words, 0.3)
@@ -54,12 +54,14 @@ func readErrorFile() []Error {
 	content, _ := os.ReadFile("N2QAEBSP.txt")
 	var errors []Error
 	for line := range strings.SplitSeq(string(content), "\n") {
-		parts := strings.Split(line, "\t")
-		var e Error
-		e.ref = parts[0]
-		e.words, _ = strconv.Atoi(parts[1])
-		e.total, _ = strconv.Atoi(parts[2])
-		errors = append(errors, e)
+		if !strings.HasPrefix(line, "#") {
+			parts := strings.Split(line, "\t")
+			var e Error
+			e.ref = parts[0]
+			e.words, _ = strconv.Atoi(parts[1])
+			e.total, _ = strconv.Atoi(parts[2])
+			errors = append(errors, e)
+		}
 	}
 	return errors
 }

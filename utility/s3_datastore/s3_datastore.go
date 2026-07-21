@@ -111,10 +111,14 @@ func (t S3Client) ListPrefixes(bucket, prefix string) ([]string, *log.Status) {
 }
 
 func (t S3Client) PutString(bucket string, key string, content string) *log.Status {
+	mimeType := "text/plain"
+	disposition := "inline"
 	input := &s3.PutObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-		Body:   strings.NewReader(content),
+		Bucket:             &bucket,
+		Key:                &key,
+		Body:               strings.NewReader(content),
+		ContentType:        &mimeType,
+		ContentDisposition: &disposition,
 	}
 	_, err := t.Client.PutObject(t.ctx, input)
 	if err != nil {
@@ -123,18 +127,34 @@ func (t S3Client) PutString(bucket string, key string, content string) *log.Stat
 	return nil
 }
 
-func (t S3Client) PutFile(bucket string, key string, filePath string) *log.Status {
+func (t S3Client) PutFile(bucket string, key string, filePath string, mimeType string, inline bool) *log.Status {
 	var status *log.Status
 	file, err := os.Open(filePath)
 	if err != nil {
 		return log.Error(t.ctx, 500, err, "Error opening file: ", filePath, "to upload to S3.")
 	}
 	defer file.Close()
-	_, err = t.Client.PutObject(t.ctx, &s3.PutObjectInput{
-		Bucket: &bucket,
-		Key:    &key,
-		Body:   file,
-	})
+	if mimeType != "" {
+		var disposition string
+		if inline {
+			disposition = "inline"
+		} else {
+			disposition = "attachment"
+		}
+		_, err = t.Client.PutObject(t.ctx, &s3.PutObjectInput{
+			Bucket:             &bucket,
+			Key:                &key,
+			Body:               file,
+			ContentType:        &mimeType,
+			ContentDisposition: &disposition,
+		})
+	} else {
+		_, err = t.Client.PutObject(t.ctx, &s3.PutObjectInput{
+			Bucket: &bucket,
+			Key:    &key,
+			Body:   file,
+		})
+	}
 	if err != nil {
 		status = log.Error(t.ctx, 500, err, "Error uploading file to S3 key:", key)
 	}

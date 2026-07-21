@@ -1,0 +1,23 @@
+name = "presign-worker"
+main = "presign-worker.js"
+compatibility_date = "2026-07-01"
+
+# Route the Worker on the SAME hostname as your app so reviewer login cookies
+# are same-origin and Cloudflare Access can inject the identity JWT.
+# Protect this route (or /api/*) with an Access self-hosted application.
+routes = [
+  { pattern = "qa.arti.example/api/presign-batch", zone_name = "arti.example" }
+]
+
+[vars]
+R2_ACCOUNT_ID    = "your-account-id"
+R2_BUCKET        = "your-bucket"
+ALLOWED_ORIGIN   = "https://qa.arti.example"
+ACCESS_TEAM_DOMAIN = "yourteam.cloudflareaccess.com"
+ACCESS_AUD       = "your-access-application-audience-tag"
+# Optional extra gate; usually redundant with the Access policy:
+# ALLOWED_EMAILS = "reviewer1@example.org,reviewer2@example.org"
+
+# Secrets — set with `wrangler secret put NAME` (NOT in this file):
+#   wrangler secret put R2_ACCESS_KEY_ID
+#   wrangler secret put R2_SECRET_ACCESS_KEY

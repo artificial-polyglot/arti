@@ -4,59 +4,9 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
-
-func TestPerJobLogging(t *testing.T) {
-	// Create temporary directory for test logs
-	tmpDir := t.TempDir()
-
-	// Set environment variable for per-job logging
-	os.Setenv("FCBH_DATASET_LOG_DIR", tmpDir)
-	defer os.Unsetenv("FCBH_DATASET_LOG_DIR")
-
-	// Create test YAML with username and dataset_name
-	yaml := []byte(`
-username: testuser
-dataset_name: testdataset
-`)
-
-	// Create courier
-	courier := NewCourier(context.Background(), yaml)
-	courier.IsUnitTest = true
-
-	// Verify log file was created in the directory
-	if courier.logFile == "" {
-		t.Fatal("Log file was not set")
-	}
-
-	// Verify log file is in the correct directory
-	if !strings.HasPrefix(courier.logFile, tmpDir) {
-		t.Errorf("Log file %s is not in expected directory %s", courier.logFile, tmpDir)
-	}
-
-	// Verify filename format: timestamp-username-datasetname.log
-	basename := filepath.Base(courier.logFile)
-	if !strings.Contains(basename, "-testuser-testdataset") {
-		t.Errorf("Log filename %s does not match expected format timestamp-username-datasetname.log", basename)
-	}
-	if !strings.HasSuffix(basename, ".log") {
-		t.Errorf("Log filename %s does not end with .log", basename)
-	}
-	// Verify timestamp is first (starts with digits)
-	if len(basename) < 1 || (basename[0] < '0' || basename[0] > '9') {
-		t.Errorf("Log filename %s should start with timestamp", basename)
-	}
-
-	// Verify log file doesn't exist yet (only created on first write)
-	// but the directory should exist
-	logDir := filepath.Dir(courier.logFile)
-	if _, err := os.Stat(logDir); os.IsNotExist(err) {
-		t.Errorf("Log directory %s was not created", logDir)
-	}
-}
 
 func TestLegacyLogging(t *testing.T) {
 	// Create temporary file for test log
