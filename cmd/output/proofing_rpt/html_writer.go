@@ -83,7 +83,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
 	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 30px; width=90%">
-		<span><input type="number" id="accuracyCutoff" min="0" step="0.01" style="width: 40px;" value=0.45><label for="accuracyCutoff"> Accuracy Cutoff</label></span>
+		<span><input type="number" id="accuracyCutoff" min="0" step="0.01" style="width: 40px;" value=0.65><label for="accuracyCutoff"> Accuracy Cutoff</label></span>
 		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
 		<span><input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label></span>
 		<span><select id="playSpeed">
@@ -99,7 +99,9 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
     <thead>
     <tr>
         <th>Line</th>
-		<th>Accuracy</th
+		<th>Accuracy</th>
+		<th>Start</th>
+		<th>Duration</th>
 		<th>Button</th>
         <th>Ref</th>
 		<th>Source Text</th>
@@ -114,14 +116,16 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 	_, _ = h.out.WriteString("<tr>\n")
 	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
-	h.writeCell(strconv.FormatFloat(h.computeAccuracy(words), 'f', 3, 64))
+	h.writeCell(strconv.FormatFloat(ComputeAccuracy(words), 'f', 3, 64))
+	h.writeCell(strconv.FormatFloat(startTime(words), 'f', 3, 64))
+	h.writeCell(strconv.FormatFloat(duration(words), 'f', 3, 64))
 	var params []string
 	params = append(params, "this")
 	signedURL := h.s3Client.SignAudioURL(baseURL, verse.AudioFile)
 	params = append(params, "'"+signedURL+"'")
 	params = append(params, strconv.FormatFloat(words[0].BeginTS, 'f', 4, 64))
-	params = append(params, strconv.FormatFloat(h.findEndTS(words), 'f', 4, 64))
-	h.writeCell("<button title=\"" + h.minSecFormat(words[0].BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
+	params = append(params, strconv.FormatFloat(findEndTS(words), 'f', 4, 64))
+	h.writeCell("<button title=\"" + minSecFormat(words[0].BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
 	h.writeCell(verse.Ref.Description())
 	_, _ = h.out.WriteString(`<td>`)
 	var span string
@@ -129,17 +133,17 @@ func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 		if wd.Ttype != "W" {
 			span = wd.Word
 		} else if wd.Word == wd.URoman && wd.Opacity == 0 {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f>%s</span>`,
-				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word)
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f>%s</span>`,
+				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word)
 		} else if wd.Word == wd.URoman {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Word)
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
+				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Word)
 		} else if wd.Opacity == 0 {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s">%s</span>`,
-				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Word)
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s">%s</span>`,
+				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Word)
 		} else {
-			span = fmt.Sprintf(`<span id="w-%d" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Opacity, wd.Word)
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
+				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Opacity, wd.Word)
 		}
 		_, _ = h.out.WriteString(span)
 		//if wd.Ttype == "W" && wd.FaScore < FA_SCORE_CUTOFF {
@@ -193,7 +197,7 @@ func (h *HTMLWriter) WriteEnd() {
     $(document).ready(function() {
         var table = $('#diffTable').DataTable({
             "columnDefs": [
-                { "orderable": false, "targets": [2,4] }
+                { "orderable": false, "targets": [2,3,4,5,6] }
 				// { "visible": false, "targets": [8] }  
             ],
             "pageLength": 50,
@@ -203,7 +207,7 @@ func (h *HTMLWriter) WriteEnd() {
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');
         	if (!hideZeros) return true;
-        	return !data[3].endsWith(":0"); 
+        	return !data[5].endsWith(":0"); 
     	});
 		$('#hideVerse0').prop('checked', true);
 		table.draw();
@@ -299,7 +303,7 @@ function clearHighlight() {
 	_ = h.out.Close()
 }
 
-func (h *HTMLWriter) minSecFormat(duration float64) string {
+func minSecFormat(duration float64) string {
 	if duration > 0.5 {
 		duration -= 0.5
 	} else {
@@ -317,7 +321,7 @@ func (h *HTMLWriter) minSecFormat(duration float64) string {
 	return minStr + delim + secStr
 }
 
-func (h *HTMLWriter) findEndTS(words []Word) float64 {
+func findEndTS(words []Word) float64 {
 	for i := len(words) - 1; i >= 0; i-- {
 		if words[i].Ttype == "W" {
 			return words[i].EndTS
@@ -326,14 +330,54 @@ func (h *HTMLWriter) findEndTS(words []Word) float64 {
 	return words[0].EndTS
 }
 
-func (h *HTMLWriter) computeAccuracy(words []Word) float64 {
+func ComputeAccuracy(words []Word) float64 {
 	var sum float64
+	var count int
 	var minimum = 1.0
 	for _, w := range words {
-		sum += w.FaScore
-		if minimum > w.FaScore {
-			minimum = w.FaScore
+		if w.Ttype == "W" {
+			if w.FaScore < minimum {
+				minimum = w.FaScore
+			}
+			sum += w.FaScore
+			count += 1
 		}
 	}
-	return sum/float64(len(words)) + minimum
+	return sum/float64(count*7) + minimum
+}
+
+func minProbability(words []Word) float64 {
+	var minimum = 1.0
+	for _, w := range words {
+		if w.Ttype == "W" {
+			if minimum > w.FaScore {
+				minimum = w.FaScore
+			}
+		}
+	}
+	return minimum
+}
+func avgProbability(words []Word) float64 {
+	var sum float64
+	for _, w := range words {
+		if w.Ttype == "W" {
+			sum += w.FaScore
+		}
+	}
+	return sum / float64(len(words))
+}
+func startTime(words []Word) float64 {
+	for _, w := range words {
+		if w.Ttype == "W" {
+			return w.BeginTS
+		}
+	}
+	return 0.0
+}
+func duration(words []Word) float64 {
+	if len(words) > 0 {
+		return findEndTS(words) - words[0].BeginTS
+	} else {
+		return 0.0
+	}
 }
