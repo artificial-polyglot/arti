@@ -47,9 +47,9 @@ RUN ${BASE}/miniforge3/bin/hf download facebook/mms-1b-all \
 # Create and populate the mms_fa environment
 ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_fa python=3.11
-RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
+RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 120 torchcodec \
+RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile ffmpeg-python sox && \
     ${MMS_FA}/pip install sox && \
@@ -65,9 +65,9 @@ ARG MMS_ADAPTER=${BASE}/miniforge3/envs/mms_adapter/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_adapter python=3.11
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_adapter -c conda-forge pysoundfile ffmpeg-python sox
 RUN ${MMS_ADAPTER}/pip install numpy
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 120 torchcodec \
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ADAPTER}/pip install soundfile
 RUN ${MMS_ADAPTER}/pip install adapters
@@ -81,9 +81,9 @@ ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-pack
 ARG MMS_ASR=${BASE}/miniforge3/envs/mms_asr/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_asr python=3.11
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_asr -c conda-forge pysoundfile ffmpeg-python sox
-RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 120 torch torchaudio \
+RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 120 torchcodec \
+RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ASR}/pip install accelerate
 RUN ${MMS_ASR}/pip install datasets
