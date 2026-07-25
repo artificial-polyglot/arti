@@ -159,7 +159,6 @@ func (p *ProofingRpt) UromanConversion(wordsIn [][]Word, lang string) ([][]Word,
 					return words, status
 				}
 				//uroman = matchCapitalization(word, uroman)
-				uroman = strings.ToLower(uroman)
 				cache[word] = uroman
 			}
 			words[i][j].URoman = uroman
