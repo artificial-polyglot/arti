@@ -1,0 +1,36 @@
+Gary Griswold, Jul 24, 2026
+Some alphabets like Bengala have something called a grapheme,
+which is combined characters, and the two characters can
+appear at the end of one word and the beginning of another.
+So, when splitting words by rune, they get split into the
+two words they are adjacent to, and one becomes an orphan.
+
+The word_parser is not handling this correctly.
+
+One solution would be to abandon the rune finite state logic,
+and opt for strings.Fields(line), which I am told by Claude
+would split correctly, and then extract the punctuation.
+
+Another solution would be to not split on words, but keep
+lines together.
+
+Another solution would be below, which is to use the rune
+logic, but correct it with these tests.
+
+
+
+func isCombining(r rune) bool {
+    return unicode.In(r, unicode.Mn, unicode.Mc)
+}
+
+Then, at the very top of your FSM's per-rune step — before any punctuation/letter/space classification — short-circuit:
+
+go
+for _, r := range input {
+    if isCombining(r) {
+        // glue to current token; do NOT transition, do NOT emit a boundary
+        cur.WriteRune(r)
+        continue
+    }
+    // ... your normal state machine runs only for non-combining runes
+}

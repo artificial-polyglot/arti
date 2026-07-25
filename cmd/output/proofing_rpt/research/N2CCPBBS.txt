@@ -1,0 +1,14 @@
+# This one is a problem, at 0.65 cutoff with 21 pages of differences,
+# only one known error showed up.  But looking at the report, it seems
+# like many others might be errors.
+# Drawing conclusions from this would be very disappointing.
+MAT 9:28 	0318b	3 - absent  0.936 cutoff
+MAT 13:51	0533b	2 - absent  0.875 cutoff
+MAT 15:34	0642b	7 - in my report 0.63 cutoff
+MAT 26:25	1167b	4 - absent 1.053 cutoff
+
+
+MAT 9:28 0.936
+MAT 13:51 0.875
+MAT 15:34 0.63
+MAT 26:25 1.053
