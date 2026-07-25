@@ -14,12 +14,13 @@ def notify(message):
 )
 
 def main():
-    if len(sys.argv) < 2:
-        print("usage: build_request.py <path-to-request.yaml>", file=sys.stderr)
+    if len(sys.argv) < 3:
+        print("usage: build_request.py <app-name> <path-to-request.yaml>", file=sys.stderr)
         sys.exit(1)
-    yaml_path = sys.argv[1]
+    app_name = sys.argv[1]
+    yaml_path = sys.argv[2]
     yaml_file = Path(yaml_path).name
-    if len(sys.argv) == 3:
+    if len(sys.argv) == 4:
         run_local = False
     else:
         run_local = True
@@ -36,7 +37,8 @@ def main():
     payload = {
         "input": {
             "request_yaml": yaml_text,
-            "timeout_minutes": 120
+            "appName": app_name,
+            "timeout_minutes": 1000
         }
     }
 

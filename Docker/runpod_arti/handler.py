@@ -8,11 +8,10 @@ DEFAULT_TIMEOUT = 60
 def handler(job):
     job_input = job["input"]
     request_text = job_input["request_yaml"]
+    appToRun = job_input.get("appName", "/app/runpod_arti")
     timeout = job_input.get("timeout_minutes", DEFAULT_TIMEOUT)
     timeout *= 60  # convert to seconds
 
-    #appToRun = "/app/runpod_arti"
-    appToRun = "/app/qa_align"
     try:
         result = subprocess.run(
             [appToRun, request_text],
