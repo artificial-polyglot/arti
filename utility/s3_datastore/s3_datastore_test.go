@@ -47,13 +47,13 @@ func TestS3Client(t *testing.T) {
 }
 
 func TestPutDirectory(t *testing.T) {
-	const BUCKET = "arti-output"
+	const BUCKET = "arti-input"
 	ctx := context.Background()
 	s3, err := NewS3Client(ctx)
 	if err != nil {
 		t.Error(err)
 	}
-	err = s3.PutDirectory(BUCKET, "LEICA", "/Users/gary/Desktop/Leica")
+	err = s3.PutDirectory("arti-input", "N2XNRPMS", "/Users/gary/arti2/fcbh_data/Kangri N2XNRPMS")
 	if err != nil {
 		t.Error(err)
 	}

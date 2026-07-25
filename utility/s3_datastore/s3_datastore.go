@@ -178,10 +178,28 @@ func (t S3Client) PutDirectory(bucket, prefix, localDir string) *log.Status {
 			status = log.Error(t.ctx, 500, err, "UploadDirectory read file: "+path)
 			return err
 		}
+		var mimeType string
+		var disposition string
+		fileExt := strings.ToLower(filepath.Ext(path))
+		if fileExt == ".sfm" || fileExt == "usx" {
+			mimeType = "text/plain"
+			disposition = "inline"
+		} else if fileExt == ".mp3" || fileExt == ".wav" {
+			mimeType = "audio/mp3"
+			disposition = "inline"
+		} else if fileExt == ".wav" {
+			mimeType = "audio/wav"
+			disposition = "inline"
+		} else {
+			mimeType = "application/octet-stream"
+			disposition = "attachment"
+		}
 		_, err = t.Client.PutObject(t.ctx, &s3.PutObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
-			Body:   bytes.NewReader(data),
+			Bucket:             aws.String(bucket),
+			Key:                aws.String(key),
+			Body:               bytes.NewReader(data),
+			ContentType:        aws.String(mimeType),
+			ContentDisposition: aws.String(disposition),
 		})
 		if err != nil {
 			status = log.Error(t.ctx, 500, err, "UploadDirectory put object: "+key)
