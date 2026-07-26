@@ -10,17 +10,34 @@ import (
 )
 
 /**
-This program reads text scripts from the script table and produces the words table.
-It outputs the text as term types and terms.  The following are the term types:
-W Word: this is whole words, including hypenated words
-P Punctuation: this is single punctuation characters
-S Whitespace: this is exact whitespace, and can be multiple characters.
-V Verse number: {n} or {n}_{n} this is the exact character string as shown.
-While languages might differ, this program needs a consistent way to decide what is a word.
-It assumes that whitespace is always a word delimiter, but a single character of punctuation
-is not a word delimiter.  But, it assumes that multiple characters of punctuation within a word
-is a word delimiter.
+WordParser reads text scripts from the script table and produces the words table.
+It replaces an earlier rune-by-rune implementation (archived in
+xxxtobedeleted/word_parser) that had two problems:
+
+ 1. Malformed input (e.g. a truncated or invalid verse marker) used to be logged
+    and then silently ignored, leaving the finite state machine in a broken loop
+    that kept consuming runes without emitting them. WordParser treats that as a
+    fatal error: tokenizeScriptText returns it immediately and Parse aborts the
+    run without inserting any words, instead of writing partial/wrong output.
+
+ 2. Unicode combining marks (category Mn, Mc, Me) - such as the vowel signs and
+    viramas used in Bengali and other Indic scripts - are not IsLetter, so a rune
+    by rune parse used to treat them as punctuation and split one word into a
+    word/punctuation/word sequence. WordParser always glues a combining mark to
+    whatever token is currently being built.
+
+Output term types:
+W Word: whole words, including internal hyphens/apostrophes and combining marks
+P Punctuation: single punctuation characters
+S Whitespace: a run of one or more whitespace characters
+V Verse number: {n}, or a range such as {n-n}, {n}-{n}, or {n}_{n}, exactly as written
 */
+
+type wordToken struct {
+	ttype    string
+	text     []rune
+	verseNum int // only meaningful when ttype == `V`: the last number in the marker
+}
 
 type WordParser struct {
 	ctx          context.Context
@@ -34,14 +51,69 @@ func NewWordParser(conn db.DBAdapter) WordParser {
 	var w WordParser
 	w.ctx = conn.Ctx
 	w.conn = conn
-	w.wordSeq = 0
-	w.lastScriptId = 0
 	return w
 }
 
 func (w *WordParser) Parse() *log.Status {
+	records, status := w.conn.SelectScripts()
+	if status != nil {
+		return status
+	}
+	for _, rec := range records {
+		tokens, status2 := tokenizeScriptText(w.ctx, rec.ScriptText)
+		if status2 != nil {
+			return status2
+		}
+		var verseNum = rec.VerseNum
+		for _, tok := range tokens {
+			if tok.ttype == `V` {
+				verseNum = tok.verseNum
+			}
+			status2 = w.addWord(rec.ScriptId, verseNum, tok.ttype, tok.text)
+			if status2 != nil {
+				return status2
+			}
+		}
+	}
+	w.conn.DeleteWords()
+	status = w.conn.InsertWords(w.records)
+	w.records = nil
+	return status
+}
+
+func (w *WordParser) addWord(scriptId int, verseNum int, ttype string, text []rune) *log.Status {
+	if w.lastScriptId != scriptId {
+		w.lastScriptId = scriptId
+		w.wordSeq = 0
+	}
+	w.wordSeq += 1
+	if ttype == `` || len(text) == 0 {
+		return log.ErrorNoErr(w.ctx, 500, "Apparent bug in WordParser.addWord: empty ttype or text for script_id:", scriptId)
+	}
+	var rec db.Word
+	rec.ScriptId = scriptId
+	rec.WordSeq = w.wordSeq
+	rec.VerseNum = verseNum
+	rec.TType = ttype
+	rec.Word = string(text)
+	w.records = append(w.records, rec)
+	return nil
+}
+
+// isCombiningMark reports whether r is a Unicode combining mark, i.e. a rune that
+// is always rendered attached to the base rune before it (Mn: nonspacing, Mc:
+// spacing combining, Me: enclosing). Such marks are never a word boundary by
+// themselves - unicode.IsLetter(r) is false for them, so without this check they
+// were being misclassified as punctuation.
+func isCombiningMark(r rune) bool {
+	return unicode.In(r, unicode.Mn, unicode.Mc, unicode.Me)
+}
+
+// tokenizeScriptText splits text into a sequence of W/S/P/V tokens. It is a pure
+// function of its input so it can be tested directly, without a database.
+func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Status) {
 	const (
-		begin = iota + 1
+		begin = iota
 		space
 		word
 		wordPunct
@@ -50,177 +122,197 @@ func (w *WordParser) Parse() *log.Status {
 		endVerseNum
 		nextVerseNum
 	)
-	var label = []string{"", "BEGIN", "SPACE", "WORD", "WORDPUNCT", "VERSENUM", "INVERSENUM", "ENDVERSENUM",
-		"NEXTVERSENUM"}
-	var records, status = w.conn.SelectScripts()
-	if status != nil {
-		return status
+	var tokens = make([]wordToken, 0, 64)
+	var term = make([]rune, 0, 32)
+	var punct rune
+	var verseDigits []rune
+	var verseValue int
+	var state = begin
+
+	flushWord := func() {
+		if len(term) > 0 {
+			tokens = append(tokens, wordToken{ttype: `W`, text: term})
+			term = make([]rune, 0, 32)
+		}
 	}
-	for _, rec := range records {
-		//fmt.Printf("%s %d:%s  %s\n", rec.BookId, rec.ChapterNum, rec.VerseStr, rec.ScriptText)
-		var term = make([]rune, 0, 100) // None
-		var punct rune                  // None
-		var verseStr []rune             // None
-		var state = begin
-		for _, tok := range rec.ScriptText {
-			//fmt.Printf("%s\t%d\t%c\t%d\n", label[state], pos, tok, tok)
+	flushSpace := func() {
+		if len(term) > 0 {
+			tokens = append(tokens, wordToken{ttype: `S`, text: term})
+			term = make([]rune, 0, 32)
+		}
+	}
+	flushVerse := func() {
+		tokens = append(tokens, wordToken{ttype: `V`, text: term, verseNum: verseValue})
+		term = make([]rune, 0, 32)
+	}
+	emitPunct := func(r rune) {
+		tokens = append(tokens, wordToken{ttype: `P`, text: []rune{r}})
+	}
+	parseErr := func(expected string, actual rune) *log.Status {
+		return log.ErrorNoErr(ctx, 500, "Expected", expected, "but found", string(actual), "in", text)
+	}
+
+	for _, tok := range text {
+		if isCombiningMark(tok) {
 			switch state {
-			case begin:
-				if unicode.IsSpace(tok) {
-					term = append(term, tok)
-					state = space
-				} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
-					term = append(term, tok)
-					state = word
-				} else if tok == '{' {
-					term = append(term, tok)
-					state = verseNum
-				} else { // IsPunct
-					w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{tok})
-					term = []rune{} // redundant
-					state = begin
-				}
-			case space:
-				if unicode.IsSpace(tok) {
-					term = append(term, tok)
-				} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
-					w.addWord(rec.ScriptId, rec.VerseNum, `S`, term)
-					term = []rune{tok}
-					state = word
-				} else if tok == '{' {
-					w.addWord(rec.ScriptId, rec.VerseNum, `S`, term)
-					term = []rune{tok}
-					state = verseNum
-				} else { // IsPunct
-					w.addWord(rec.ScriptId, rec.VerseNum, `S`, term)
-					w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{tok})
-					term = []rune{}
-					state = begin
-				}
 			case word:
-				if unicode.IsSpace(tok) {
-					w.addWord(rec.ScriptId, rec.VerseNum, `W`, term)
-					term = []rune{tok}
-					state = space
-				} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
-					term = append(term, tok)
-				} else if tok == '{' {
-					w.addWord(rec.ScriptId, rec.VerseNum, `W`, term)
-					term = []rune{tok}
-					state = verseNum
-				} else { // IsPunct
-					punct = tok
-					state = wordPunct
-				}
+				term = append(term, tok)
 			case wordPunct:
-				if unicode.IsSpace(tok) {
-					w.addWord(rec.ScriptId, rec.VerseNum, `W`, term)
-					w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{punct})
-					punct = -1
-					term = []rune{tok}
-					state = space
-				} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
-					term = append(term, punct)
-					term = append(term, tok)
-					punct = -1
-					state = word
-				} else { // IsPunct
-					w.addWord(rec.ScriptId, rec.VerseNum, `W`, term)
-					w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{punct})
-					w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{tok})
-					term = []rune{}
-					state = begin
-				}
-			case verseNum:
-				if unicode.IsDigit(tok) {
-					term = append(term, tok)
-					verseStr = []rune{tok}
-					state = inVerseNum
-				} else {
-					w.logError("number", tok)
-				}
-			case inVerseNum:
-				if unicode.IsDigit(tok) {
-					term = append(term, tok)
-					verseStr = append(verseStr, tok)
-				} else if tok == '}' {
-					term = append(term, tok)
-					rec.VerseNum, _ = strconv.Atoi(string(verseStr))
-					verseStr = []rune{}
-					state = endVerseNum
-				} else {
-					w.logError("number or }", tok)
-				}
-			case endVerseNum:
-				if tok == '_' {
-					term = append(term, tok)
-					state = nextVerseNum
-				} else if unicode.IsSpace(tok) {
-					w.addWord(rec.ScriptId, rec.VerseNum, `V`, term)
-					term = []rune{tok}
-					state = space
-				} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
-					w.addWord(rec.ScriptId, rec.VerseNum, `V`, term)
-					term = []rune{tok}
-					state = word
-				} else { // IsPunct
-					w.addWord(rec.ScriptId, rec.VerseNum, `V`, term)
-					w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{tok})
-					term = []rune{}
-					state = begin
-				}
-			case nextVerseNum:
-				if tok == '{' {
-					term = append(term, tok)
-					state = inVerseNum
-				} else {
-					w.logError("{", tok)
-				}
-			default:
-				return log.ErrorNoErr(w.ctx, 500, "unknown state", label[state])
+				term = append(term, punct, tok)
+				punct = 0
+				state = word
+			case begin:
+				term = append(term, tok)
+				state = word
+			case space:
+				flushSpace()
+				term = append(term, tok)
+				state = word
+			default: // verseNum, inVerseNum, endVerseNum, nextVerseNum
+				return nil, parseErr("a verse number digit, '{', '}', '-' or '_'", tok)
 			}
+			continue
 		}
-		if len(term) > 0 && term[0] != -1 {
-			var first = term[0]
-			if unicode.IsSpace(first) {
-				w.addWord(rec.ScriptId, rec.VerseNum, `S`, term)
-			} else if unicode.IsLetter(first) || unicode.IsNumber(first) {
-				w.addWord(rec.ScriptId, rec.VerseNum, `W`, term)
-			} else { // IsPunct
-				w.addWord(rec.ScriptId, rec.VerseNum, `P`, term)
+		switch state {
+		case begin:
+			if unicode.IsSpace(tok) {
+				term = append(term, tok)
+				state = space
+			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
+				term = append(term, tok)
+				state = word
+			} else if tok == '{' {
+				term = append(term, tok)
+				state = verseNum
+			} else { // punctuation
+				emitPunct(tok)
 			}
+		case space:
+			if unicode.IsSpace(tok) {
+				term = append(term, tok)
+			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
+				flushSpace()
+				term = append(term, tok)
+				state = word
+			} else if tok == '{' {
+				flushSpace()
+				term = append(term, tok)
+				state = verseNum
+			} else { // punctuation
+				flushSpace()
+				emitPunct(tok)
+				state = begin
+			}
+		case word:
+			if unicode.IsSpace(tok) {
+				flushWord()
+				term = append(term, tok)
+				state = space
+			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
+				term = append(term, tok)
+			} else if tok == '{' {
+				flushWord()
+				term = append(term, tok)
+				state = verseNum
+			} else { // possible mid-word punctuation, e.g. hyphen or apostrophe
+				punct = tok
+				state = wordPunct
+			}
+		case wordPunct:
+			if unicode.IsSpace(tok) {
+				flushWord()
+				emitPunct(punct)
+				punct = 0
+				term = append(term, tok)
+				state = space
+			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
+				term = append(term, punct, tok)
+				punct = 0
+				state = word
+			} else if tok == '{' {
+				flushWord()
+				emitPunct(punct)
+				punct = 0
+				term = append(term, tok)
+				state = verseNum
+			} else { // a second punctuation mark: the first one does not join the word
+				flushWord()
+				emitPunct(punct)
+				punct = 0
+				emitPunct(tok)
+				state = begin
+			}
+		case verseNum: // just consumed '{', a digit must come next
+			if unicode.IsDigit(tok) {
+				term = append(term, tok)
+				verseDigits = []rune{tok}
+				state = inVerseNum
+			} else {
+				return nil, parseErr("a digit after '{'", tok)
+			}
+		case inVerseNum:
+			if unicode.IsDigit(tok) {
+				term = append(term, tok)
+				verseDigits = append(verseDigits, tok)
+			} else if tok == '}' {
+				term = append(term, tok)
+				verseValue, _ = strconv.Atoi(string(verseDigits))
+				verseDigits = nil
+				state = endVerseNum
+			} else if tok == '-' || tok == '_' {
+				// a range within a single marker, e.g. {10-11}: start over on the
+				// digits of the second number so verseValue ends up holding it
+				term = append(term, tok)
+				verseDigits = nil
+			} else {
+				return nil, parseErr("a digit, '-', '_' or '}'", tok)
+			}
+		case endVerseNum: // just closed '}', may be followed by a range separator
+			if tok == '-' || tok == '_' {
+				term = append(term, tok)
+				state = nextVerseNum
+			} else if unicode.IsSpace(tok) {
+				flushVerse()
+				term = append(term, tok)
+				state = space
+			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
+				flushVerse()
+				term = append(term, tok)
+				state = word
+			} else if tok == '{' {
+				flushVerse()
+				term = append(term, tok)
+				state = verseNum
+			} else { // punctuation
+				flushVerse()
+				emitPunct(tok)
+				state = begin
+			}
+		case nextVerseNum: // just consumed the range separator, '{' must come next
+			if tok == '{' {
+				term = append(term, tok)
+				state = inVerseNum
+			} else {
+				return nil, parseErr("'{' after range separator", tok)
+			}
+		default:
+			return nil, log.ErrorNoErr(ctx, 500, "tokenizeScriptText: unknown state", state)
 		}
-		if state == wordPunct && punct != -1 {
-			w.addWord(rec.ScriptId, rec.VerseNum, `P`, []rune{punct})
-		}
 	}
-	w.conn.DeleteWords()
-	status = w.conn.InsertWords(w.records)
-	w.records = []db.Word{}
-	return status
-}
-
-func (w *WordParser) addWord(scriptId int, verseNum int, ttype string, text []rune) *log.Status {
-	var status *log.Status
-	if w.lastScriptId != scriptId {
-		w.lastScriptId = scriptId
-		w.wordSeq = 0
+	switch state {
+	case word:
+		flushWord()
+	case wordPunct:
+		flushWord()
+		emitPunct(punct)
+	case space:
+		flushSpace()
+	case endVerseNum:
+		flushVerse()
+	case begin:
+		// nothing pending
+	default: // verseNum, inVerseNum, nextVerseNum: a verse marker was left unclosed
+		return nil, log.ErrorNoErr(ctx, 500, "tokenizeScriptText: text ended inside an unterminated verse number", text)
 	}
-	w.wordSeq += 1
-	if ttype == `` || len(text) == 0 { // or rec.VerseNum == None:
-		return log.ErrorNoErr(w.ctx, 500, 0, "Apparent bug in addWord: empty ttype or text for script_id:", scriptId)
-	}
-	//fmt.Println("seq: ", w.wordSeq, " verse: ", verseNum, " type: ", ttype, " word: ", string(text))
-	var rec db.Word
-	rec.ScriptId = scriptId
-	rec.WordSeq = w.wordSeq
-	rec.VerseNum = verseNum
-	rec.TType = ttype
-	rec.Word = string(text)
-	w.records = append(w.records, rec)
-	return status
-}
-
-func (w *WordParser) logError(expected string, actual rune) *log.Status {
-	return log.ErrorNoErr(w.ctx, 500, "Expected: ", expected, ", but found: ", string(actual))
+	return tokens, nil
 }

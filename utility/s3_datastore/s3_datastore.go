@@ -190,6 +190,9 @@ func (t S3Client) PutDirectory(bucket, prefix, localDir string) *log.Status {
 		} else if fileExt == ".wav" {
 			mimeType = "audio/wav"
 			disposition = "inline"
+		} else if fileExt == ".json" {
+			mimeType = "application/json"
+			disposition = "inline"
 		} else {
 			mimeType = "application/octet-stream"
 			disposition = "attachment"

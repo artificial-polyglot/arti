@@ -94,8 +94,9 @@ func TestDownloadFile(t *testing.T) {
 
 func TestDownloadFileTree(t *testing.T) {
 	bucket := "arti-output"
-	prefix := "GaryNTest/N2QAEBSP/qa_align/00004"
-	localDir := filepath.Join(os.Getenv("HOME"), "Downloads", "qa_align_00004")
+	//prefix := "mms_adapters/qae/processor_qae"
+	prefix := "GaryNTest/N2XNRPMS/arti/00005"
+	localDir := filepath.Join(os.Getenv("HOME"), "Downloads", "N2XNRPMS_5")
 	ctx := context.Background()
 	s3, err := NewS3Client(ctx)
 	if err != nil {
