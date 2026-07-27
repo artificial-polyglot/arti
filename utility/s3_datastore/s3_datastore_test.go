@@ -84,8 +84,8 @@ func TestDownloadFile(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	outputFile := filepath.Join(os.Getenv("HOME"), "Downloads", "N2QAEBSP_fa_00001.db")
-	err1 := s3.DownloadFile(BUCKET, "GaryNTest/N2QAEBSP/arti/00001/database/N2QAEBSP.db",
+	outputFile := filepath.Join(os.Getenv("HOME"), "Downloads", "N2XNRPMS_arti_00006.log")
+	err1 := s3.DownloadFile(BUCKET, "GaryNTest/N2XNRPMS/arti/00006/log/arti.log",
 		outputFile)
 	if err1 != nil {
 		t.Error(err1)

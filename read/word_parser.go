@@ -31,6 +31,12 @@ W Word: whole words, including internal hyphens/apostrophes and combining marks
 P Punctuation: single punctuation characters
 S Whitespace: a run of one or more whitespace characters
 V Verse number: {n}, or a range such as {n-n}, {n}-{n}, or {n}_{n}, exactly as written
+
+Some Vessel Text scripts (e.g. Kangri N2XNRPMS) also wrap proper names in curly
+braces, such as {अब्राह़म}, to flag them for the narrator - a convention
+unrelated to verse numbers. tokenizeScriptText only treats '{' as the start of
+a verse marker when a digit immediately follows; otherwise the '{' is emitted
+as ordinary punctuation and the following rune starts a new token normally.
 */
 
 type wordToken struct {
@@ -119,6 +125,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 		wordPunct
 		verseNum
 		inVerseNum
+		verseSuffix
 		endVerseNum
 		nextVerseNum
 	)
@@ -151,6 +158,24 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 	parseErr := func(expected string, actual rune) *log.Status {
 		return log.ErrorNoErr(ctx, 500, "Expected", expected, "but found", string(actual), "in", text)
 	}
+	// beginToken classifies tok as if the tokenizer were starting fresh (state
+	// begin) and returns the resulting state. It is shared by the begin state
+	// and by the verseNum state's fallback when '{' turns out not to open a
+	// verse marker.
+	beginToken := func(tok rune) int {
+		if unicode.IsSpace(tok) {
+			term = append(term, tok)
+			return space
+		} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
+			term = append(term, tok)
+			return word
+		} else if tok == '{' {
+			term = append(term, tok)
+			return verseNum
+		}
+		emitPunct(tok)
+		return begin
+	}
 
 	for _, tok := range text {
 		if isCombiningMark(tok) {
@@ -168,25 +193,25 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				flushSpace()
 				term = append(term, tok)
 				state = word
-			default: // verseNum, inVerseNum, endVerseNum, nextVerseNum
+			case verseNum:
+				// Not a verse marker after all: '{' followed directly by a
+				// combining mark can't be a digit, so it's the same
+				// non-verse-marker case as beginToken's fallback.
+				term = term[:0]
+				emitPunct('{')
+				term = append(term, tok)
+				state = word
+			case verseSuffix:
+				// glue to the suffix letter, e.g. a combining mark on {31ख}
+				term = append(term, tok)
+			default: // inVerseNum, endVerseNum, nextVerseNum
 				return nil, parseErr("a verse number digit, '{', '}', '-' or '_'", tok)
 			}
 			continue
 		}
 		switch state {
 		case begin:
-			if unicode.IsSpace(tok) {
-				term = append(term, tok)
-				state = space
-			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
-				term = append(term, tok)
-				state = word
-			} else if tok == '{' {
-				term = append(term, tok)
-				state = verseNum
-			} else { // punctuation
-				emitPunct(tok)
-			}
+			state = beginToken(tok)
 		case space:
 			if unicode.IsSpace(tok) {
 				term = append(term, tok)
@@ -248,7 +273,12 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				verseDigits = []rune{tok}
 				state = inVerseNum
 			} else {
-				return nil, parseErr("a digit after '{'", tok)
+				// Not a verse marker after all - e.g. a proper name flagged for
+				// the narrator as {Name}. Treat the '{' as ordinary punctuation
+				// and reprocess tok as if starting fresh.
+				term = term[:0]
+				emitPunct('{')
+				state = beginToken(tok)
 			}
 		case inVerseNum:
 			if unicode.IsDigit(tok) {
@@ -264,8 +294,23 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				// digits of the second number so verseValue ends up holding it
 				term = append(term, tok)
 				verseDigits = nil
+			} else if unicode.IsLetter(tok) {
+				// a split-verse suffix, e.g. {6a} or the Kangri script's {31ख}:
+				// the letter doesn't change verseValue, just tags along in term
+				verseValue, _ = strconv.Atoi(string(verseDigits))
+				term = append(term, tok)
+				state = verseSuffix
 			} else {
-				return nil, parseErr("a digit, '-', '_' or '}'", tok)
+				return nil, parseErr("a digit, letter, '-', '_' or '}'", tok)
+			}
+		case verseSuffix:
+			if tok == '}' {
+				term = append(term, tok)
+				state = endVerseNum
+			} else if unicode.IsLetter(tok) {
+				term = append(term, tok)
+			} else {
+				return nil, parseErr("a letter or '}'", tok)
 			}
 		case endVerseNum: // just closed '}', may be followed by a range separator
 			if tok == '-' || tok == '_' {
