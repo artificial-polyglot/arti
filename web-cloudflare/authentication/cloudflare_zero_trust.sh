@@ -3,8 +3,8 @@
 set -euo pipefail
 
 : "${CLOUDFLARE_API_TOKEN:?set your API token (needs Access: Apps and Policies Write)}"
-ACCOUNT_ID="your-account-id"      # <-- fill in
-APP_DOMAIN="arti.example.com"     # <-- your Pages/Workers hostname
+ACCOUNT_ID="ca3b67b775cb8b7bb2711989117ee5ba"
+APP_DOMAIN="arti-viewer.gary-ca3.workers.dev"     # <-- your Pages/Workers hostname
 
 curl "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/apps" \
  --request POST \
