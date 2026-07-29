@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ type HTMLWriter struct {
 	ctx         context.Context
 	datasetName string
 	s3Client    s3_datastore.S3Client
+	cutoff      float64
 	out         *os.File
 }
 
@@ -37,6 +39,7 @@ func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, baseU
 	languageISO string, asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
+	h.cutoff = computeCutoff(records)
 	switch asr {
 	case request.SpeechToText{MMS: true}:
 		model = "Model: MMS"
@@ -83,7 +86,8 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
 	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 30px; width=90%">
-		<span><input type="number" id="accuracyCutoff" min="0" step="0.01" style="width: 40px;" value=0.65><label for="accuracyCutoff"> Accuracy Cutoff</label></span>
+		<span><input type="number" id="accuracyCutoff" min="0" step="0.01" style="width: 40px;" value="0.01">
+		<label for="accuracyCutoff"> Accuracy Cutoff</label></span>
 		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
 		<span><input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label></span>
 		<span><select id="playSpeed">
@@ -116,7 +120,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 	_, _ = h.out.WriteString("<tr>\n")
 	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
-	h.writeCell(strconv.FormatFloat(ComputeAccuracy(words), 'f', 3, 64))
+	h.writeCell(strconv.FormatFloat(ComputeAccuracy(words, h.cutoff), 'f', 3, 64))
 	h.writeCell(strconv.FormatFloat(startTime(words), 'f', 3, 64))
 	h.writeCell(strconv.FormatFloat(duration(words), 'f', 3, 64))
 	var params []string
@@ -202,7 +206,7 @@ func (h *HTMLWriter) WriteEnd() {
             ],
             "pageLength": 50,
             "lengthMenu": [[50, 500, -1], [50, 500, "All"]],
-			"order": [[ 1, "asc" ]]
+			"order": [[ 1, "desc" ]]
         });
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');
@@ -227,7 +231,7 @@ func (h *HTMLWriter) WriteEnd() {
 			if (isNaN(cutoff)) return true;          // empty/invalid → show all
 			var accuracy = parseFloat(data[1]);      // column 1 = Accuracy
 			if (isNaN(accuracy)) return true;        // non-numeric cell → don't filter
-			return accuracy <= cutoff;               // keep at/below cutoff, drop above
+			return accuracy >= cutoff;               // keep at/below cutoff, drop above
 		});
 		table.draw();
 		$('#accuracyCutoff').on('change', function() {
@@ -330,42 +334,42 @@ func findEndTS(words []Word) float64 {
 	return words[0].EndTS
 }
 
-func ComputeAccuracy(words []Word) float64 {
-	var sum float64
-	var count int
+func ComputeAccuracy(words []Word, cutoff float64) float64 {
+	var numWords float64
+	var numBelow float64
 	var minimum = 1.0
 	for _, w := range words {
 		if w.Ttype == "W" {
+			numWords += 1.0
 			if w.FaScore < minimum {
 				minimum = w.FaScore
 			}
-			sum += w.FaScore
-			count += 1
-		}
-	}
-	return sum/float64(count*7) + minimum
-}
-
-func minProbability(words []Word) float64 {
-	var minimum = 1.0
-	for _, w := range words {
-		if w.Ttype == "W" {
-			if minimum > w.FaScore {
-				minimum = w.FaScore
+			if w.FaScore < cutoff {
+				numBelow += 1.0
 			}
 		}
 	}
-	return minimum
+	pctBelow := numBelow / numWords
+	invMin := 1.0 - minimum
+	score := pctBelow * invMin
+	return score
 }
-func avgProbability(words []Word) float64 {
-	var sum float64
-	for _, w := range words {
-		if w.Ttype == "W" {
-			sum += w.FaScore
+
+func computeCutoff(words [][]Word) float64 {
+	var faScores []float64
+	for _, verse := range words {
+		for _, w := range verse {
+			if w.Ttype == "W" {
+				faScores = append(faScores, w.FaScore)
+			}
 		}
 	}
-	return sum / float64(len(words))
+	sort.Float64s(faScores)
+	pos := int(float64(len(faScores)) * 0.01)
+	cutoff := faScores[pos]
+	return cutoff
 }
+
 func startTime(words []Word) float64 {
 	for _, w := range words {
 		if w.Ttype == "W" {

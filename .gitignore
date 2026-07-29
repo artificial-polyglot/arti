@@ -14,6 +14,8 @@ user-data.sh
 test_data/*
 venv/
 **/venv/
+.wrangler/
+**/.wrangler/
 
 build-ami/user-data-base64.txt
 build-ami/secrets*.*

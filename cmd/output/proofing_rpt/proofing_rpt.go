@@ -37,6 +37,7 @@ type Verse struct {
 }
 
 const FA_SCORE_CUTOFF = 1.0
+const OPACITY_CUTOFF = 0.5
 
 type ProofingRpt struct {
 	ctx         context.Context
@@ -69,7 +70,7 @@ func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, string, *log.Status)
 	}
 	log.Info(p.ctx, "Uroman duration", time.Since(start))
 	result = words
-	p.computeOpacity(result, FA_SCORE_CUTOFF)
+	p.computeOpacity(result, OPACITY_CUTOFF)
 	verses, status = p.findVerseReferences(result)
 	if status != nil {
 		return result, verses, baseURL, status
@@ -85,7 +86,7 @@ func (p *ProofingRpt) SelectWords(cutoff float64) ([][]Word, *log.Status) {
     WHERE w.script_id IN (
        SELECT DISTINCT w2.script_id
        FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
-       WHERE q2.fa_score < :cutoff )
+       WHERE q2.fa_score <= :cutoff )
     ORDER BY w.word_id`
 	rows, err := p.conn.DB.Query(query, sql.Named("cutoff", cutoff))
 	if err != nil {
@@ -180,11 +181,11 @@ func matchCapitalization(source, target string) string {
 	return target
 }
 
-func (p *ProofingRpt) computeOpacity(lines [][]Word, faErrorCutoff float64) {
+func (p *ProofingRpt) computeOpacity(lines [][]Word, opacityCutoff float64) {
 	for i := range lines {
 		for j := range lines[i] {
-			if lines[i][j].FaScore < FA_SCORE_CUTOFF {
-				lines[i][j].Opacity = 1.0 - lines[i][j].FaScore
+			if lines[i][j].FaScore < opacityCutoff {
+				lines[i][j].Opacity = 1.0 - lines[i][j].FaScore/opacityCutoff
 			}
 		}
 	}
