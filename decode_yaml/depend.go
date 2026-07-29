@@ -53,13 +53,13 @@ func (r *RequestDecoder) Depend(req request.Request) {
 			if !req.Timestamps.MMSAlign {
 				r.errors = append(r.errors, `AudioProof is requested, but there is no mms_align`)
 			}
-			if !req.SpeechToText.MMS {
-				r.errors = append(r.errors, `AudioProof is requested, but there is no MMS_ASR`)
-			}
-		} else {
-			if req.AudioProof.BaseDataset == "" {
-				r.errors = append(r.errors, `AudioProof is requested on existing dataset, but there is no BaseDataset`)
-			}
-		}
+			//if !req.SpeechToText.MMS {
+			//	r.errors = append(r.errors, `AudioProof is requested, but there is no MMS_ASR`)
+			//}
+		} //else {
+		//	if req.AudioProof.BaseDataset == "" {
+		//		r.errors = append(r.errors, `AudioProof is requested on existing dataset, but there is no BaseDataset`)
+		//	}
+		//}
 	}
 }

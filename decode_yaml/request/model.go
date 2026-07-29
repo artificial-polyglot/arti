@@ -326,8 +326,8 @@ type TextEncoding struct {
 }
 
 type AudioProof struct {
-	HTMLReport  bool   `yaml:"html_report,omitempty"`
-	BaseDataset string `yaml:"base_dataset,omitempty"`
+	HTMLReport bool `yaml:"html_report,omitempty"`
+	//BaseDataset string `yaml:"base_dataset,omitempty"`
 }
 
 type Compare struct {

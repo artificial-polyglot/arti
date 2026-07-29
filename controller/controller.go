@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
+	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
 	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml"
@@ -14,7 +16,6 @@ import (
 	"github.com/artificial-polyglot/arti/fetch"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/match/align"
 	"github.com/artificial-polyglot/arti/match/diff"
 	"github.com/artificial-polyglot/arti/mms"
 	"github.com/artificial-polyglot/arti/mms/adapter"
@@ -222,7 +223,7 @@ func (c *Controller) processSteps() *log.Status {
 	//if !c.req.TextData.NoText &&
 	if !c.req.SpeechToText.NoSpeechToText {
 		c.req.Compare.BaseDataset = c.database.Project
-		c.req.AudioProof.BaseDataset = c.database.Project // ? should there be one BaseDataset ?
+		//c.req.AudioProof.BaseDataset = c.database.Project // ? should there be one BaseDataset ?
 		// This makes a copy of database, and closes it.  Names the new database *_audio, and returns new
 		c.database, status = c.database.CopyDatabase(`_audio`)
 		if status != nil {
@@ -261,7 +262,7 @@ func (c *Controller) processSteps() *log.Status {
 	// Audio Proofing
 	if c.req.AudioProof.HTMLReport {
 		log.Info(c.ctx, "Perform audio proof Report.")
-		filename, status = c.audioProofing(audioFiles)
+		filename, status = c.audioProofing()
 		if status != nil {
 			return status
 		}
@@ -276,15 +277,6 @@ func (c *Controller) processSteps() *log.Status {
 		}
 		c.bucket.AddOutput(filename)
 	}
-	// Update DBP Timestamps
-	//if len(c.req.UpdateDBP.Timestamps) > 0 {
-	//	log.Info(c.ctx, "Update DBP timestamps.")
-	//	upd := update.NewUpdateTimestamps(c.ctx, c.req, c.database)
-	//	status = upd.Process()
-	//	if status != nil {
-	//		return status
-	//	}
-	//}
 	// Prepare output
 	log.Info(c.ctx, "Generate output.")
 	if c.req.Output.Sqlite {
@@ -546,28 +538,19 @@ func (c *Controller) encodeText() *log.Status {
 	return status
 }
 
-func (c *Controller) audioProofing(audioFiles []input.InputFile) (string, *log.Status) {
-	// Using audioFiles here should be temporary, once the timestamps are updated with duration
-	// there should be no need for the audio files to be present.
-	var filename string
-	var status *log.Status
-	if len(audioFiles) == 0 {
-		return filename, log.ErrorNoErr(c.ctx, 400, "There are no audio files to AudioProof")
-	}
-	audioDir := audioFiles[0].Directory
-	var textConn db.DBAdapter
-	textConn, status = db.NewerDBAdapter(c.ctx, false, c.req.Username, c.req.AudioProof.BaseDataset)
+func (c *Controller) audioProofing() (string, *log.Status) {
+	_, status := qa_align.Process(c.database)
 	if status != nil {
-		return filename, status
+		return "", status
 	}
-	calc := align.NewAlignSilence(c.ctx, textConn, c.database) // c.database is ASR result
-	faLines, filenameMap, status := calc.Process(audioDir)
+	outputs, status := proofing_rpt.Process(c.database)
 	if status != nil {
-		return filename, status
+		return "", status
 	}
-	writer := align.NewAlignWriter(c.ctx, textConn)
-	filename, status = writer.WriteReport(c.req.DatasetName, faLines, filenameMap)
-	return filename, status
+	if len(outputs) != 1 {
+		return "", log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
+	}
+	return outputs[0].FilePath, nil
 }
 
 func (c *Controller) matchText() (string, *log.Status) {

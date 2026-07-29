@@ -215,6 +215,9 @@ func createQAAlignTables(db *sql.DB) error {
 				end_ts REAL NOT NULL,
 				fa_score REAL NOT NULL,
 				PRIMARY KEY (script_id))`)
+	stmts = append(stmts, "DELETE FROM chars_qa_align")
+	stmts = append(stmts, "DELETE FROM words_qa_align")
+	stmts = append(stmts, "DELETE FROM scripts_qa_align")
 	for _, s := range stmts {
 		_, err := db.Exec(s)
 		if err != nil {

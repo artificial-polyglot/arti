@@ -53,7 +53,7 @@ func TestPutDirectory(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = s3.PutDirectory("arti-input", "N2XNRPMS", "/Users/gary/arti2/fcbh_data/Kangri N2XNRPMS")
+	err = s3.PutDirectory("arti-input", "N2SHNOMF", "/Users/gary/arti2/fcbh_data/Shan N2SHNOMF")
 	if err != nil {
 		t.Error(err)
 	}
