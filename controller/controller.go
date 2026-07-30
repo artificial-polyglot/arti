@@ -52,7 +52,6 @@ func NewController(ctx context.Context, yamlContent []byte) Controller {
 	log.Info(ctx, "Request: ", string(yamlContent))
 	c.yamlRequest = yamlContent
 	c.bucket = courier.NewCourier(ctx, yamlContent)
-	c.bucket.IsUnitTest = false // set to true when testing to make Courier work.
 	return c
 }
 
