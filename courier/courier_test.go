@@ -2,6 +2,7 @@ package courier
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,7 @@ func TestCourier(t *testing.T) {
 	ctx := context.Background()
 	start := time.Now()
 	b := NewCourier(ctx, []byte(runBucketTest))
-	b.IsUnitTest = true
+	IsCourierTest = true
 	if b.username != "GaryNTest" {
 		t.Error("Username should be GaryNTest, it is: ", b.username)
 	}
@@ -54,7 +55,9 @@ func TestCourier(t *testing.T) {
 		NotifyOk:  []string{"gary@shortsands.com"},
 		NotifyErr: []string{"gary.griswold@gmail.com"},
 	}
-	status = b.PersistToBucket(nil)
+	e := errors.New("Sample go err")
+	sampleError := log.Error(ctx, 500, e, "Sample Error")
+	status = b.PersistToBucket(sampleError)
 	if status != nil {
 		t.Fatal(status)
 	}

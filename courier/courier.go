@@ -24,7 +24,6 @@ type model struct {
 
 type Courier struct {
 	ctx         context.Context
-	IsUnitTest  bool // Set to true by run_bucket_test.
 	start       time.Time
 	bucket      string
 	Component   string
@@ -38,6 +37,8 @@ type Courier struct {
 	outputKeys  []string
 	models      []model
 }
+
+var IsCourierTest = false
 
 func NewCourier(ctx context.Context, yaml []byte) Courier {
 	var b Courier
@@ -56,7 +57,7 @@ func NewCourier(ctx context.Context, yaml []byte) Courier {
 
 func (b *Courier) AddLogFile(logPath string) {
 	b.logFile = logPath
-	if !b.IsUnitTest {
+	if !IsCourierTest {
 		err := os.Truncate(logPath, 0)
 		if err != nil {
 			log.Warn(b.ctx, "Failed to truncate log file", err)
@@ -108,7 +109,7 @@ func (b *Courier) GetOutputByExt() []string {
 
 func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 	var allStatus []*log.Status
-	if !testing.Testing() || b.IsUnitTest {
+	if !testing.Testing() || IsCourierTest {
 		client, status := s3_datastore.NewS3Client(b.ctx)
 		if status != nil {
 			return status
@@ -155,7 +156,9 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 				allStatus = append(allStatus, status3)
 			}
 		}
-
+		if runStatus != nil {
+			_, status = b.uploadString(client, run, "status", "Error", runStatus.String())
+		}
 		loc, _ := time.LoadLocation("America/Denver")
 		_, status = b.uploadString(client, run, "runtime", b.start.In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`), "")
 		allStatus = append(allStatus, status)
