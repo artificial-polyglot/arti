@@ -6,7 +6,8 @@
 //   - run_num is zero-padded to 5 digits ("%05d"), e.g. "00012" - callers of
 //     getOutputDetailRows may pass a plain int/string; it gets padded here.
 //   - file_type is always one of: request, log, database, output, runtime,
-//     duration. "Output1..Outputn" is NOT a real subfolder scheme - every
+//     duration, status. status is only uploaded when a run errors out (see
+//     courier.go), so it won't appear for every run. "Output1..Outputn" is NOT a real subfolder scheme - every
 //     output artifact (csv/json/html report, etc.) is uploaded under the same
 //     "output/" file_type, distinguished only by filename, so this Worker
 //     numbers them Output1..OutputN itself (sorted by filename for a stable
@@ -47,6 +48,7 @@ export async function getOutputDetailRows(bucket, username, mediaId, module, run
   rows.push(fileRow("Request", first("request"), true));
   for (const row of numberedRows("Output", byType.get("output") || [], true)) rows.push(row);
   rows.push(fileRow("Log file", first("log"), true));
+  rows.push(fileRow("Status", first("status"), true));
   const databases = byType.get("database") || [];
   if (databases.length > 1) {
     for (const row of numberedRows("Database", databases, false)) rows.push(row);
