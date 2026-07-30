@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml"
 	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
-	"testing"
 )
 
 func TestDefaultStatus(t *testing.T) {
@@ -24,7 +25,7 @@ func TestDefaultStatus(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	//fmt.Println(response)
+	fmt.Println(response)
 }
 
 func TestJSONStatus(t *testing.T) {

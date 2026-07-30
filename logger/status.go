@@ -18,10 +18,13 @@ func (e *Status) Error() string {
 }
 
 // Status implements the Stringer interface
-// Using fmt package here caused stack overflow
+// Using fmt package in this method caused stack overflow
 func (e *Status) String() string {
 	var result = make([]string, 0)
-	result = append(result, ` "message": "`+e.Message+`"`)
-	result = append(result, ` "error": "`+e.Err+`" }`)
-	return strings.Join(result, ",")
+	result = append(result, "Message: "+e.Message)
+	result = append(result, "Error: "+e.Err)
+	if e.Trace != "" {
+		result = append(result, "Trace: "+e.Trace)
+	}
+	return strings.Join(result, "\n")
 }
