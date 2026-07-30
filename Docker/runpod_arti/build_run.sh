@@ -16,7 +16,7 @@ runpodctl template update "42n2voxks5" --image "garyngriswold/runpod_arti:${vers
 curl -d "build ${version} finished" https://ntfy.sh/arti2 \
     -H "Authorization: Bearer ${NTFY_API_TOKEN}"
 sleep 10
-python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2QAEBSP_qa.yaml PROD
+python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2MGUPNG_train.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/qa_align $HOME/arti2/N2XNRPMS_qa.yaml PROD
 #python Docker/runpod_arti/run_request.py "/app/runpod_arti" $HOME/arti2/N2XNRPMS_train.yaml PROD
 curl -d "run pod ${version} finished" https://ntfy.sh/arti2 \

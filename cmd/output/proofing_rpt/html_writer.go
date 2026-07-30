@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +38,6 @@ func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, baseU
 	languageISO string, asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
-	h.cutoff = computeCutoff(records)
 	switch asr {
 	case request.SpeechToText{MMS: true}:
 		model = "Model: MMS"
@@ -86,8 +84,8 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
 	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 30px; width=90%">
-		<span><input type="number" id="accuracyCutoff" min="0" step="0.01" style="width: 40px;" value="0.01">
-		<label for="accuracyCutoff"> Accuracy Cutoff</label></span>
+		<span><input type="number" id="scoreCutoff" min="0" step="0.001" style="width: 60px;" value="0.0001">
+		<label for="scoreCutoff"> Score Cutoff</label></span>
 		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
 		<span><input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label></span>
 		<span><select id="playSpeed">
@@ -103,7 +101,8 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
     <thead>
     <tr>
         <th>Line</th>
-		<th>Accuracy</th>
+		<th>Score</th>
+		<th>Count</th>
 		<th>Start</th>
 		<th>Duration</th>
 		<th>Button</th>
@@ -118,11 +117,12 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 }
 
 func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
-	_, _ = h.out.WriteString("<tr>\n")
+	_, _ = h.out.WriteString("<tr data-fascores=" + getLowFaScores(words) + ">\n")
 	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
-	h.writeCell(strconv.FormatFloat(ComputeAccuracy(words, h.cutoff), 'f', 3, 64))
-	h.writeCell(strconv.FormatFloat(startTime(words), 'f', 3, 64))
-	h.writeCell(strconv.FormatFloat(duration(words), 'f', 3, 64))
+	h.writeCell(strconv.FormatFloat(ComputeMinimum(words), 'f', 4, 64))
+	_, _ = h.out.WriteString(`<td class="lowScoreCount"></td>`)
+	h.writeCell(strconv.FormatFloat(startTime(words), 'f', 2, 64))
+	h.writeCell(strconv.FormatFloat(duration(words), 'f', 2, 64))
 	var params []string
 	params = append(params, "this")
 	signedURL := h.s3Client.SignAudioURL(baseURL, verse.AudioFile)
@@ -150,9 +150,6 @@ func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Opacity, wd.Word)
 		}
 		_, _ = h.out.WriteString(span)
-		//if wd.Ttype == "W" && wd.FaScore < FA_SCORE_CUTOFF {
-		//	_, _ = h.out.WriteString(fmt.Sprintf("(%.2f)", wd.FaScore))
-		//}
 	}
 	_, _ = h.out.WriteString("</td></tr>\n")
 }
@@ -201,17 +198,17 @@ func (h *HTMLWriter) WriteEnd() {
     $(document).ready(function() {
         var table = $('#diffTable').DataTable({
             "columnDefs": [
-                { "orderable": false, "targets": [2,3,4,5,6] }
+                { "orderable": false, "targets": [1,3,4,5,6,7] }
 				// { "visible": false, "targets": [8] }  
             ],
             "pageLength": 50,
             "lengthMenu": [[50, 500, -1], [50, 500, "All"]],
-			"order": [[ 1, "desc" ]]
+			"order": [[ 2, "desc" ]]
         });
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');
         	if (!hideZeros) return true;
-        	return !data[5].endsWith(":0"); 
+        	return !data[6].endsWith(":0"); 
     	});
 		$('#hideVerse0').prop('checked', true);
 		table.draw();
@@ -227,16 +224,29 @@ func (h *HTMLWriter) WriteEnd() {
 		$('#showUroman').on('change', applyUroman);   // user toggles
 		table.on('draw', applyUroman);
 		$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-			var cutoff = parseFloat($('#accuracyCutoff').val());
-			if (isNaN(cutoff)) return true;          // empty/invalid → show all
-			var accuracy = parseFloat(data[1]);      // column 1 = Accuracy
-			if (isNaN(accuracy)) return true;        // non-numeric cell → don't filter
-			return accuracy >= cutoff;               // keep at/below cutoff, drop above
+			var cutoff = parseFloat($('#scoreCutoff').val());
+			if (isNaN(cutoff)) return true;       // empty/invalid → show all
+			var score = parseFloat(data[1]);      // column 1 = Minimum Score
+			if (isNaN(score)) return true;        // non-numeric cell → don't filter
+			return score <= cutoff;               // keep at/below cutoff, drop above
 		});
 		table.draw();
-		$('#accuracyCutoff').on('change', function() {
-			table.draw();
-		});
+		function updateLowCounts() {
+		  var cutoff = parseFloat($('#scoreCutoff').val());
+		  if (isNaN(cutoff)) cutoff = 0;
+		  table.rows().every(function () {
+			var scores = String($(this.node()).data('fascores'))
+						   .split(',')
+						   .map(Number);
+			var n = scores.filter(function (s) { return s < cutoff; }).length;
+			this.cell(this.index(), 2).data(n);   // sets cell + keeps sort correct
+		  });
+		  table.draw(false);          // false = stay on current page
+		}
+    	updateLowCounts();
+    	$('#scoreCutoff').on('change', function () {
+        	updateLowCounts();      // this already calls table.draw(false)
+    	});
 	});
 
 `
@@ -334,40 +344,28 @@ func findEndTS(words []Word) float64 {
 	return words[0].EndTS
 }
 
-func ComputeAccuracy(words []Word, cutoff float64) float64 {
-	var numWords float64
-	var numBelow float64
+func ComputeMinimum(words []Word) float64 {
 	var minimum = 1.0
 	for _, w := range words {
 		if w.Ttype == "W" {
-			numWords += 1.0
 			if w.FaScore < minimum {
 				minimum = w.FaScore
 			}
-			if w.FaScore < cutoff {
-				numBelow += 1.0
-			}
 		}
 	}
-	pctBelow := numBelow / numWords
-	invMin := 1.0 - minimum
-	score := pctBelow * invMin
-	return score
+	return minimum
 }
 
-func computeCutoff(words [][]Word) float64 {
-	var faScores []float64
-	for _, verse := range words {
-		for _, w := range verse {
-			if w.Ttype == "W" {
-				faScores = append(faScores, w.FaScore)
+func getLowFaScores(words []Word) string {
+	var scores []string
+	for _, w := range words {
+		if w.Ttype == "W" {
+			if w.FaScore < 0.2 {
+				scores = append(scores, strconv.FormatFloat(w.FaScore, 'f', 4, 64))
 			}
 		}
 	}
-	sort.Float64s(faScores)
-	pos := int(float64(len(faScores)) * 0.01)
-	cutoff := faScores[pos]
-	return cutoff
+	return strings.Join(scores, ",")
 }
 
 func startTime(words []Word) float64 {
