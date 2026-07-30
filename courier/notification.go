@@ -11,7 +11,7 @@ import (
 
 func (b *Courier) Notification(req request.Request, status *log.Status, duration time.Duration) *log.Status {
 	//var st *log.Status
-	if !testing.Testing() || b.IsUnitTest {
+	if !testing.Testing() || IsCourierTest {
 		var emailRecip []string
 		var ntfyTopics []string
 		var sqsURLS []string
