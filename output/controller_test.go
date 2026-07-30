@@ -3,12 +3,13 @@ package output
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/encode"
 	"github.com/artificial-polyglot/arti/fetch"
 	"github.com/artificial-polyglot/arti/input"
-	"testing"
 )
 
 func TestPrepareScripts(t *testing.T) {
@@ -58,7 +59,7 @@ func prepareTimestampAndFMCCData(conn db.DBAdapter, bibleId string, filesetId st
 	if status != nil {
 		t.Error(status)
 	}
-	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId, testament)
+	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId)
 	if status != nil {
 		t.Error(status)
 	}
