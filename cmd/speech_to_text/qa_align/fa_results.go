@@ -1,12 +1,12 @@
 package qa_align
 
 import (
-	"database/sql"
 	"encoding/json"
-	"fmt"
 	"math"
 	"strings"
 
+	"github.com/artificial-polyglot/arti/db"
+	log "github.com/artificial-polyglot/arti/logger"
 	sa "github.com/artificial-polyglot/arti/utility/sequence_align"
 )
 
@@ -27,28 +27,17 @@ type wordRecord struct {
 // ProcessFAResults receives the JSON char list from the Python FA module,
 // aligns it to the reference words via sequence alignment, inserts rows into
 // charsV2, and updates the words and scripts tables.
-func ProcessFAResults(db *sql.DB, request FARequest, jsonData string) error {
+func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *log.Status {
 	var asrChars []CharResult
 	if err := json.Unmarshal([]byte(jsonData), &asrChars); err != nil {
-		return fmt.Errorf("ProcessFAResults: unmarshal: %w", err)
+		return log.Error(conn.Ctx, 500, err, "ProcessFAResults: unmarshal error")
 	}
-
-	words, err := selectWords(db, request.ScriptId)
-	if err != nil {
-		return err
+	words, status := selectWords(conn, request.ScriptId)
+	if status != nil {
+		return status
 	}
 
 	wordCharSlices := alignToWords(asrChars, words)
-
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("ProcessFAResults: begin tx: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
 
 	var scriptText []string
 	var scriptBegin float64
@@ -63,15 +52,15 @@ func ProcessFAResults(db *sql.DB, request FARequest, jsonData string) error {
 		}
 		var wordText string
 		var wordBegin, wordEnd, wordErrorSum float64
-		wordText, wordBegin, wordEnd, wordErrorSum, err = insertChars(tx, w.wordID, wChars)
-		if err != nil {
-			return err
+		wordText, wordBegin, wordEnd, wordErrorSum, status = insertChars(conn, w.wordID, wChars)
+		if status != nil {
+			return status
 		}
 
 		wordScore := wordErrorSum / float64(len(wChars))
-		err = insertWords(tx, w.wordID, wordText, wordBegin, wordEnd, wordScore)
-		if err != nil {
-			return err
+		status = insertWords(conn, w.wordID, wordText, wordBegin, wordEnd, wordScore)
+		if status != nil {
+			return status
 		}
 
 		scriptText = append(scriptText, wordText)
@@ -89,14 +78,9 @@ func ProcessFAResults(db *sql.DB, request FARequest, jsonData string) error {
 	}
 
 	transcript := strings.Join(scriptText, " ")
-	err = insertScript(tx, request.ScriptId, transcript, scriptBegin, scriptEnd, scriptScore)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("ProcessFAResults: commit: %w", err)
+	status = insertScript(conn, request.ScriptId, transcript, scriptBegin, scriptEnd, scriptScore)
+	if status != nil {
+		return status
 	}
 	return nil
 }
@@ -162,33 +146,31 @@ func alignToWords(asrChars []CharResult, words []wordRecord) [][]sa.TimedChar {
 	return result
 }
 
-func selectWords(db *sql.DB, scriptID int64) ([]wordRecord, error) {
-	rows, err := db.Query(
+func selectWords(conn db.DBAdapter, scriptID int64) ([]wordRecord, *log.Status) {
+	rows, err := conn.DB.Query(
 		`SELECT word_id, lower(word) FROM words WHERE ttype = 'W' AND script_id = ? ORDER BY word_id`,
 		scriptID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("selectWords: %w", err)
+		return nil, log.Error(conn.Ctx, 500, err, "selectWords")
 	}
 	defer rows.Close()
 
 	var words []wordRecord
 	for rows.Next() {
 		var w wordRecord
-		if err := rows.Scan(&w.wordID, &w.word); err != nil {
-			return nil, fmt.Errorf("selectWords: scan: %w", err)
+		if err = rows.Scan(&w.wordID, &w.word); err != nil {
+			return nil, log.Error(conn.Ctx, 500, err, "selectWords: scan")
 		}
 		words = append(words, w)
-		fmt.Print(w)
 	}
-	fmt.Println()
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("selectWords: iterate: %w", err)
+	if err = rows.Err(); err != nil {
+		return nil, log.Error(conn.Ctx, 500, err, "selectWords: iterate")
 	}
 	return words, nil
 }
 
-func createQAAlignTables(db *sql.DB) error {
+func createQAAlignTables(conn db.DBAdapter) *log.Status {
 	var stmts []string
 	stmts = append(stmts, "DROP TABLE IF EXISTS chars_qa_align")
 	stmts = append(stmts, `CREATE TABLE chars_qa_align (
@@ -219,9 +201,9 @@ func createQAAlignTables(db *sql.DB) error {
 	stmts = append(stmts, "DELETE FROM words_qa_align")
 	stmts = append(stmts, "DELETE FROM scripts_qa_align")
 	for _, s := range stmts {
-		_, err := db.Exec(s)
+		_, err := conn.DB.Exec(s)
 		if err != nil {
-			return err // is formatted message needed
+			return log.Error(conn.Ctx, 500, err, "Create qa_align tables") // is formatted message needed
 		}
 	}
 	return nil
@@ -229,12 +211,12 @@ func createQAAlignTables(db *sql.DB) error {
 
 // insertCharsV2 inserts one charsV2 row per char for a single word and returns
 // the word's begin timestamp, end timestamp, and sum of fa_error values.
-func insertChars(tx *sql.Tx, wordId int64, wordChars []sa.TimedChar) (word string, begin, end, errorSum float64, err error) {
-	stmt, err := tx.Prepare(`INSERT INTO chars_qa_align
+func insertChars(conn db.DBAdapter, wordId int64, wordChars []sa.TimedChar) (word string, begin, end, errorSum float64, status *log.Status) {
+	stmt, err := conn.DB.Prepare(`INSERT INTO chars_qa_align
 		 (word_id, seq, char, begin_ts, end_ts, fa_score)
 		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return "", 0, 0, 0, fmt.Errorf("insert chars_qa_align: prepare: %w", err)
+		return "", 0, 0, 0, log.Error(conn.Ctx, 500, err, "insert chars_qa_align: prepare")
 	}
 	defer stmt.Close()
 	begin = wordChars[0].Begin
@@ -242,7 +224,7 @@ func insertChars(tx *sql.Tx, wordId int64, wordChars []sa.TimedChar) (word strin
 	for seq, c := range wordChars {
 		_, err = stmt.Exec(wordId, seq, c.Char, c.Begin, c.End, c.Error)
 		if err != nil {
-			return "", 0, 0, 0, fmt.Errorf("insert chars_qa_align: word_id=%d seq=%d: %w", wordId, seq, err)
+			return "", 0, 0, 0, log.Error(conn.Ctx, 500, err, "insert chars_qa_align: word_id", wordId, seq)
 		}
 		chars = append(chars, c.Char)
 		errorSum += c.Error
@@ -253,26 +235,25 @@ func insertChars(tx *sql.Tx, wordId int64, wordChars []sa.TimedChar) (word strin
 }
 
 // updateWords sets the timing and FA score on one word row.
-func insertWords(tx *sql.Tx, wordId int64, word string, begin, end, score float64) error {
-	_, err := tx.Exec(
+func insertWords(conn db.DBAdapter, wordId int64, word string,
+	begin, end, score float64) *log.Status {
+	_, err := conn.DB.Exec(
 		`INSERT INTO words_qa_align (word_id, word, begin_ts, end_ts, fa_score)
-			VALUES (?,?,?,?,?)`,
-		wordId, word, begin, end, score,
-	)
+			VALUES (?,?,?,?,?)`, wordId, word, begin, end, score)
 	if err != nil {
-		return fmt.Errorf("insert words_qa_align: word_id=%d: %w", wordId, err)
+		return log.Error(conn.Ctx, 500, err, "insert words_qa_align: word_id", wordId)
 	}
 	return nil
 }
 
 // updateScript sets the script-level FA score.
-func insertScript(tx *sql.Tx, scriptId int64, transcript string, begin float64, end float64, score float64) error {
-	_, err := tx.Exec(
+func insertScript(conn db.DBAdapter, scriptId int64, transcript string,
+	begin float64, end float64, score float64) *log.Status {
+	_, err := conn.DB.Exec(
 		`INSERT INTO scripts_qa_align(script_id, transcript, begin_ts, end_ts, fa_score) 
-			VALUES (?,?,?,?,?)`,
-		scriptId, transcript, begin, end, score)
+			VALUES (?,?,?,?,?)`, scriptId, transcript, begin, end, score)
 	if err != nil {
-		return fmt.Errorf("updateScript: script_id=%d: %w", scriptId, err)
+		return log.Error(conn.Ctx, 500, err, "updateScript: script_id", scriptId)
 	}
 	return nil
 }

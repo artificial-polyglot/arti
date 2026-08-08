@@ -3,7 +3,6 @@ package qa_align
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -88,8 +87,9 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	}
 	defer a.mmsAsrPy.Close()
 
-	if err = createQAAlignTables(a.conn.DB); err != nil {
-		return log.Error(a.ctx, 500, err, "Create table error")
+	status = createQAAlignTables(a.conn)
+	if status != nil {
+		return status
 	}
 	var files []input.InputFile
 	files, status = input.SelectAudioFiles(a.conn)
@@ -139,23 +139,26 @@ func (a *QAAlign) processFile(file input.InputFile, tempDir string) *log.Status 
 			return status
 		}
 	}
-	for i, ts := range audioFiles {
-		fmt.Println(ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)
+	for _, ts := range audioFiles {
+		log.Info(a.ctx, ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)
 		var request FARequest
 		request.ScriptId = ts.ScriptId
 		request.AudioPath = ts.AudioVerseWav
 		request.ReferenceText = ts.Text
 		content, err := json.Marshal(request)
-		fmt.Println(request, ts.BeginTS, ts.EndTS)
+		if err != nil {
+			return log.Error(a.ctx, 500, err, "Could not Markshal FARequest")
+		}
+		log.Info(a.ctx, request, ts.BeginTS, ts.EndTS)
 		response, status1 := a.mmsAsrPy.Process(string(content))
 		if status1 != nil {
 			return status1
 		}
-		fmt.Println("response:", response)
-		err = ProcessFAResults(a.conn.DB, request, response)
-		if err != nil {
-			return log.Error(a.ctx, 500, err, "Error Processing scriptId:", audioFiles[i].ScriptId)
+		status = ProcessFAResults(a.conn, request, response)
+		if status != nil {
+			return status
 		}
+		log.Info(a.ctx, "finished", ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)
 	}
 	return nil
 }

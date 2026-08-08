@@ -6,12 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/artificial-polyglot/arti/courier"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
 func TestRun(t *testing.T) {
 	log.SetOutput("stderr")
-	content, err := os.ReadFile("/Users/gary/arti2/N2MGUPNG_rpt.yaml")
+	courier.IsCourierTest = true
+	content, err := os.ReadFile("/Users/gary/arti2/N2ATGMLT_rpt.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}

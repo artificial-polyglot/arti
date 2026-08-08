@@ -23,8 +23,9 @@ type Error struct {
 // This program finds the maxium cutoff that finds all verses
 func TestOptimizeCutoff(t *testing.T) {
 	ctx := context.Background()
-	errors := readErrorFile()
-	dbPath := filepath.Join(os.Getenv("HOME"), "Downloads", "qa_align_00004", "database", "N2QAEBSP.db")
+	errors := readErrorFile("N2XNRPMS.txt", t)
+	//dbPath := filepath.Join(os.Getenv("HOME"), "Downloads", "arti_output_GaryNTest_N2XNRPMS_qa_align_00002_database_N2XNRPMS.db")
+	dbPath := filepath.Join(os.Getenv("HOME"), "Downloads", "arti-output_GaryNTest_N2QAEBSP_qa_align_00004_database_N2QAEBSP.db")
 	conn := db.NewDBAdapter(ctx, dbPath)
 	scriptIdMap := selectReferences(conn)
 	for i := range errors {
@@ -36,11 +37,11 @@ func TestOptimizeCutoff(t *testing.T) {
 	}
 
 	rpt := proofing_rpt.NewProofingRpt(ctx, conn, "qae", false)
-	words, status := rpt.SelectWords(1.0) // 1.0 is no cutoff
+	words, status := rpt.SelectWords(1) // 1.0 is no cutoff
 	if status != nil {
 		t.Fatal(status)
 	}
-	found := testByAccuracy(words, 0.3242)
+	found := testByAccuracy(words, 1)
 	//found := testVersesByMinimum(words, 0.188)
 	//found := testVersesByAverage(words, 0.4)
 	//found := testVerseByProduct(words, 0.3)
@@ -50,16 +51,24 @@ func TestOptimizeCutoff(t *testing.T) {
 
 }
 
-func readErrorFile() []Error {
-	content, _ := os.ReadFile("N2QAEBSP.txt")
+func readErrorFile(filePath string, t *testing.T) []Error {
+	content, _ := os.ReadFile(filePath)
 	var errors []Error
+	var err error
 	for line := range strings.SplitSeq(string(content), "\n") {
+		fmt.Println(line)
 		if !strings.HasPrefix(line, "#") {
-			parts := strings.Split(line, "\t")
+			parts := strings.Split(line, ",")
+			if len(parts) != 3 {
+				t.Fatal(line + " Did not parse into 3 parts")
+			}
 			var e Error
 			e.ref = parts[0]
-			e.words, _ = strconv.Atoi(parts[1])
-			e.total, _ = strconv.Atoi(parts[2])
+			e.words, err = strconv.Atoi(parts[1])
+			if err != nil {
+				t.Fatal(err)
+			}
+			e.total, err = strconv.Atoi(parts[2])
 			errors = append(errors, e)
 		}
 	}
@@ -82,10 +91,11 @@ func selectReferences(conn db.DBAdapter) map[string]int64 {
 func testByAccuracy(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool {
 	var scriptIds = make(map[int64]bool)
 	for _, verse := range words {
-		errCode := proofing_rpt.ComputeAccuracy(verse)
-		if errCode < cutoff {
-			scriptIds[verse[0].ScriptId] = true
-		}
+		fmt.Println(verse)
+		//errCode := proofing_rpt.ComputeAccuracy(verse, cutoff)
+		//if errCode >= cutoff {
+		//	scriptIds[verse[0].ScriptId] = true
+		//}
 	}
 	return scriptIds
 }
