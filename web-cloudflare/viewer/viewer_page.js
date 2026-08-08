@@ -1,9 +1,9 @@
 // viewer_page.js
-// Self-contained HTML/CSS/JS for the /viewer page. Kept as a plain exported
+// Self-contained HTML/CSS/JS for the viewer page. Kept as a plain exported
 // string (rather than a static-assets directory) so the whole Worker stays a
 // couple of importable files, matching web-cloudflare/upload's single-file
 // style. No build step, no external scripts - just fetch() against this same
-// Worker's /viewer/api/* routes and a small hand-rolled sortable table.
+// Worker's /api/* routes and a small hand-rolled sortable table.
 
 export const PAGE_HTML = `<!doctype html>
 <html lang="en">
@@ -32,6 +32,11 @@ export const PAGE_HTML = `<!doctype html>
   dialog { max-width: 90vw; max-height: 85vh; overflow: auto; }
   dialog pre { white-space: pre-wrap; word-break: break-word; }
   .empty { opacity: 0.7; font-style: italic; }
+  .file-preview { white-space: pre-wrap; word-break: break-word; border: 1px solid rgba(128,128,128,0.25);
+                   border-radius: 6px; padding: 8px 12px; max-height: 400px; overflow: auto; }
+  .title-row { display: flex; align-items: center; gap: 10px; }
+  .notes-edit { width: 100%; min-height: 150px; box-sizing: border-box; font: inherit;
+                 padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.35); }
 </style>
 </head>
 <body>
@@ -67,8 +72,9 @@ export const PAGE_HTML = `<!doctype html>
     return res.json();
   }
 
-  function fileUrl(bucket, key, mode) {
-    return "/viewer/file?bucket=" + encodeURIComponent(bucket) + "&key=" + encodeURIComponent(key) + "&mode=" + mode;
+  function fileUrl(bucket, key, mode, tail) {
+    return "/file?bucket=" + encodeURIComponent(bucket) + "&key=" + encodeURIComponent(key) + "&mode=" + mode +
+      (tail ? "&tail=1" : "");
   }
 
   function showText(title, text) {
@@ -88,11 +94,11 @@ export const PAGE_HTML = `<!doctype html>
     dlg.showModal();
   }
 
-  async function runAction(action, bucket, key, filename) {
+  async function runAction(action, bucket, key, filename, tail) {
     if (action === "download") {
       window.location = fileUrl(bucket, key, "download");
     } else if (action === "show") {
-      const res = await fetch(fileUrl(bucket, key, "show"));
+      const res = await fetch(fileUrl(bucket, key, "show", tail));
       showText(filename, await res.text());
     } else if (action === "open") {
       // Real .html/.htm pages get their own tab so the browser renders them
@@ -195,30 +201,65 @@ export const PAGE_HTML = `<!doctype html>
   }
 
   async function showModels() {
-    const rows = await getJSON("/viewer/api/models");
+    const rows = await getJSON("/api/models");
     main.innerHTML = "<h2>Models</h2>";
     const div = document.createElement("div");
     main.append(div);
     renderTable(div, [
+      {
+        key: "details", label: "", sortable: false,
+        render: (r) => actionButton("Details", () => showModelDetails(r.modelType, r.langIso)),
+      },
+      {
+        key: "download", label: "", sortable: false,
+        render: (r) => actionButton("Download", () => {
+          window.location = "/api/models/download?modelType=" + encodeURIComponent(r.modelType) +
+            "&langIso=" + encodeURIComponent(r.langIso);
+        }),
+      },
       { key: "modelType", label: "Model Type" },
       { key: "langIso", label: "Lang ISO" },
       { key: "uploaded", label: "Updated", render: (r) => fmtDate(r.uploaded) },
     ], rows, ["modelType", "langIso"]);
   }
 
+  async function showModelDetails(modelType, langIso) {
+    const qs = new URLSearchParams({ modelType, langIso }).toString();
+    const rows = await getJSON("/api/models/details?" + qs);
+    main.innerHTML =
+      '<div class="crumbs"><a id="back">← Models</a></div><h2>Model: ' +
+      [modelType, langIso].map(escapeHtml).join(" / ") + "</h2>";
+    document.getElementById("back").addEventListener("click", showModels);
+    const div = document.createElement("div");
+    main.append(div);
+    renderTable(div, [
+      {
+        key: "show", label: "", sortable: false,
+        render: (r) => actionButton("Show", () => runAction("show", "models", r.key, r.filename)),
+      },
+      {
+        key: "download", label: "", sortable: false,
+        render: (r) => actionButton("Download", () => runAction("download", "models", r.key, r.filename)),
+      },
+      { key: "filename", label: "Filename" },
+      { key: "uploaded", label: "Uploaded", render: (r) => fmtDate(r.uploaded) },
+    ], rows, ["filename"]);
+  }
+
   async function showInputList() {
-    const mediaIds = await getJSON("/viewer/api/input");
+    const rows = await getJSON("/api/input");
     main.innerHTML = "<h2>Input</h2>";
     const div = document.createElement("div");
     main.append(div);
     renderTable(div, [
       { key: "details", label: "", sortable: false, render: (r) => actionButton("Details", () => showInputDetails(r.mediaId)) },
       { key: "mediaId", label: "Media ID" },
-    ], mediaIds.map((mediaId) => ({ mediaId })), ["mediaId"]);
+      { key: "uploaded", label: "Uploaded", render: (r) => fmtDate(r.uploaded) },
+    ], rows, ["mediaId"]);
   }
 
   async function showInputDetails(mediaId) {
-    const rows = await getJSON("/viewer/api/input/" + encodeURIComponent(mediaId));
+    const rows = await getJSON("/api/input/" + encodeURIComponent(mediaId));
     main.innerHTML =
       '<div class="crumbs"><a id="back">← Input</a></div><h2>Input: ' + escapeHtml(mediaId) + "</h2>";
     document.getElementById("back").addEventListener("click", showInputList);
@@ -241,7 +282,7 @@ export const PAGE_HTML = `<!doctype html>
   }
 
   async function showOutputList() {
-    const rows = await getJSON("/viewer/api/output");
+    const rows = await getJSON("/api/output");
     main.innerHTML = "<h2>Output</h2>";
     const div = document.createElement("div");
     main.append(div);
@@ -253,9 +294,6 @@ export const PAGE_HTML = `<!doctype html>
           showOutputDetails(r.username, r.mediaId, r.module, runNum);
         }),
       },
-      { key: "username", label: "Username" },
-      { key: "mediaId", label: "Media ID" },
-      { key: "module", label: "Module" },
       {
         key: "highestRunNum", label: "Run #", render: (r) => {
           const input = document.createElement("input");
@@ -264,12 +302,15 @@ export const PAGE_HTML = `<!doctype html>
           return input;
         },
       },
+      { key: "username", label: "Username" },
+      { key: "mediaId", label: "Media ID" },
+      { key: "module", label: "Module" },
     ], rows, ["username", "mediaId"]);
   }
 
   async function showOutputDetails(username, mediaId, module, runNum) {
     const qs = new URLSearchParams({ username, mediaId, module, runNum }).toString();
-    const rows = await getJSON("/viewer/api/output/details?" + qs);
+    const rows = await getJSON("/api/output/details?" + qs);
     main.innerHTML =
       '<div class="crumbs"><a id="back">← Output</a></div><h2>Output: ' +
       [username, mediaId, module, "run " + runNum].map(escapeHtml).join(" / ") + "</h2>";
@@ -278,11 +319,16 @@ export const PAGE_HTML = `<!doctype html>
     const viewLabel = { show: "Show", open: "Open" };
     const table = document.createElement("table");
     const tbody = document.createElement("tbody");
+    let requestRow = null;
+    let statusRow = null;
     rows.forEach((row) => {
+      if (row.label === "Request") { requestRow = row; return; }
+      if (row.label === "Status") { statusRow = row; return; }
       const tr = document.createElement("tr");
       const viewTd = document.createElement("td");
       if (row.viewMode) {
-        viewTd.append(actionButton(viewLabel[row.viewMode], () => runAction(row.viewMode, "output", row.viewKey, row.label)));
+        const tail = row.label === "Log file";
+        viewTd.append(actionButton(viewLabel[row.viewMode], () => runAction(row.viewMode, "output", row.viewKey, row.label, tail)));
       }
       const downloadTd = document.createElement("td");
       if (row.downloadKey) downloadTd.append(actionButton("Download", () => runAction("download", "output", row.downloadKey, row.label)));
@@ -293,6 +339,69 @@ export const PAGE_HTML = `<!doctype html>
     });
     table.append(tbody);
     main.append(table);
+
+    const notesKey = username + "/" + mediaId + "/" + module + "/" + String(runNum).padStart(5, "0") + "/notes";
+    const notesTitle = document.createElement("h3"); notesTitle.className = "title-row";
+    const notesTitleText = document.createElement("span"); notesTitleText.textContent = "Notes";
+    notesTitle.append(notesTitleText, actionButton("Edit", () => editNotes()));
+    const notesBlock = document.createElement("div"); notesBlock.className = "file-preview";
+    main.append(notesTitle, notesBlock);
+
+    let notesText = "";
+    const notesRes = await fetch(fileUrl("output", notesKey, "show"));
+    if (notesRes.ok) notesText = await notesRes.text();
+    notesBlock.textContent = notesText;
+
+    function viewNotes() {
+      notesBlock.className = "file-preview";
+      notesBlock.innerHTML = "";
+      notesBlock.textContent = notesText;
+    }
+
+    function editNotes() {
+      notesBlock.className = "";
+      notesBlock.innerHTML = "";
+      const textarea = document.createElement("textarea");
+      textarea.className = "notes-edit";
+      textarea.value = notesText;
+      const btnRow = document.createElement("div");
+      btnRow.style.marginTop = "8px";
+      btnRow.append(
+        actionButton("Save", async () => {
+          notesText = textarea.value;
+          await fetch("/api/output/notes", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ username, mediaId, module, runNum, text: notesText }),
+          });
+          viewNotes();
+        }),
+        actionButton("Cancel", viewNotes),
+      );
+      notesBlock.append(textarea, btnRow);
+      textarea.focus();
+    }
+
+    const statusH3 = document.createElement("h3"); statusH3.textContent = "Status";
+    const statusPre = document.createElement("pre"); statusPre.className = "file-preview";
+    main.append(statusH3, statusPre);
+    if (statusRow && statusRow.viewKey) {
+      const res = await fetch(fileUrl("output", statusRow.viewKey, "show"));
+      const text = await res.text();
+      statusPre.textContent = text.trim() ? text : "OK";
+    } else {
+      statusPre.textContent = "OK";
+    }
+
+    if (requestRow && requestRow.viewKey) {
+      const h3 = document.createElement("h3"); h3.className = "title-row";
+      const h3Text = document.createElement("span"); h3Text.textContent = "Request";
+      h3.append(h3Text, actionButton("Download", () => runAction("download", "output", requestRow.downloadKey, requestRow.label)));
+      const pre = document.createElement("pre"); pre.className = "file-preview";
+      main.append(h3, pre);
+      const res = await fetch(fileUrl("output", requestRow.viewKey, "show"));
+      pre.textContent = await res.text();
+    }
   }
 
   function escapeHtml(s) {

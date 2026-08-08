@@ -1,4 +1,4 @@
-name = "arti-viewer"
+name = "view"
 main = "viewer.js"
 compatibility_date = "2026-07-01"
 preview_urls = false
@@ -10,10 +10,10 @@ enabled = true
 enabled = true
 invocation_logs = true
 
-# Serves the viewer at https://<your-route>/viewer
-# Add a route once you know the hostname, e.g.:
+# Served at the workers.dev subdomain: https://view.arti2.workers.dev
+# To serve on a custom zone instead, add a route, e.g.:
 # routes = [
-#   { pattern = "internal.arti.example/viewer*", zone_name = "arti.example" }
+#   { pattern = "internal.arti.example/*", zone_name = "arti.example" }
 # ]
 
 [[r2_buckets]]

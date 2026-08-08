@@ -1,5 +1,5 @@
 // viewer.js
-// Cloudflare Worker serving the /viewer page: a read-only browser over the
+// Cloudflare Worker serving the viewer page: a read-only browser over the
 // arti-input, arti-models, and arti-output R2 buckets. Uses native R2 bucket
 // bindings (see viewer.toml) rather than signed S3 API calls - listing is the
 // bulk of this Worker's job, and bindings return plain objects instead of the
@@ -7,13 +7,16 @@
 // hand-parsing.
 //
 // Routes:
-//   GET  /viewer                    - the page itself
-//   GET  /viewer/api/models         - [{modelType, langIso, uploaded}]
-//   GET  /viewer/api/input          - [mediaId, ...]
-//   GET  /viewer/api/input/:id      - [{prefix, filename, uploaded, action, key}]
-//   GET  /viewer/api/output         - [{username, mediaId, module, highestRunNum}]
-//   GET  /viewer/api/output/details - fixed-row (label, value, viewMode, viewKey, downloadKey)
-//   GET  /viewer/file               - streams/downloads/opens a single R2 object
+//   GET  /                    - the page itself
+//   GET  /api/models          - [{modelType, langIso, uploaded}]
+//   GET  /api/models/details  - [{filename, uploaded, key}] for one model's processor_<langIso>/ files
+//   GET  /api/models/download - zip of one model: <langIso>/<tensor file>, <langIso>/processor_<langIso>/...
+//   GET  /api/input           - [{mediaId, uploaded}]
+//   GET  /api/input/:id       - [{prefix, filename, uploaded, action, key}]
+//   GET  /api/output          - [{username, mediaId, module, highestRunNum}]
+//   GET  /api/output/details  - fixed-row (label, value, viewMode, viewKey, downloadKey)
+//   POST /api/output/notes    - {username, mediaId, module, runNum, text} - writes the run's notes object
+//   GET  /file                - streams/downloads/opens a single R2 object
 //
 // No auth is applied here - the original spec didn't call for it. These
 // buckets contain internal pipeline input/output, so consider putting this
@@ -23,11 +26,13 @@
 import { PAGE_HTML } from "./viewer_page.js";
 import {
   getModelsRows,
-  getInputMediaIds,
+  getModelDetailRows,
+  getInputRows,
   getInputDetailRows,
   getOutputRows,
 } from "./r2_list.js";
-import { getOutputDetailRows } from "./output_details.js";
+import { getOutputDetailRows, outputRunPrefix } from "./output_details.js";
+import { buildModelZip } from "./model_zip.js";
 
 const BUCKET_NAMES = {
   input: "arti-input",
@@ -41,32 +46,52 @@ export default {
     const path = url.pathname;
 
     try {
-      if (path === "/viewer" || path === "/viewer/") {
+      if (path === "/") {
         return new Response(PAGE_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
       }
-      if (path === "/viewer/api/models") {
+      if (path === "/api/models") {
         return json(await getModelsRows(env.ARTI_MODELS));
       }
-      if (path === "/viewer/api/input") {
-        return json(await getInputMediaIds(env.ARTI_INPUT));
+      if (path === "/api/input") {
+        return json(await getInputRows(env.ARTI_INPUT));
       }
-      if (path.startsWith("/viewer/api/input/")) {
-        const mediaId = decodeURIComponent(path.slice("/viewer/api/input/".length));
+      if (path.startsWith("/api/input/")) {
+        const mediaId = decodeURIComponent(path.slice("/api/input/".length));
         if (!mediaId) return json({ error: "media_id required" }, 400);
         return json(await getInputDetailRows(env.ARTI_INPUT, mediaId));
       }
-      if (path === "/viewer/api/output") {
+      if (path === "/api/output") {
         return json(await getOutputRows(env.ARTI_OUTPUT));
       }
-      if (path === "/viewer/api/output/details") {
+      if (path === "/api/output/details") {
         const { username, mediaId, module, runNum } = Object.fromEntries(url.searchParams);
         if (!username || !mediaId || !module || !runNum) {
           return json({ error: "username, mediaId, module, runNum are all required" }, 400);
         }
         return json(await getOutputDetailRows(env.ARTI_OUTPUT, username, mediaId, module, runNum));
       }
-      if (path === "/viewer/file") {
+      if (path === "/api/output/notes") {
+        if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
+        const { username, mediaId, module, runNum, text } = await request.json();
+        if (!username || !mediaId || !module || !runNum) {
+          return json({ error: "username, mediaId, module, runNum are all required" }, 400);
+        }
+        const key = `${outputRunPrefix(username, mediaId, module, runNum)}notes`;
+        await env.ARTI_OUTPUT.put(key, text || "");
+        return json({ ok: true });
+      }
+      if (path === "/file") {
         return await serveFile(request, url, env);
+      }
+      if (path === "/api/models/details") {
+        const { modelType, langIso } = Object.fromEntries(url.searchParams);
+        if (!modelType || !langIso) return json({ error: "modelType, langIso are both required" }, 400);
+        return json(await getModelDetailRows(env.ARTI_MODELS, modelType, langIso));
+      }
+      if (path === "/api/models/download") {
+        const { modelType, langIso } = Object.fromEntries(url.searchParams);
+        if (!modelType || !langIso) return json({ error: "modelType, langIso are both required" }, 400);
+        return await serveModelZip(env.ARTI_MODELS, modelType, langIso);
       }
       return new Response("Not found", { status: 404 });
     } catch (err) {
@@ -102,7 +127,7 @@ async function serveFile(request, url, env) {
   }
 
   if (mode === "play") return streamWithRange(request, bucket, key);
-  if (mode === "show") return serveTextPreview(bucket, key);
+  if (mode === "show") return serveTextPreview(bucket, key, url.searchParams.get("tail") === "1");
 
   const object = await bucket.get(key);
   if (!object) return new Response("Not found", { status: 404 });
@@ -128,11 +153,29 @@ async function serveFile(request, url, env) {
   return new Response(object.body, { headers });
 }
 
+// Bundles one model (modelType/langIso) into a zip whose single top-level
+// folder is the langIso code, containing the tensor file and the
+// processor_<langIso>/ tokenizer directory as they're laid out in R2 - so
+// unzipping drops in exactly the folder a local model dir expects.
+async function serveModelZip(bucket, modelType, langIso) {
+  const zipBytes = await buildModelZip(bucket, modelType, langIso);
+  if (!zipBytes) return new Response("Not found", { status: 404 });
+  return new Response(zipBytes, {
+    headers: {
+      "content-type": "application/zip",
+      "content-disposition": `attachment; filename="${langIso}.zip"`,
+    },
+  });
+}
+
 // Serves mode=show: the full object streamed as-is when it's under
-// SHOW_PREVIEW_LIMIT, otherwise just the first SHOW_PREVIEW_LIMIT bytes (a
-// bounded R2 range read, not the whole file) with a truncation notice
-// appended. Only that bounded prefix is ever buffered into a string here.
-async function serveTextPreview(bucket, key) {
+// SHOW_PREVIEW_LIMIT, otherwise a bounded SHOW_PREVIEW_LIMIT-byte R2 range
+// read (not the whole file) with a truncation notice appended - the first
+// bytes by default, or the last bytes when tail=1 (log files bury the
+// interesting part - the error - at the end, past where a head truncation
+// would ever reach). Only that bounded slice is ever buffered into a string
+// here.
+async function serveTextPreview(bucket, key, tail) {
   const head = await bucket.head(key);
   if (!head) return new Response("Not found", { status: 404 });
 
@@ -143,6 +186,15 @@ async function serveTextPreview(bucket, key) {
   if (head.size <= SHOW_PREVIEW_LIMIT) {
     const object = await bucket.get(key);
     return new Response(object.body, { headers });
+  }
+
+  if (tail) {
+    const object = await bucket.get(key, { range: { suffix: SHOW_PREVIEW_LIMIT } });
+    const text = await object.text();
+    const notice =
+      `[... showing the last ${formatBytes(SHOW_PREVIEW_LIMIT)} of ` +
+      `${formatBytes(head.size)}. Use Download for the complete file. ...]\n\n`;
+    return new Response(notice + text, { headers });
   }
 
   const object = await bucket.get(key, { range: { offset: 0, length: SHOW_PREVIEW_LIMIT } });

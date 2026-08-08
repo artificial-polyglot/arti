@@ -20,9 +20,16 @@
 //     fetch: the "content" already extracted from the key IS the display value.
 import { listAllObjects } from "./r2_list.js";
 
-export async function getOutputDetailRows(bucket, username, mediaId, module, runNum) {
+// The run-level prefix shared by every object belonging to one run - request,
+// output, log, database, status, and (see viewer.js) the notes object all
+// live directly under this.
+export function outputRunPrefix(username, mediaId, module, runNum) {
   const paddedRunNum = String(runNum).padStart(5, "0");
-  const prefix = `${username}/${mediaId}/${module}/${paddedRunNum}/`;
+  return `${username}/${mediaId}/${module}/${paddedRunNum}/`;
+}
+
+export async function getOutputDetailRows(bucket, username, mediaId, module, runNum) {
+  const prefix = outputRunPrefix(username, mediaId, module, runNum);
   const objects = await listAllObjects(bucket, prefix);
 
   // Group by file_type (first path segment after the prefix); each group can
