@@ -1,0 +1,21 @@
+name = "run"
+main = "runner.js"
+compatibility_date = "2026-07-01"
+preview_urls = false
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+# Served at the workers.dev subdomain: https://run.arti2.workers.dev
+# To serve on a custom zone instead, add a route, e.g.:
+# routes = [
+#   { pattern = "internal.arti.example/*", zone_name = "arti.example" }
+# ]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
