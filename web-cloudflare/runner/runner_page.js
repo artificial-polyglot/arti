@@ -50,9 +50,7 @@ export const PAGE_HTML = `<!doctype html>
         }
 
         .folder-dropzone {
-            position: absolute;
-            top: 40px;
-            right: 20px;
+            flex-shrink: 0;
             width: 200px;
             height: 80px;
             border: 2px dashed #666;
@@ -171,10 +169,13 @@ export const PAGE_HTML = `<!doctype html>
             font-weight: 400;
             margin: 0;
             flex: 1;
+            text-align: center;
         }
 
         .button-group {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap;
@@ -413,20 +414,19 @@ export const PAGE_HTML = `<!doctype html>
 
 <body>
     <div class="container">
-        <div class="folder-dropzone" id="folderDropzone">
-            <div>&#128193; Drag a media folder or YAML file here, or press to select</div>
-            <div class="folder-status" id="folderStatus">No folder or file selected</div>
-            <div class="folder-progress" id="folderProgress" style="display: none;"></div>
-        </div>
-
         <div class="header">
-            <img src="/arti.png" alt="Artie Logo" class="logo">
-            <h2 class="subtitle">Media and Job<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Uploader</h2>
+            <img src="/arti.jpg" alt="Artie Logo" class="logo">
+            <h2 class="subtitle">Arti2<br>Task and Media<br>Uploader</h2>
         </div>
 
         <div class="button-group">
             <button onclick="clearForm()">Clear</button>
             <button onclick="saveJSON()">Save JSON</button>
+            <div class="folder-dropzone" id="folderDropzone">
+                <div>&#128193; Drag a media folder or YAML file here, or press to select</div>
+                <div class="folder-status" id="folderStatus">No folder or file selected</div>
+                <div class="folder-progress" id="folderProgress" style="display: none;"></div>
+            </div>
         </div>
 
         <div class="separator"></div>
@@ -548,7 +548,11 @@ export const PAGE_HTML = `<!doctype html>
                     <div class="checkbox-group">
                         <div class="checkbox-option">
                             <input type="checkbox" id="compare" checked>
-                            <label for="compare">compare: html report of comparing two copies of text</label>
+                            <label for="compare">compare: report comparing audio transcript to correct text</label>
+                        </div>
+                        <div class="checkbox-option">
+                            <input type="checkbox" id="proofing">
+                            <label for="proofing">proofing: report highlighting probable incorrect words</label>
                         </div>
                     </div>
                 </div>
@@ -566,7 +570,7 @@ export const PAGE_HTML = `<!doctype html>
                         <label for="notifyOk">notify_ok: <span style="color: #888; font-size: 12px;">(comma-separated
                                 emails)</span></label>
                         <input type="text" id="notifyOk"
-                            value="ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org"
+                            value="ntfy/arti2"
                             placeholder="ewallace@fcbhmail.org, gfiddes@fcbhmail.org, edomschot@fcbhmail.org">
                     </div>
                 </div>
@@ -576,7 +580,7 @@ export const PAGE_HTML = `<!doctype html>
                         <label for="notifyErr">notify_err: <span style="color: #888; font-size: 12px;">(comma-separated
                                 emails)</span></label>
                         <input type="text" id="notifyErr"
-                            value="gary@shortsands.com, ewallace@fcbhmail.org"
+                            value="ntfy/arti2"
                             placeholder="gary@shortsands.com, ewallace@fcbhmail.org">
                     </div>
                 </div>
