@@ -152,7 +152,11 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 			for _, modl := range b.models {
 				prefix := filepath.Join(modl.modelType, modl.languageISO)
 				localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
-				status3 := client.PutDirectory(bucket, prefix, localDir)
+				lastModelRun, status3 := b.findLastModelRun(client, bucket, prefix)
+				allStatus = append(allStatus, status3)
+				modelRunStr := fmt.Sprintf("%05d", lastModelRun+1)
+				remotePrefix := filepath.Join(prefix, modelRunStr)
+				status3 = client.PutDirectory(bucket, remotePrefix, localDir)
 				allStatus = append(allStatus, status3)
 			}
 		}
@@ -209,6 +213,31 @@ func (b *Courier) findLastRun(client *s3.Client) (int, *log.Status) {
 		runNum, err = strconv.Atoi(runStr)
 		if err != nil {
 			return result, log.Error(b.ctx, 500, err, "Error converting run number to int; value:", runStr)
+		}
+		if runNum > maxRun {
+			maxRun = runNum
+		}
+	}
+	return maxRun, status
+}
+
+// findLastModelRun returns the highest existing run number (the 5-digit
+// zero-filled directory - e.g. mms_adapters/atg/00001/ - one level below
+// prefix) so the caller can upload to lastRun+1. Zero, with no error, means
+// no run directories exist yet (first upload for this model/language).
+func (b *Courier) findLastModelRun(client s3_datastore.S3Client, bucket string, prefix string) (int, *log.Status) {
+	var result int
+	prefixes, status := client.ListPrefixes(bucket, prefix+"/")
+	if status != nil {
+		return result, status
+	}
+	maxRun := 0
+	for _, p := range prefixes {
+		parts := strings.Split(strings.TrimSuffix(p, "/"), "/")
+		runStr := parts[len(parts)-1]
+		runNum, err := strconv.Atoi(runStr)
+		if err != nil {
+			return result, log.Error(b.ctx, 500, err, "Error converting model run number to int; value:", runStr)
 		}
 		if runNum > maxRun {
 			maxRun = runNum

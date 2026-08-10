@@ -6,11 +6,11 @@
 // unzipping drops in the folder a local model directory expects, with the
 // tensor file and the tokenizer directory both inside it.
 
-import { listAllObjects } from "./r2_list.js";
+import { listAllObjects, padRunNum } from "./r2_list.js";
 import { buildZip } from "./zip.js";
 
-export async function buildModelZip(bucket, modelType, langIso) {
-  const prefix = `${modelType}/${langIso}/`;
+export async function buildModelZip(bucket, modelType, langIso, runNum) {
+  const prefix = `${modelType}/${langIso}/${padRunNum(runNum)}/`;
   const objects = await listAllObjects(bucket, prefix);
   if (objects.length === 0) return null;
 

@@ -8,9 +8,9 @@
 //
 // Routes:
 //   GET  /                    - the page itself
-//   GET  /api/models          - [{modelType, langIso, uploaded}]
-//   GET  /api/models/details  - [{filename, uploaded, key}] for one model's processor_<langIso>/ files
-//   GET  /api/models/download - zip of one model: <langIso>/<tensor file>, <langIso>/processor_<langIso>/...
+//   GET  /api/models          - [{modelType, langIso, highestRunNum, runs: {runNum: uploaded}, uploaded}]
+//   GET  /api/models/details  - [{filename, uploaded, key}] for one model run's processor_<langIso>/ files
+//   GET  /api/models/download - zip of one model run: <langIso>/<tensor file>, <langIso>/processor_<langIso>/...
 //   GET  /api/input           - [{mediaId, uploaded}]
 //   GET  /api/input/:id       - [{prefix, filename, uploaded, action, key}]
 //   GET  /api/output          - [{username, mediaId, module, highestRunNum}]
@@ -84,14 +84,18 @@ export default {
         return await serveFile(request, url, env);
       }
       if (path === "/api/models/details") {
-        const { modelType, langIso } = Object.fromEntries(url.searchParams);
-        if (!modelType || !langIso) return json({ error: "modelType, langIso are both required" }, 400);
-        return json(await getModelDetailRows(env.ARTI_MODELS, modelType, langIso));
+        const { modelType, langIso, runNum } = Object.fromEntries(url.searchParams);
+        if (!modelType || !langIso || !runNum) {
+          return json({ error: "modelType, langIso, runNum are all required" }, 400);
+        }
+        return json(await getModelDetailRows(env.ARTI_MODELS, modelType, langIso, runNum));
       }
       if (path === "/api/models/download") {
-        const { modelType, langIso } = Object.fromEntries(url.searchParams);
-        if (!modelType || !langIso) return json({ error: "modelType, langIso are both required" }, 400);
-        return await serveModelZip(env.ARTI_MODELS, modelType, langIso);
+        const { modelType, langIso, runNum } = Object.fromEntries(url.searchParams);
+        if (!modelType || !langIso || !runNum) {
+          return json({ error: "modelType, langIso, runNum are all required" }, 400);
+        }
+        return await serveModelZip(env.ARTI_MODELS, modelType, langIso, runNum);
       }
       return new Response("Not found", { status: 404 });
     } catch (err) {
@@ -157,8 +161,8 @@ async function serveFile(request, url, env) {
 // folder is the langIso code, containing the tensor file and the
 // processor_<langIso>/ tokenizer directory as they're laid out in R2 - so
 // unzipping drops in exactly the folder a local model dir expects.
-async function serveModelZip(bucket, modelType, langIso) {
-  const zipBytes = await buildModelZip(bucket, modelType, langIso);
+async function serveModelZip(bucket, modelType, langIso, runNum) {
+  const zipBytes = await buildModelZip(bucket, modelType, langIso, runNum);
   if (!zipBytes) return new Response("Not found", { status: 404 });
   return new Response(zipBytes, {
     headers: {

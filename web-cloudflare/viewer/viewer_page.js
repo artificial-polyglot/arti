@@ -208,27 +208,49 @@ export const PAGE_HTML = `<!doctype html>
     renderTable(div, [
       {
         key: "details", label: "", sortable: false,
-        render: (r) => actionButton("Details", () => showModelDetails(r.modelType, r.langIso)),
+        render: (r) => actionButton("Details", () => {
+          const runNum = r._modelRunInput ? r._modelRunInput.value : r.highestRunNum;
+          showModelDetails(r.modelType, r.langIso, runNum);
+        }),
       },
       {
         key: "download", label: "", sortable: false,
         render: (r) => actionButton("Download", () => {
+          const runNum = r._modelRunInput ? r._modelRunInput.value : r.highestRunNum;
           window.location = "/api/models/download?modelType=" + encodeURIComponent(r.modelType) +
-            "&langIso=" + encodeURIComponent(r.langIso);
+            "&langIso=" + encodeURIComponent(r.langIso) + "&runNum=" + encodeURIComponent(runNum);
         }),
       },
-      { key: "modelType", label: "Model Type" },
+      {
+        key: "highestRunNum", label: "Model#", render: (r) => {
+          const input = document.createElement("input");
+          input.type = "number"; input.min = 1; input.max = r.highestRunNum; input.value = r.highestRunNum;
+          input.addEventListener("input", () => {
+            const uploaded = r.runs[input.value];
+            if (uploaded && r._updatedSpan) r._updatedSpan.textContent = fmtDate(uploaded);
+          });
+          r._modelRunInput = input;
+          return input;
+        },
+      },
       { key: "langIso", label: "Lang ISO" },
-      { key: "uploaded", label: "Updated", render: (r) => fmtDate(r.uploaded) },
-    ], rows, ["modelType", "langIso"]);
+      {
+        key: "uploaded", label: "Updated", render: (r) => {
+          const span = document.createElement("span");
+          span.textContent = fmtDate(r.uploaded);
+          r._updatedSpan = span;
+          return span;
+        },
+      },
+    ], rows, ["langIso"]);
   }
 
-  async function showModelDetails(modelType, langIso) {
-    const qs = new URLSearchParams({ modelType, langIso }).toString();
+  async function showModelDetails(modelType, langIso, runNum) {
+    const qs = new URLSearchParams({ modelType, langIso, runNum }).toString();
     const rows = await getJSON("/api/models/details?" + qs);
     main.innerHTML =
       '<div class="crumbs"><a id="back">← Models</a></div><h2>Model: ' +
-      [modelType, langIso].map(escapeHtml).join(" / ") + "</h2>";
+      [modelType, langIso, "run " + runNum].map(escapeHtml).join(" / ") + "</h2>";
     document.getElementById("back").addEventListener("click", showModels);
     const div = document.createElement("div");
     main.append(div);
