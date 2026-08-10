@@ -1156,11 +1156,16 @@ func (d *DBAdapter) UpdateWordTimestamps(words []Timestamp) *log.Status {
 *********/
 
 func (d *DBAdapter) InsertRequest(req request.Request) *log.Status {
+	// The create table should be temporary to accommodate old test data.
+	query := `CREATE TABLE IF NOT EXISTS request (
+		request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		request TEXT NOT NULL)`
+	execDDL(d.DB, query)
 	jsonBytes, err := json.Marshal(req)
 	if err != nil {
 		return log.Error(d.Ctx, 500, err, "failed to marshal request to JSON")
 	}
-	query := `INSERT INTO request (request) VALUES (?)`
+	query = `INSERT INTO request (request) VALUES (?)`
 	_, err = d.DB.ExecContext(d.Ctx, query, string(jsonBytes))
 	if err != nil {
 		return log.Error(d.Ctx, 500, err, "failed to insert request")
