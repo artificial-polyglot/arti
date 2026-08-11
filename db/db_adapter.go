@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/safe"
 	_ "modernc.org/sqlite"
 )

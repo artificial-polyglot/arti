@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"strconv"
 	"strings"
 )

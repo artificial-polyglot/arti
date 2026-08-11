@@ -1,8 +1,8 @@
 package db
 
 import (
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 type Ident struct {

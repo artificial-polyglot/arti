@@ -3,7 +3,7 @@ package fetch
 import (
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 	"os"
 	"path/filepath"
 	"strings"

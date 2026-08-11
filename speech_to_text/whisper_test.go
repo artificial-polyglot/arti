@@ -2,10 +2,11 @@ package speech_to_text
 
 import (
 	"context"
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
-	"github.com/artificial-polyglot/arti/input"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestWhisper(t *testing.T) {
@@ -14,7 +15,7 @@ func TestWhisper(t *testing.T) {
 	var filesetId = `ENGWEBN2DA-mp3-64`
 	testament := request.Testament{NTBooks: []string{`TIT`, `PHM`, `3JN`}}
 	testament.BuildBookMaps()
-	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId, testament)
+	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId) //, testament)
 	if status != nil {
 		t.Error(status)
 	}

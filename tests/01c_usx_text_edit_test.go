@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/artificial-polyglot/arti/controller"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 const uSXTextEditScript = `is_new: yes

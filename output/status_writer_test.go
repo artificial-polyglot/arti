@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/validate"
 )
 
 func TestDefaultStatus(t *testing.T) {
@@ -61,7 +61,7 @@ func prepareError(t *testing.T) (log.Status, context.Context) {
 	req.IsNew = true
 	req.Testament.NT = true
 	ctx := context.Background()
-	reqDecoder := decode_yaml.NewRequestDecoder(ctx)
+	reqDecoder := validate.NewRequestDecoder(ctx)
 	yaml, status := reqDecoder.Encode(req)
 	if status != nil {
 		t.Error(status)

@@ -2,8 +2,8 @@ package courier
 
 import (
 	"context"
-	"github.com/artificial-polyglot/arti/decode_yaml"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request/validate"
 	"testing"
 	"time"
 )
@@ -18,7 +18,7 @@ language_iso: eng
 notify_ok: [gary@shortsands.com, sqs/vessel]
 notify_err: [gary@shortsands.com, sqs/vessel]
 `
-	reqDecoder := decode_yaml.NewRequestDecoder(ctx)
+	reqDecoder := validate.NewRequestDecoder(ctx)
 	request, status := reqDecoder.Process([]byte(yamlRequest))
 	if status != nil {
 		t.Fatal(status)

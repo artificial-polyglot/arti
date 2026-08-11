@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestUtility_validateBookId(t *testing.T) {

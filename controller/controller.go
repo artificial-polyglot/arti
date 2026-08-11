@@ -10,8 +10,6 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
 	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/encode"
 	"github.com/artificial-polyglot/arti/fetch"
 	"github.com/artificial-polyglot/arti/input"
@@ -25,6 +23,8 @@ import (
 	"github.com/artificial-polyglot/arti/output"
 	"github.com/artificial-polyglot/arti/read"
 	"github.com/artificial-polyglot/arti/read/script_reader"
+	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/validate"
 	"github.com/artificial-polyglot/arti/speech_to_text"
 	"github.com/artificial-polyglot/arti/timestamp"
 	asr2 "github.com/artificial-polyglot/arti/wav2vec2/asr"
@@ -99,7 +99,7 @@ func (c *Controller) processSteps() *log.Status {
 	var status *log.Status
 	// Decode YAML Request File
 	log.Info(c.ctx, "Parse .yaml file.")
-	reqDecoder := decode_yaml.NewRequestDecoder(c.ctx)
+	reqDecoder := validate.NewRequestDecoder(c.ctx)
 	c.req, status = reqDecoder.Process(c.yamlRequest)
 	if status != nil {
 		return status

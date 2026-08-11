@@ -1,10 +1,10 @@
-package decode_yaml
+package validate
 
 import (
 	"reflect"
 	"strings"
 
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func (r *RequestDecoder) Validate(req *request.Request) {

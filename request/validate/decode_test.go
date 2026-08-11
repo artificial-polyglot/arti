@@ -1,4 +1,4 @@
-package decode_yaml
+package validate
 
 import (
 	"context"

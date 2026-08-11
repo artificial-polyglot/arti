@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func (b *Courier) Notification(req request.Request, status *log.Status, duration time.Duration) *log.Status {

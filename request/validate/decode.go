@@ -1,10 +1,10 @@
-package decode_yaml
+package validate
 
 import (
 	"bytes"
 	"context"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"gopkg.in/yaml.v3"
 	"strings"
 )

@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/decode_yaml"
+	"github.com/artificial-polyglot/arti/request/validate"
 	"gopkg.in/yaml.v3"
 	"io"
 	"mime/multipart"
@@ -24,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 	ctx := context.Background()
-	reqDecoder := decode_yaml.NewRequestDecoder(ctx)
+	reqDecoder := validate.NewRequestDecoder(ctx)
 	request, status := reqDecoder.Process(yamlRequest)
 	if status != nil {
 		fmt.Println(status)

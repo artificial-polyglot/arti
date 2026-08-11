@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/validate"
 )
 
 type Component struct {
@@ -34,7 +34,7 @@ func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
 	var status *log.Status
 	c.ctx = context.WithValue(c.ctx, "runType", c.courier.Component)
 	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
-	reqDecoder := decode_yaml.NewRequestDecoder(c.ctx)
+	reqDecoder := validate.NewRequestDecoder(c.ctx)
 	c.req, status = reqDecoder.Process([]byte(c.courier.yamlContent))
 	if status != nil {
 		return c.database, status

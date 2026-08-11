@@ -3,8 +3,8 @@ package train
 import (
 	"context"
 	"github.com/artificial-polyglot/arti/db"
-	req "github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
+	req "github.com/artificial-polyglot/arti/request"
 	"testing"
 )
 

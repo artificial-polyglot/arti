@@ -1,6 +1,6 @@
-package decode_yaml
+package validate
 
-import "github.com/artificial-polyglot/arti/decode_yaml/request"
+import "github.com/artificial-polyglot/arti/request"
 
 func (r *RequestDecoder) Prereq(req *request.Request) {
 	if req.Timestamps.MMSAlign {

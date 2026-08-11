@@ -8,7 +8,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/controller"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 const scriptTextScript = `is_new: yes

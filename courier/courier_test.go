@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/artificial-polyglot/arti/db"
-	req "github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	req "github.com/artificial-polyglot/arti/request"
 )
 
 const runBucketTest = `is_new: yes

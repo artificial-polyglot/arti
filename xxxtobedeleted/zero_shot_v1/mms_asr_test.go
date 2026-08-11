@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestMMSASR_ProcessFiles(t *testing.T) {

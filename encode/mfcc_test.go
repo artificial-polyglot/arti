@@ -3,8 +3,8 @@ package encode
 import (
 	"context"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/request"
 	"testing"
 )
 
@@ -15,7 +15,7 @@ func TestMFCCLines(t *testing.T) {
 	var testament = request.Testament{NTBooks: []string{`MRK`}}
 	testament.BuildBookMaps()
 	var detail = request.Detail{Lines: true}
-	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId, testament)
+	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId) //, testament)
 	if status != nil {
 		t.Error(status)
 	}

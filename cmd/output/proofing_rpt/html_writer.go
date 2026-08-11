@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 	"testing"
 )
 

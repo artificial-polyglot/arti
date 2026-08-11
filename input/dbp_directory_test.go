@@ -3,8 +3,8 @@ package input
 import (
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"testing"
 )
 

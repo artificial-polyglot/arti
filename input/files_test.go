@@ -2,7 +2,7 @@ package input
 
 import (
 	"context"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 	"os"
 	"path/filepath"
 	"testing"

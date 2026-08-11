@@ -3,13 +3,14 @@ package speech_to_text
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/fetch"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/read"
-	"testing"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 // EUSEABN1DA eus {eus eu Basque} XX no bible
@@ -67,7 +68,7 @@ func TestWhisperVs(t *testing.T) {
 		testament := request.Testament{NTBooks: []string{`TIT`, `PHM`, `3JN`}}
 		//testament := request.Testament{NTBooks: []string{`3JN`}}
 		testament.BuildBookMaps()
-		files, status := input.DBPDirectory(ctx, tst.bibleId, `audio`, ``, tst.mediaId, testament)
+		files, status := input.DBPDirectory(ctx, tst.bibleId, `audio`, ``, tst.mediaId) //, testament)
 		if status != nil {
 			t.Fatal(status)
 		}

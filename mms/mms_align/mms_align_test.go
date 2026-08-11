@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"github.com/artificial-polyglot/arti/utility/uroman"
 )

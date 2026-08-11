@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/artificial-polyglot/arti/decode_yaml/request"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 const plainTextScript = `is_new: yes
