@@ -6,12 +6,12 @@ import (
 	"github.com/artificial-polyglot/arti/utility/safe"
 )
 
-func safeVerseNum(this js.Value, args []js.Value) any {
+func processRequest(this js.Value, args []js.Value) any {
 	return safe.SafeVerseNum(args[0].String())
 }
 
 func main() {
 	println("Hello World")
-	js.Global().Set("SafeVerseNum", js.FuncOf(safeVerseNum))
+	js.Global().Set("ProcessRequest", js.FuncOf(processRequest))
 	<-make(chan struct{})
 }

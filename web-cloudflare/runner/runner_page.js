@@ -592,7 +592,10 @@ export const PAGE_HTML = `<!doctype html>
 
     <script>
     (function () {
-        // ---- defaults used when a field is left blank -----------------------
+        /* ---- old defaulting/validation/nested-settings logic: this is now
+        done in Go/WASM on the server instead of here in JS. Left in place,
+        commented out, for reference while that port happens. --------------
+
         var DEFAULT_NOTIFY_OK = ['gary@shortsands.com'];
         var DEFAULT_NOTIFY_ERR = ['gary@shortsands.com'];
         var DEFAULT_MMS_ADAPTER = {
@@ -611,14 +614,6 @@ export const PAGE_HTML = `<!doctype html>
             hyphen: { remove: true },
             diacritical_marks: { normalize_nfc: true }
         };
-
-        function showStatus(message, type) {
-            var statusDiv = document.getElementById('status');
-            statusDiv.innerHTML = message.replace(/\\n/g, '<br>');
-            statusDiv.className = 'status ' + (type || 'success');
-            statusDiv.style.display = 'block';
-            setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
-        }
 
         function validateLanguageISO(iso) {
             return /^[a-zA-Z]{3}$/.test(iso);
@@ -777,16 +772,47 @@ export const PAGE_HTML = `<!doctype html>
             return value;
         }
 
+        ---- end of commented-out old logic ---- */
+
+        function showStatus(message, type) {
+            var statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message.replace(/\\n/g, '<br>');
+            statusDiv.className = 'status ' + (type || 'success');
+            statusDiv.style.display = 'block';
+            setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
+        }
+
+        // ---- collect the raw form fields into one flat dict, no defaults,
+        // no nesting, so it can be JSON.stringify'd and passed into WASM ----
+        function buildFormDict() {
+            var dict = {};
+            dict['username'] = document.getElementById('username').value;
+            dict['datasetName'] = document.getElementById('datasetName').value;
+            dict['textData'] = document.getElementById('textData').value;
+            dict['text_format_sfm'] = document.getElementById('text_format_sfm').checked;
+            dict['text_format_usx'] = document.getElementById('text_format_usx').checked;
+            dict['audioData'] = document.getElementById('audioData').value;
+            dict['languageIso'] = document.getElementById('languageIso').value;
+            dict['altLanguage'] = document.getElementById('altLanguage').value;
+            dict['training_mms_adapter'] = document.getElementById('training_mms_adapter').checked;
+            dict['redoTraining'] = document.getElementById('redoTraining').checked;
+            dict['training_no_training'] = document.getElementById('training_no_training').checked;
+            dict['timestamps_mms_align'] = document.getElementById('timestamps_mms_align').checked;
+            dict['timestamps_mms_fa_verse'] = document.getElementById('timestamps_mms_fa_verse').checked;
+            dict['compare'] = document.getElementById('compare').checked;
+            dict['proofing'] = document.getElementById('proofing').checked;
+            dict['gordonFilter'] = document.getElementById('gordonFilter').value;
+            dict['notifyOk'] = document.getElementById('notifyOk').value;
+            dict['notifyErr'] = document.getElementById('notifyErr').value;
+            return dict;
+        }
+
         function generateJSON() {
-            if (!validateForm()) return null;
-            var settingsMap = buildSettingsMap();
-            var settingsObject = mapToPlainValue(settingsMap);
-            return JSON.stringify(settingsObject, null, 2);
+            return JSON.stringify(buildFormDict());
         }
 
         function saveJSON() {
             var jsonData = generateJSON();
-            if (!jsonData) return;
 
             var datasetName = document.getElementById('datasetName').value.trim();
             var filename = (datasetName ? datasetName : 'request') + '.json';
@@ -834,7 +860,6 @@ export const PAGE_HTML = `<!doctype html>
             folderDropzone.classList.remove('success', 'error', 'processing');
 
             updateRedoTrainingState();
-            updateRequiredFieldStyling();
         }
 
         window.clearForm = clearForm;
@@ -842,6 +867,10 @@ export const PAGE_HTML = `<!doctype html>
 
         document.addEventListener('DOMContentLoaded', function () {
             updateRedoTrainingState();
+
+            /* ---- old required/optional field validation wiring: commented
+            out along with the validation functions above.
+
             updateRequiredFieldStyling();
 
             var requiredFields = ['datasetName', 'username', 'languageIso', 'textData', 'audioData'];
@@ -872,6 +901,8 @@ export const PAGE_HTML = `<!doctype html>
                     if (requiredFields.indexOf(fieldId) !== -1) updateRequiredFieldStyling();
                 });
             });
+
+            ---- end of commented-out validation wiring ---- */
 
             document.querySelectorAll('input[name="text_format"]').forEach(function (radio) {
                 radio.addEventListener('change', function () {
