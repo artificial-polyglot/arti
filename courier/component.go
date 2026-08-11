@@ -34,7 +34,7 @@ func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
 	var status *log.Status
 	c.ctx = context.WithValue(c.ctx, "runType", c.courier.Component)
 	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
-	reqDecoder := validate.NewRequestDecoder(c.ctx)
+	reqDecoder := validate.NewRequestValidator(c.ctx)
 	c.req, status = reqDecoder.Process([]byte(c.courier.yamlContent))
 	if status != nil {
 		return c.database, status

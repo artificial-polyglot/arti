@@ -24,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 	ctx := context.Background()
-	reqDecoder := validate.NewRequestDecoder(ctx)
+	reqDecoder := validate.NewRequestValidator(ctx)
 	request, status := reqDecoder.Process(yamlRequest)
 	if status != nil {
 		fmt.Println(status)

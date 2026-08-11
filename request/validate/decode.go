@@ -3,24 +3,25 @@ package validate
 import (
 	"bytes"
 	"context"
+	"strings"
+
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"gopkg.in/yaml.v3"
-	"strings"
 )
 
-type RequestDecoder struct {
+type RequestValidator struct {
 	ctx    context.Context
 	errors []string
 }
 
-func NewRequestDecoder(ctx context.Context) RequestDecoder {
-	var r RequestDecoder
+func NewRequestValidator(ctx context.Context) RequestValidator {
+	var r RequestValidator
 	r.ctx = ctx
 	return r
 }
 
-func (r *RequestDecoder) Process(yamlRequest []byte) (request.Request, *log.Status) {
+func (r *RequestValidator) Process(yamlRequest []byte) (request.Request, *log.Status) {
 	var request request.Request
 	var status *log.Status
 	request, status = r.Decode(yamlRequest)
@@ -44,7 +45,7 @@ func (r *RequestDecoder) Process(yamlRequest []byte) (request.Request, *log.Stat
 	return request, nil
 }
 
-func (r *RequestDecoder) Decode(requestYaml []byte) (request.Request, *log.Status) {
+func (r *RequestValidator) Decode(requestYaml []byte) (request.Request, *log.Status) {
 	var resp request.Request
 	reader := bytes.NewReader(requestYaml)
 	decoder := yaml.NewDecoder(reader)
@@ -57,7 +58,7 @@ func (r *RequestDecoder) Decode(requestYaml []byte) (request.Request, *log.Statu
 	return resp, nil
 }
 
-func (r *RequestDecoder) Encode(req request.Request) (string, *log.Status) {
+func (r *RequestValidator) Encode(req request.Request) (string, *log.Status) {
 	var result string
 	d, err := yaml.Marshal(&req)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestRequestYamlFile(t *testing.T) {
-	var d = NewRequestDecoder(context.Background())
+	var d = NewRequestValidator(context.Background())
 	content, err := os.ReadFile(`request_test.yaml`)
 	if err != nil {
 		panic(err)
@@ -112,7 +112,7 @@ compare:
       normalize_nfd: yes
       normalize_nfkc: yes
       normalize_nfkd: yes`
-	var r = NewRequestDecoder(context.Background())
+	var r = NewRequestValidator(context.Background())
 	req, status := r.Decode([]byte(test1))
 	if status != nil {
 		t.Fatal(status)
@@ -216,7 +216,7 @@ update_dbp:
   timestamps: TESTN2DA
   hls: TESTN2SA
 `
-	decoder := NewRequestDecoder(context.Background())
+	decoder := NewRequestValidator(context.Background())
 	_, status := decoder.Process([]byte(yaml))
 	if status != nil {
 		t.Fatalf("expected no error, got: %v", status)

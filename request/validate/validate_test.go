@@ -8,7 +8,7 @@ import (
 )
 
 func TestValidate(t *testing.T) {
-	var d = NewRequestDecoder(context.Background())
+	var d = NewRequestValidator(context.Background())
 	content, err := os.ReadFile(`request_test.yaml`)
 	if err != nil {
 		panic(err)

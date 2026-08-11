@@ -18,7 +18,7 @@ language_iso: eng
 notify_ok: [gary@shortsands.com, sqs/vessel]
 notify_err: [gary@shortsands.com, sqs/vessel]
 `
-	reqDecoder := validate.NewRequestDecoder(ctx)
+	reqDecoder := validate.NewRequestValidator(ctx)
 	request, status := reqDecoder.Process([]byte(yamlRequest))
 	if status != nil {
 		t.Fatal(status)

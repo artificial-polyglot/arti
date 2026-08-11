@@ -39,7 +39,7 @@ func DirectTestUtility(requestYaml string, tests []CtlTest, t *testing.T) {
 		if numLines != tst.Expected {
 			t.Error(`Expected `, tst.Expected, `records, got`, numLines)
 		}
-		var decoder = validate.NewRequestDecoder(ctx)
+		var decoder = validate.NewRequestValidator(ctx)
 		reqObj, status := decoder.Decode([]byte(req))
 		if status != nil {
 			t.Fatal(status)

@@ -99,7 +99,7 @@ func (c *Controller) processSteps() *log.Status {
 	var status *log.Status
 	// Decode YAML Request File
 	log.Info(c.ctx, "Parse .yaml file.")
-	reqDecoder := validate.NewRequestDecoder(c.ctx)
+	reqDecoder := validate.NewRequestValidator(c.ctx)
 	c.req, status = reqDecoder.Process(c.yamlRequest)
 	if status != nil {
 		return status

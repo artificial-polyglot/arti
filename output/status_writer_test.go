@@ -61,7 +61,7 @@ func prepareError(t *testing.T) (log.Status, context.Context) {
 	req.IsNew = true
 	req.Testament.NT = true
 	ctx := context.Background()
-	reqDecoder := validate.NewRequestDecoder(ctx)
+	reqDecoder := validate.NewRequestValidator(ctx)
 	yaml, status := reqDecoder.Encode(req)
 	if status != nil {
 		t.Error(status)

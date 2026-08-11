@@ -2,13 +2,13 @@ package validate
 
 import "github.com/artificial-polyglot/arti/request"
 
-func (r *RequestDecoder) Prereq(req *request.Request) {
+func (r *RequestValidator) Prereq(req *request.Request) {
 	if req.Timestamps.MMSAlign {
 		req.Detail.Words = true
 	}
 }
 
-func (r *RequestDecoder) Depend(req request.Request) {
+func (r *RequestValidator) Depend(req request.Request) {
 	if req.Database.AWSS3 != "" {
 		if req.IsNew {
 			r.errors = append(r.errors, `When database.aws_s3 is set, is_new must be false`)
