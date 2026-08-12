@@ -3,9 +3,9 @@ package input
 import (
 	"context"
 	"fmt"
-	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/request"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestPlainText1(t *testing.T) {
@@ -236,50 +236,4 @@ func TestIncorrectBooks(t *testing.T) {
 		t.Error(`There should be 0 files`, len(files))
 	}
 	//fmt.Println(files)
-}
-
-func TestParseV4AudioFilename(t *testing.T) {
-	ctx := context.Background()
-	var status *log.Status
-	var file InputFile
-	file.Filename = `ENGESVN2DA_B001_MAT_001.mp3`
-	status = parseV4AudioFilename(ctx, &file)
-	if status != nil {
-		t.Error(status)
-	}
-	if file.MediaId != `ENGESVN2DA` {
-		t.Error(`mediaId is incorrect`, file.MediaId)
-	}
-	if file.Testament != `NT` {
-		t.Error(`Testament is incorrect`, file.Testament)
-	}
-	if file.BookId != `MAT` {
-		t.Error(`BookId is incorrect`, file.BookId)
-	}
-	if file.BookSeq != `001` {
-		t.Error(`BookSeq is incorrect`, file.BookSeq)
-	}
-	if file.Chapter != 1 {
-		t.Error(`Chapter is incorrect`, file.Chapter)
-	}
-	if file.Verse != `` {
-		t.Error(`Verse is incorrect`, file.Verse)
-	}
-	//fmt.Println("File", file)
-	var file2 InputFile
-	file2.Filename = `IRUNLCP1DA_B013_1TH_001_001-001_010.mp3`
-	status = parseV4AudioFilename(ctx, &file2)
-	if status != nil {
-		t.Error(status)
-	}
-	if file2.Verse != `001` {
-		t.Error(`Verse is incorrect`, file2.Verse)
-	}
-	if file2.ChapterEnd != 1 {
-		t.Error(`ChapterEnd is incorrect`, file2.ChapterEnd)
-	}
-	if file2.VerseEnd != `010` {
-		t.Error(`VerseEnd is incorrect`, file2.VerseEnd)
-	}
-	//fmt.Println("File2", file2)
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/input/precheck"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/read/script_reader"
 	"github.com/artificial-polyglot/arti/request"
@@ -129,7 +130,7 @@ func TestTokenizeMalformedVerseNumberStopsRun(t *testing.T) {
 }
 
 // downloadTestFiles fetches s3Path into localDir and returns it as InputFiles ready
-// for input.FillInputFile. s3Path is either a single object (e.g. .../foo.xlsx) or a
+// for precheck.ValidateFiles. s3Path is either a single object (e.g. .../foo.xlsx) or a
 // "*.EXT" glob, in which case the whole directory is downloaded and then filtered down
 // to entries matching the glob - SFM Text folders also contain non-SFM project files
 // (e.g. Settings.xml) that setMediaType cannot classify, so the filter is required.
@@ -253,7 +254,7 @@ func TestSymmetricTest1(t *testing.T) {
 		if status1 != nil {
 			t.Fatal(tst, status1)
 		}
-		files, status1 = input.FillInputFile(ctx, testament, files)
+		files, status1 = precheck.ValidateFiles(ctx, testament, files)
 		if status1 != nil {
 			t.Fatal(tst, status1)
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/artificial-polyglot/arti/encode"
 	"github.com/artificial-polyglot/arti/fetch"
 	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/input/precheck"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/match/diff"
 	"github.com/artificial-polyglot/arti/mms"
@@ -331,7 +332,7 @@ func (c *Controller) collectTextInput() ([]input.InputFile, *log.Status) {
 	if status != nil {
 		return files, status
 	}
-	files, status = input.FillInputFile(c.ctx, c.req.Testament, files)
+	files, status = precheck.ValidateFiles(c.ctx, c.req.Testament, files)
 	if status != nil {
 		return files, status
 	}
@@ -360,7 +361,7 @@ func (c *Controller) collectAudioInput() ([]input.InputFile, *log.Status) {
 	} else {
 		expectFiles = false
 	}
-	files, status = input.FillInputFile(c.ctx, c.req.Testament, files)
+	files, status = precheck.ValidateFiles(c.ctx, c.req.Testament, files)
 	if status != nil {
 		return files, status
 	}

@@ -2,10 +2,11 @@ package input
 
 import (
 	"context"
-	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/request"
 	"os"
 	"path/filepath"
+
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 // DBPDirectory 1. Assign pattern for OT, NT.  2. Glob files.  3. Assign book/chapter & Prune
