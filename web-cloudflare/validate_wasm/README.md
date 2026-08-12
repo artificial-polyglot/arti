@@ -7,4 +7,4 @@ which wasm-opt
 
 export WASMOPT={path to wasm-opt}
 
-tinygo build -o ./web-cloudflare/validate_wasm/validate.wasm -target=wasm ./web-cloudflare/validate_wasm
+tinygo build -o ./web-cloudflare/runner/public/validate.wasm -target=wasm ./web-cloudflare/validate_wasm
