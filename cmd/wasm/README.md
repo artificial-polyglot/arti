@@ -8,4 +8,4 @@ which wasm-opt
 
 export WASMOPT={path to wasm-opt}
 
-tinygo build -o ./cmd/wasm/safe.wasm -target=wasm ./cmd/wasm
+tinygo build -o ./cmd/wasm/validate.wasm -target=wasm ./cmd/wasm

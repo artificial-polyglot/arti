@@ -4,8 +4,11 @@ const runWasmAdd = async () => {
   // Get the importObject from the go instance.
   const importObject = go.importObject;
 
-  // Instantiate our wasm module
-  const wasmModule = await wasmBrowserInstantiate("./safe.wasm", importObject);
+  // Instantiate our wasm module. WebAssembly.instantiate (rather than
+  // instantiateStreaming) is used because it works regardless of whether
+  // the server sends the correct application/wasm content-type.
+  const wasmBytes = await (await fetch("./validate.wasm")).arrayBuffer();
+  const wasmModule = await WebAssembly.instantiate(wasmBytes, importObject);
 
   // Allow the wasm_exec go instance, bootstrap and execute our wasm module.
   // main() registers ValidateRequest on the JS global object, then blocks so

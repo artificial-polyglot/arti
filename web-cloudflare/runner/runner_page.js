@@ -12,10 +12,11 @@
 // The folder dropzone markup is kept for a later pass but isn't wired to any
 // JS here.
 //
-// Everything under the <script> tag is new: it reads the form fields into a
-// Map (with nested Maps for grouped settings like training/timestamps/
-// compare), converts that Map tree to plain objects, and JSON.stringifies it
-// for download via the "Save JSON" button.
+// Everything under the <script> tags is new: it reads the form fields into
+// one flat dict and JSON.stringifies it, hands that JSON to the
+// request/validate WASM module (validate.wasm, built from
+// arti/cmd/wasm) for the same validation the server does, and on success
+// downloads the WASM-normalized JSON via the "Save JSON" button.
 
 export const PAGE_HTML = `<!doctype html>
 <html lang="en">
@@ -590,8 +591,21 @@ export const PAGE_HTML = `<!doctype html>
         <div class="status" id="status"></div>
     </div>
 
+    <!--
+    wasm_exec.js must come before our inline script below, as it defines
+    the Go class used to load and run validate.wasm.
+    -->
+    <script src="/wasm_exec.js"></script>
     <script>
     (function () {
+        // ---- load the request/validate WASM module (built from
+        // arti/cmd/wasm) so form validation can run the same Go code the
+        // server uses, before the JSON is ever downloaded/submitted. -------
+        var go = new Go();
+        var wasmReady = fetch('/validate.wasm')
+            .then(function (resp) { return resp.arrayBuffer(); })
+            .then(function (bytes) { return WebAssembly.instantiate(bytes, go.importObject); })
+            .then(function (result) { go.run(result.instance); });
         /* ---- old defaulting/validation/nested-settings logic: this is now
         done in Go/WASM on the server instead of here in JS. Left in place,
         commented out, for reference while that port happens. --------------
@@ -814,21 +828,33 @@ export const PAGE_HTML = `<!doctype html>
         function saveJSON() {
             var jsonData = generateJSON();
 
-            var datasetName = document.getElementById('datasetName').value.trim();
-            var filename = (datasetName ? datasetName : 'request') + '.json';
+            wasmReady.then(function () {
+                // ValidateRequest (registered by validate.wasm's main.go)
+                // returns { request: string, errors: string[] }.
+                var result = ValidateRequest(jsonData);
+                if (result.errors.length > 0) {
+                    showStatus(result.errors.join('\\n'), 'error');
+                    return;
+                }
 
-            var blob = new Blob([jsonData], { type: 'application/json;charset=utf-8' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                var datasetName = document.getElementById('datasetName').value.trim();
+                var filename = (datasetName ? datasetName : 'request') + '.json';
 
-            showStatus('Saved: ' + filename);
+                var blob = new Blob([result.request], { type: 'application/json;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+
+                showStatus('Saved: ' + filename);
+            }).catch(function (err) {
+                showStatus('Validation module failed to load: ' + err, 'error');
+            });
         }
 
         function updateRedoTrainingState() {

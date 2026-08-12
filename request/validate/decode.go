@@ -23,8 +23,6 @@ func ValidateRequestWASM(htmlValues string) ([]byte, []string) {
 		byts, err = json.Marshal(req)
 		if err != nil {
 			errors = append(errors, err.Error())
-		} else {
-
 		}
 	}
 	return byts, errors

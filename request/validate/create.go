@@ -49,7 +49,7 @@ func CreateRequestFromHTML(json string) request.Request {
 	req.AudioProof.HTMLReport = gjson.Get(json, "proofing").Bool()
 	if gjson.Get(json, "compare").Bool() {
 		req.Compare.HTMLReport = true
-		req.Compare.GordonFilter = int(gjson.Get(json, "").Int())
+		req.Compare.GordonFilter = int(gjson.Get(json, "gordonFilter").Int())
 		req.Compare.CompareSettings.LowerCase = true
 		req.Compare.CompareSettings.RemovePromptChars = true
 		req.Compare.CompareSettings.RemovePunctuation = true
