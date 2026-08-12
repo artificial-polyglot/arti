@@ -2,10 +2,11 @@ package encode
 
 import (
 	"context"
+	"testing"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/input"
 	"github.com/artificial-polyglot/arti/request"
-	"testing"
 )
 
 func TestAeneasLines(t *testing.T) {
@@ -16,7 +17,7 @@ func TestAeneasLines(t *testing.T) {
 	var testament = request.Testament{NTBooks: []string{`MRK`}}
 	testament.BuildBookMaps()
 	var detail = request.Detail{Lines: true}
-	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId, testament)
+	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId) //, testament)
 	if status != nil {
 		t.Error(status)
 	}
@@ -36,7 +37,7 @@ func TestAeneasWords(t *testing.T) {
 	var testament = request.Testament{NT: true}
 	testament.BuildBookMaps()
 	var detail = request.Detail{Words: true}
-	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId, testament)
+	files, status := input.DBPDirectory(ctx, bibleId, `audio`, ``, filesetId) //, testament)
 	if status != nil {
 		t.Error(status)
 	}

@@ -4,20 +4,22 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestRequestYamlFile(t *testing.T) {
-	var d = NewRequestValidator(context.Background())
 	content, err := os.ReadFile(`request_test.yaml`)
 	if err != nil {
 		panic(err)
 	}
-	req, status := d.Decode(content)
+	req, status := request.Decode(context.Background(), content)
 	if status != nil {
 		t.Fatal(status)
 	}
-	yaml, status := d.Encode(req)
+	yaml, status := request.Encode(context.Background(), req)
 	if status != nil {
 		t.Fatal(status)
 	}
@@ -112,15 +114,14 @@ compare:
       normalize_nfd: yes
       normalize_nfkc: yes
       normalize_nfkd: yes`
-	var r = NewRequestValidator(context.Background())
-	req, status := r.Decode([]byte(test1))
+	req, status := request.Decode(context.Background(), []byte(test1))
 	if status != nil {
 		t.Fatal(status)
 	}
 	if !req.TextEncoding.FastText {
 		t.Error("FastText should be true")
 	}
-	_, _ = r.Encode(req)
+	_, _ = request.Encode(context.Background(), req)
 	var boolTests = []bool{
 		req.Output.CSV,
 		req.Output.JSON,
@@ -216,9 +217,12 @@ update_dbp:
   timestamps: TESTN2DA
   hls: TESTN2SA
 `
-	decoder := NewRequestValidator(context.Background())
-	_, status := decoder.Process([]byte(yaml))
+	req, status := request.Decode(context.Background(), []byte(yaml))
 	if status != nil {
 		t.Fatalf("expected no error, got: %v", status)
+	}
+	errors := ValidateRequest(context.Background(), &req)
+	if len(errors) > 0 {
+		t.Fatalf("expected no error, got: %v", strings.Join(errors, "\n"))
 	}
 }

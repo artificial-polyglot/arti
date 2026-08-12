@@ -5,15 +5,17 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestValidate(t *testing.T) {
-	var d = NewRequestValidator(context.Background())
 	content, err := os.ReadFile(`request_test.yaml`)
 	if err != nil {
 		panic(err)
 	}
-	var req, _ = d.Decode(content)
+	var req, _ = request.Decode(context.Background(), content)
+	var d RequestValidator
 	req.IsNew = true
 	//req.BibleId = `EBGESV`
 	req.LanguageISO = `eng`

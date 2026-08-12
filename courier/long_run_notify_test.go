@@ -3,7 +3,9 @@ package courier
 import (
 	"context"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/request/validate"
+	"strings"
 	"testing"
 	"time"
 )
@@ -18,10 +20,13 @@ language_iso: eng
 notify_ok: [gary@shortsands.com, sqs/vessel]
 notify_err: [gary@shortsands.com, sqs/vessel]
 `
-	reqDecoder := validate.NewRequestValidator(ctx)
-	request, status := reqDecoder.Process([]byte(yamlRequest))
+	request, status := request.Decode(ctx, []byte(yamlRequest))
 	if status != nil {
 		t.Fatal(status)
+	}
+	errors := validate.ValidateRequest(ctx, &request)
+	if len(errors) > 0 {
+		t.Fatal(strings.Join(errors, "\n"))
 	}
 	// Below this belongs in controller to be in production
 	notify := NewLongRunNotify(ctx, request)

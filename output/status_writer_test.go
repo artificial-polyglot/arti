@@ -10,7 +10,6 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
-	"github.com/artificial-polyglot/arti/request/validate"
 )
 
 func TestDefaultStatus(t *testing.T) {
@@ -61,8 +60,7 @@ func prepareError(t *testing.T) (log.Status, context.Context) {
 	req.IsNew = true
 	req.Testament.NT = true
 	ctx := context.Background()
-	reqDecoder := validate.NewRequestValidator(ctx)
-	yaml, status := reqDecoder.Encode(req)
+	yaml, status := request.Encode(ctx, req)
 	if status != nil {
 		t.Error(status)
 	}

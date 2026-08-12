@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/artificial-polyglot/arti/db"
@@ -34,10 +35,13 @@ func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
 	var status *log.Status
 	c.ctx = context.WithValue(c.ctx, "runType", c.courier.Component)
 	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
-	reqDecoder := validate.NewRequestValidator(c.ctx)
-	c.req, status = reqDecoder.Process([]byte(c.courier.yamlContent))
+	c.req, status = request.Decode(c.ctx, []byte(c.courier.yamlContent))
 	if status != nil {
 		return c.database, status
+	}
+	errors := validate.ValidateRequest(c.ctx, &c.req)
+	if len(errors) > 0 {
+		return c.database, log.ErrorNoErr(c.ctx, 400, strings.Join(errors, "\n"))
 	}
 	if !c.req.IsNew {
 		dbPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), c.req.Username, c.req.DatasetName+".db")

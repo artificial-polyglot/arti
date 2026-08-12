@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/request/validate"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -24,10 +25,14 @@ func main() {
 		os.Exit(1)
 	}
 	ctx := context.Background()
-	reqDecoder := validate.NewRequestValidator(ctx)
-	request, status := reqDecoder.Process(yamlRequest)
+	request, status := request.Decode(ctx, yamlRequest)
 	if status != nil {
 		fmt.Println(status)
+		os.Exit(1)
+	}
+	errors := validate.ValidateRequest(ctx, &request)
+	if len(errors) > 0 {
+		fmt.Println(strings.Join(errors, "\n"))
 		os.Exit(1)
 	}
 	var httpReq *http.Request

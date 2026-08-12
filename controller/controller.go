@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
@@ -99,10 +100,13 @@ func (c *Controller) processSteps() *log.Status {
 	var status *log.Status
 	// Decode YAML Request File
 	log.Info(c.ctx, "Parse .yaml file.")
-	reqDecoder := validate.NewRequestValidator(c.ctx)
-	c.req, status = reqDecoder.Process(c.yamlRequest)
+	c.req, status = request.Decode(c.ctx, c.yamlRequest)
 	if status != nil {
 		return status
+	}
+	errors := validate.ValidateRequest(c.ctx, &c.req)
+	if len(errors) > 0 {
+		return log.ErrorNoErr(c.ctx, 400, strings.Join(errors, "\n"))
 	}
 	notify := courier.NewLongRunNotify(c.ctx, c.req)
 	done := make(chan struct{})
