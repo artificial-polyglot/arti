@@ -2,6 +2,7 @@ package validate
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/request"
@@ -10,6 +11,23 @@ import (
 type RequestValidator struct {
 	ctx    context.Context
 	errors []string
+}
+
+func ValidateRequestWASM(htmlValues string) ([]byte, []string) {
+	var req request.Request
+	var byts []byte
+	var err error
+	req = CreateRequestFromHTML(htmlValues)
+	errors := ValidateRequest(context.Background(), &req)
+	if len(errors) == 0 {
+		byts, err = json.Marshal(req)
+		if err != nil {
+			errors = append(errors, err.Error())
+		} else {
+
+		}
+	}
+	return byts, errors
 }
 
 func ValidateRequest(ctx context.Context, req *request.Request) []string {

@@ -213,8 +213,7 @@ func Debug(ctx context.Context, param ...any) {
 		var msg []string
 		msg = append(msg, fmt.Sprintf("Alloc = %v mb,", bToMb(m.Alloc)))
 		msg = append(msg, fmt.Sprintf("Malloca = %v mb,", bToMb(m.Mallocs)))
-		msg = append(msg, fmt.Sprintf("Frees = %v mb,", bToMb(m.Frees)))
-		msg = append(msg, fmt.Sprintf("NumGC = %v", m.NumGC))
+		msg = append(msg, fmt.Sprintf("Frees = %v mb", bToMb(m.Frees)))
 		param = append(param, strings.Join(msg, " "))
 		if logToFile {
 			_, _ = fmt.Fprintln(os.Stderr, param...)
