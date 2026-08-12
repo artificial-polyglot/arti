@@ -1,4 +1,3 @@
-H
 Download TinyGo
 https://tinygo.org
 
@@ -8,4 +7,4 @@ which wasm-opt
 
 export WASMOPT={path to wasm-opt}
 
-tinygo build -o ./cmd/wasm/validate.wasm -target=wasm ./cmd/wasm
+tinygo build -o ./web-cloudflare/validate_wasm/validate.wasm -target=wasm ./web-cloudflare/validate_wasm

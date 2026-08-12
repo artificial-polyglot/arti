@@ -15,8 +15,11 @@
 // Everything under the <script> tags is new: it reads the form fields into
 // one flat dict and JSON.stringifies it, hands that JSON to the
 // request/validate WASM module (validate.wasm, built from
-// arti/cmd/wasm) for the same validation the server does, and on success
-// downloads the WASM-normalized JSON via the "Save JSON" button.
+// web-cloudflare/validate_wasm) for the same validation the server does.
+// On failure, the returned errors are listed at the top of the page; on
+// success, the "Save JSON" button downloads the generated JSON as before.
+// "Save JSON" stands in for a future "Submit Job" button - for now all
+// operations (validate, then save) are tied to it.
 
 export const PAGE_HTML = `<!doctype html>
 <html lang="en">
@@ -371,6 +374,20 @@ export const PAGE_HTML = `<!doctype html>
             color: #ffd700;
         }
 
+        .error-banner {
+            display: none;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            border-radius: 4px;
+            background-color: #4d1a1a;
+            border: 1px solid #6b2d2d;
+            color: #ffb3b3;
+        }
+
+        .error-banner div {
+            padding: 2px 0;
+        }
+
         /* Required field validation styling */
         .required-error {
             border: 1px solid #cc6666 !important;
@@ -415,6 +432,8 @@ export const PAGE_HTML = `<!doctype html>
 
 <body>
     <div class="container">
+        <div class="error-banner" id="errorBanner"></div>
+
         <div class="header">
             <img src="/arti.jpg" alt="Artie Logo" class="logo">
             <h2 class="subtitle">Arti2<br>Task and Media<br>Uploader</h2>
@@ -599,8 +618,8 @@ export const PAGE_HTML = `<!doctype html>
     <script>
     (function () {
         // ---- load the request/validate WASM module (built from
-        // arti/cmd/wasm) so form validation can run the same Go code the
-        // server uses, before the JSON is ever downloaded/submitted. -------
+        // web-cloudflare/validate_wasm) so form validation can run the same
+        // Go code the server uses, before the JSON is ever downloaded. -----
         var go = new Go();
         var wasmReady = fetch('/validate.wasm')
             .then(function (resp) { return resp.arrayBuffer(); })
@@ -796,6 +815,29 @@ export const PAGE_HTML = `<!doctype html>
             setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
         }
 
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ---- display validation errors one per line at the top of the
+        // page. Unlike showStatus, this does not auto-hide - it stays until
+        // the next validation attempt (success or failure) replaces it. ----
+        function showErrors(errors) {
+            var banner = document.getElementById('errorBanner');
+            if (!errors || errors.length === 0) {
+                banner.style.display = 'none';
+                banner.innerHTML = '';
+                return;
+            }
+            banner.innerHTML = errors.map(function (e) {
+                return '<div>' + escapeHtml(e) + '</div>';
+            }).join('');
+            banner.style.display = 'block';
+            banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         // ---- collect the raw form fields into one flat dict, no defaults,
         // no nesting, so it can be JSON.stringify'd and passed into WASM ----
         function buildFormDict() {
@@ -829,18 +871,20 @@ export const PAGE_HTML = `<!doctype html>
             var jsonData = generateJSON();
 
             wasmReady.then(function () {
-                // ValidateRequest (registered by validate.wasm's main.go)
-                // returns { request: string, errors: string[] }.
+                // ValidateRequest (registered by validate.wasm's main.go,
+                // which calls validate.ValidateRequestWASM) returns
+                // { request: string, errors: string[] }.
                 var result = ValidateRequest(jsonData);
                 if (result.errors.length > 0) {
-                    showStatus(result.errors.join('\\n'), 'error');
+                    showErrors(result.errors);
                     return;
                 }
+                showErrors([]);
 
                 var datasetName = document.getElementById('datasetName').value.trim();
                 var filename = (datasetName ? datasetName : 'request') + '.json';
 
-                var blob = new Blob([result.request], { type: 'application/json;charset=utf-8' });
+                var blob = new Blob([jsonData], { type: 'application/json;charset=utf-8' });
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;
@@ -853,7 +897,7 @@ export const PAGE_HTML = `<!doctype html>
 
                 showStatus('Saved: ' + filename);
             }).catch(function (err) {
-                showStatus('Validation module failed to load: ' + err, 'error');
+                showErrors(['Validation module failed to load: ' + err]);
             });
         }
 
@@ -886,6 +930,7 @@ export const PAGE_HTML = `<!doctype html>
             folderDropzone.classList.remove('success', 'error', 'processing');
 
             updateRedoTrainingState();
+            showErrors([]);
         }
 
         window.clearForm = clearForm;
