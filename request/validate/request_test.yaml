@@ -103,7 +103,6 @@ text_encoding:
 
 audio_proof:
   html_report: # Mark yes to receive proof report
-  base_dataset: # Use only when is_new: false to identify the USX dataset, the dataset_name must be the ASR dataset
 
 compare: # To do a compare, put the names of the two projects here
   html_report: # Mark yes to receive compare report
@@ -131,6 +130,3 @@ compare: # To do a compare, put the names of the two projects here
       normalize_nfkc: # Mark yes here for Normalization Form Compatibility Composition
       normalize_nfkd: # Mark yes here for Normalization Form Compatibility Decomposition
 
-update_dbp: # Update DBP database with processed data
-  timestamps: ENGNIVN1DA # Fileset ID to update timestamps for
-  hls: ENGNIVN1SA # Fileset ID for HLS stream generation

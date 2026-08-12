@@ -3,30 +3,48 @@ package request
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
 	"gopkg.in/yaml.v3"
 )
 
 func Decode(ctx context.Context, requestYaml []byte) (Request, *log.Status) {
-	var resp Request
+	var req Request
+	var err error
 	reader := bytes.NewReader(requestYaml)
-	decoder := yaml.NewDecoder(reader)
-	decoder.KnownFields(true)
-	err := decoder.Decode(&resp)
-	if err != nil {
-		return resp, log.Error(ctx, 400, err, `Error decoding YAML to request`)
+	if IsJSON(requestYaml) {
+		decoder := json.NewDecoder(reader)
+		decoder.DisallowUnknownFields()
+		err = decoder.Decode(&req)
+	} else {
+		decoder := yaml.NewDecoder(reader)
+		decoder.KnownFields(true)
+		err = decoder.Decode(&req)
 	}
-	resp.Testament.BuildBookMaps() // Builds Map for t.HasOT(bookId), t.HasNT(bookId)
-	return resp, nil
+	if err != nil {
+		return req, log.Error(ctx, 400, err, `Error decoding YAML/JSON to request`)
+	}
+	req.Testament.BuildBookMaps() // Builds Map for t.HasOT(bookId), t.HasNT(bookId)
+	return req, nil
 }
 
-func Encode(ctx context.Context, req Request) (string, *log.Status) {
-	var result string
-	d, err := yaml.Marshal(&req)
-	if err != nil {
-		return result, log.Error(ctx, 500, err, `Error encoding request to YAML`)
+func IsJSON(b []byte) bool {
+	b = bytes.TrimSpace(b)
+	return len(b) > 0 && (b[0] == '{' || b[0] == '[')
+}
+
+func Encode(ctx context.Context, encType string, req Request) (string, *log.Status) {
+	var byt []byte
+	var err error
+	if strings.ToLower(encType) == "json" {
+		byt, err = json.Marshal(&req)
+	} else {
+		byt, err = yaml.Marshal(&req)
 	}
-	result = string(d)
-	return result, nil
+	if err != nil {
+		return "", log.Error(ctx, 500, err, `Error encoding request to YAML`)
+	}
+	return string(byt), nil
 }

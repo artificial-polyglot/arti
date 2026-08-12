@@ -19,7 +19,7 @@ func TestRequestYamlFile(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	yaml, status := request.Encode(context.Background(), req)
+	yaml, status := request.Encode(context.Background(), "yaml", req)
 	if status != nil {
 		t.Fatal(status)
 	}
@@ -91,7 +91,6 @@ text_encoding:
   no_encoding: yes
 audio_proof:
   html_report: yes
-  base_dataset: UseProject1
 compare:
   html_report: yes
   base_dataset: UseProject1
@@ -121,7 +120,7 @@ compare:
 	if !req.TextEncoding.FastText {
 		t.Error("FastText should be true")
 	}
-	_, _ = request.Encode(context.Background(), req)
+	_, _ = request.Encode(context.Background(), "yaml", req)
 	var boolTests = []bool{
 		req.Output.CSV,
 		req.Output.JSON,
@@ -213,9 +212,6 @@ timestamps:
 audio_data:
   bible_brain:
     mp3_64: yes
-update_dbp:
-  timestamps: TESTN2DA
-  hls: TESTN2SA
 `
 	req, status := request.Decode(context.Background(), []byte(yaml))
 	if status != nil {

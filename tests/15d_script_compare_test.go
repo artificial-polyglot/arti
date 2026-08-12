@@ -14,7 +14,6 @@ testament:
   nt: yes
 audio_proof:
   html_report: no # must eliminate directory input files passed into module to do this
-  base_dataset: 15d_script_compare
 compare:
   html_report: yes
   base_dataset: 15d_script_compare

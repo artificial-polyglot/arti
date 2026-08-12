@@ -17,7 +17,6 @@ audio_data:
     mp3_64: yes
 audio_proof:
   html_report: yes
-  base_dataset: 15c_proof_compare
 compare:
   html_report: yes
   base_dataset: 15c_proof_compare
