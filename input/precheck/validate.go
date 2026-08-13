@@ -3,7 +3,6 @@ package precheck
 import (
 	"archive/zip"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -18,23 +17,24 @@ import (
 	"github.com/artificial-polyglot/arti/request"
 )
 
-// ValidateFilesWASM takes a JSON array of the relative file paths found in a
-// dropped directory (root directory name included as the prefix, matching
-// what will later be uploaded to the arti-input bucket) and checks that
-// each filename is recognized: setMediaType identifies the media type from
-// its name/extension, and parseFilenames confirms the naming convention
-// parses (book id, chapter, etc.). It does not look at file contents.
-// Returns one message per problem file; an empty slice means every file in
-// the tree was understood.
-func ValidateFilesWASM(filePathsJSON string) []string {
+// ValidateFilesWASM takes the relative file paths found in a dropped
+// directory (root directory name included as the prefix, matching what
+// will later be uploaded to the arti-input bucket), joined with NUL bytes
+// rather than JSON-encoded - NUL can never appear in a real filename, so a
+// plain split is all the parsing this needs. Checks that each filename is
+// recognized: setMediaType identifies the media type from its
+// name/extension, and parseFilenames confirms the naming convention parses
+// (book id, chapter, etc.). It does not look at file contents. Returns one
+// message per problem file; an empty slice means every file in the tree
+// was understood.
+func ValidateFilesWASM(filePaths string) []string {
 	ctx := context.Background()
 	var errs []string
 
-	var paths []string
-	err := json.Unmarshal([]byte(filePathsJSON), &paths)
-	if err != nil {
-		return []string{"Error parsing file list: " + err.Error()}
+	if filePaths == "" {
+		return errs
 	}
+	paths := strings.Split(filePaths, "\x00")
 
 	for _, p := range paths {
 		file := generic.InputFile{

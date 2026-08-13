@@ -958,9 +958,11 @@ export const PAGE_HTML = `<!doctype html>
                 // which calls validate.ValidateRequestWASM) returns
                 // { request: string, errors: string[] }. ValidateFiles
                 // (validate.ValidateFilesWASM) takes the same dropped file
-                // list and returns just string[] errors.
+                // list - NUL-joined rather than JSON, since NUL can never
+                // appear in a real filename and a plain split is simpler
+                // than parsing JSON - and returns just string[] errors.
                 var result = ValidateRequest(jsonData);
-                var fileErrors = ValidateFiles(JSON.stringify(droppedFilePaths));
+                var fileErrors = ValidateFiles(droppedFilePaths.join('\\0'));
                 var allErrors = result.errors.concat(fileErrors);
                 if (allErrors.length > 0) {
                     showErrors(allErrors);
