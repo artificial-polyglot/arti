@@ -2,7 +2,6 @@ package validate
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/request"
@@ -20,7 +19,7 @@ func ValidateRequestWASM(htmlValues string) ([]byte, []string) {
 	req = CreateRequestFromHTML(htmlValues)
 	errors := ValidateRequest(context.Background(), &req)
 	if len(errors) == 0 {
-		byts, err = json.Marshal(req)
+		byts, err = Marshal(req)
 		if err != nil {
 			errors = append(errors, err.Error())
 		}
