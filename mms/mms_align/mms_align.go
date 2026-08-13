@@ -13,7 +13,6 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
-	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
@@ -56,7 +55,7 @@ func NewMMSAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang st
 }
 
 // ProcessFiles will perform Forced Alignment on these files
-func (m *MMSAlign) ProcessFiles(files []input.InputFile) *log.Status {
+func (m *MMSAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 	var err error
 	m.tempDir, err = os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "mms_fa_")
 	if err != nil {
@@ -86,7 +85,7 @@ func (m *MMSAlign) ProcessFiles(files []input.InputFile) *log.Status {
 }
 
 // processFile will process one audio file through mms forced alignment
-func (m *MMSAlign) processFile(file input.InputFile) *log.Status {
+func (m *MMSAlign) processFile(file generic.InputFile) *log.Status {
 	var status *log.Status
 	var faInput MMSAlign_Input
 	faInput.AudioFile, status = ffmpeg.ConvertMp3ToWav(m.ctx, m.tempDir, file.FilePath())
@@ -236,7 +235,7 @@ type MMSAlignResult struct {
 	Tokens     [][][]float64  `json:"tokens"`
 }
 
-func (m *MMSAlign) processPyOutput(file input.InputFile, wordRefs []Word, response string) *log.Status {
+func (m *MMSAlign) processPyOutput(file generic.InputFile, wordRefs []Word, response string) *log.Status {
 	var status *log.Status
 	var mmsAlign MMSAlignResult
 	err := json.Unmarshal([]byte(response), &mmsAlign)

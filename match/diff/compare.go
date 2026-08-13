@@ -3,6 +3,7 @@ package diff
 import (
 	"context"
 	"database/sql"
+	"github.com/artificial-polyglot/arti/books"
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
@@ -102,8 +103,8 @@ func (c *Compare) Process() ([]Pair, string, string, *log.Status) {
 
 func (c *Compare) compareVerses(textSource request.MediaType) ([]Pair, *log.Status) {
 	var status *log.Status
-	for _, bookId := range db.RequestedBooks(c.testament) {
-		var chapInBook, _ = db.BookChapterMap[bookId]
+	for _, bookId := range books.RequestedBooks(c.testament) {
+		var chapInBook, _ = books.BookChapterMap[bookId]
 		var chapter = 1
 		for chapter <= chapInBook {
 			var baseLines, compLines []Verse

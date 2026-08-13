@@ -13,7 +13,6 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
-	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 )
@@ -75,7 +74,7 @@ func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, string, *log.Status)
 	if status != nil {
 		return result, verses, baseURL, status
 	}
-	baseURL, status = input.SelectBaseURL(p.conn)
+	baseURL, status = db.SelectBaseURL(p.conn)
 	return result, verses, baseURL, status
 }
 

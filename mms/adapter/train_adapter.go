@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	req "github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
@@ -49,7 +49,7 @@ func (t *TrainAdapter) HasModel() bool {
 	return fileInfo.Size() > 1000000 // must be GT 1Meg
 }
 
-func (t *TrainAdapter) Train(files []input.InputFile) *log.Status {
+func (t *TrainAdapter) Train(files []generic.InputFile) *log.Status {
 	if len(files) == 0 {
 		return nil
 	}

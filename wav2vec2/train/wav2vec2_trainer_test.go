@@ -3,7 +3,7 @@ package train
 import (
 	"context"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	req "github.com/artificial-polyglot/arti/request"
 	"testing"
 )
@@ -16,7 +16,7 @@ func TestNewWav2Vec2Trainer(t *testing.T) {
 	}
 	params := req.Wav2Vec2{BatchMB: 4, NumEpochs: 1, LearningRate: 1e-3, WarmupPct: 12, GradNormMax: 0.4}
 	trainer := NewWav2Vec2Trainer(ctx, database, "keu", params)
-	var f1 input.InputFile
+	var f1 generic.InputFile
 	f1.Directory = "/Users/gary/FCBH2024/download/N2KEUWB4/N2KEUWBT"
 	f1.Filename = "N2_KEU_WBT_069_JHN_001_VOX.mp3"
 	f1.FileExt = ".mp3"
@@ -24,7 +24,7 @@ func TestNewWav2Vec2Trainer(t *testing.T) {
 	f1.BookId = "JHN"
 	f1.BookSeq = "44"
 	f1.Chapter = 1
-	var files []input.InputFile
+	var files []generic.InputFile
 	files = append(files, f1)
 	err := trainer.Train(files)
 	if err != nil {

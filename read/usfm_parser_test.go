@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -23,9 +23,9 @@ import (
 func TestUSFMParser(t *testing.T) {
 	ctx := context.Background()
 	var directory = "test_data"
-	var files []input.InputFile
-	file1 := input.InputFile{BookId: "LUK", Directory: directory, Filename: "43LUKCFM.SFM", MediaType: "text/plain"}
-	//file2 := input.InputFile{BookId: "LUK", Directory: directory, Filename: "43LUKDWK.SFM", MediaType: "text/plain"}
+	var files []generic.InputFile
+	file1 := generic.InputFile{BookId: "LUK", Directory: directory, Filename: "43LUKCFM.SFM", MediaType: "text/plain"}
+	//file2 := generic.InputFile{BookId: "LUK", Directory: directory, Filename: "43LUKDWK.SFM", MediaType: "text/plain"}
 	files = append(files, file1)
 	var database = directory + "/usfm_test.db"
 	db.DestroyDatabase(database)
@@ -175,14 +175,14 @@ func findSFMDir(ctx context.Context, client *s3.Client, bucket, parentPrefix str
 
 // downloadToSubDir clears localDir, downloads all objects under s3Prefix into it,
 // and returns an InputFile slice with Directory, Filename, and BookId populated.
-func downloadToSubDir(ctx context.Context, client *s3.Client, bucket, s3Prefix, localDir, extFilter string) ([]input.InputFile, *log.Status) {
+func downloadToSubDir(ctx context.Context, client *s3.Client, bucket, s3Prefix, localDir, extFilter string) ([]generic.InputFile, *log.Status) {
 	if err := os.RemoveAll(localDir); err != nil {
 		return nil, log.Error(ctx, 500, err, "Failed to remove directory", localDir)
 	}
 	if err := os.MkdirAll(localDir, 0755); err != nil {
 		return nil, log.Error(ctx, 500, err, "Failed to create directory", localDir)
 	}
-	var files []input.InputFile
+	var files []generic.InputFile
 	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(s3Prefix),
@@ -217,7 +217,7 @@ func downloadToSubDir(ctx context.Context, client *s3.Client, bucket, s3Prefix, 
 			if copyErr != nil {
 				return nil, log.Error(ctx, 500, copyErr, "Failed to write file", localPath)
 			}
-			files = append(files, input.InputFile{
+			files = append(files, generic.InputFile{
 				Directory: localDir,
 				Filename:  filename,
 				BookId:    bookIdForCompare(filename),

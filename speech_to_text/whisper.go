@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/lang_tree/search"
 	"os"
@@ -43,7 +43,7 @@ func NewWhisper(bibleId string, conn db.DBAdapter, model string, lang2 string) W
 	return w
 }
 
-func (w *Whisper) ProcessFiles(files []input.InputFile) *log.Status {
+func (w *Whisper) ProcessFiles(files []generic.InputFile) *log.Status {
 	var status *log.Status
 	var outputFile string
 	var err error

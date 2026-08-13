@@ -1,4 +1,4 @@
-package db
+package books
 
 var BookChapterMap = map[string]int{
 	`GEN`: 50,

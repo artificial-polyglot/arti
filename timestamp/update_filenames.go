@@ -3,7 +3,7 @@ package timestamp
 import (
 	"context"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 )
@@ -15,7 +15,7 @@ type audioFile struct {
 	endTS      float64
 }
 
-func UpdateFilenames(ctx context.Context, conn db.DBAdapter, files []input.InputFile) *log.Status {
+func UpdateFilenames(ctx context.Context, conn db.DBAdapter, files []generic.InputFile) *log.Status {
 	var status *log.Status
 	var results []audioFile
 	for _, file := range files {

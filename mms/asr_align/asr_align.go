@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
@@ -45,7 +45,7 @@ func NewASRAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang st
 	return a
 }
 
-func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
+func (a *ASRAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 	a.timer.Duration("Start")
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "mms_asr_align_")
@@ -87,7 +87,7 @@ func (a *ASRAlign) ProcessFiles(files []input.InputFile) *log.Status {
 	return status
 }
 
-func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status {
+func (a *ASRAlign) processFile(file generic.InputFile, tempDir string) *log.Status {
 	response, status := a.processASR(file, tempDir)
 	if status != nil {
 		return status
@@ -132,7 +132,7 @@ func (a *ASRAlign) processFile(file input.InputFile, tempDir string) *log.Status
 	return nil
 }
 
-func (a *ASRAlign) processASR(file input.InputFile, tempDir string) (string, *log.Status) {
+func (a *ASRAlign) processASR(file generic.InputFile, tempDir string) (string, *log.Status) {
 	var response string
 	testFile := file.MediaId + "_" + file.BookId + "_" + strconv.Itoa(file.Chapter) + ".txt"
 	_, err := os.Stat(testFile)

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input/precheck"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/read/script_reader"
@@ -134,8 +134,8 @@ func TestTokenizeMalformedVerseNumberStopsRun(t *testing.T) {
 // "*.EXT" glob, in which case the whole directory is downloaded and then filtered down
 // to entries matching the glob - SFM Text folders also contain non-SFM project files
 // (e.g. Settings.xml) that setMediaType cannot classify, so the filter is required.
-func downloadTestFiles(client s3_datastore.S3Client, s3Path string, localDir string) ([]input.InputFile, *log.Status) {
-	var files []input.InputFile
+func downloadTestFiles(client s3_datastore.S3Client, s3Path string, localDir string) ([]generic.InputFile, *log.Status) {
+	var files []generic.InputFile
 	trimmed := strings.TrimPrefix(s3Path, `s3://`)
 	slash := strings.Index(trimmed, `/`)
 	bucket := trimmed[:slash]
@@ -161,7 +161,7 @@ func downloadTestFiles(client s3_datastore.S3Client, s3Path string, localDir str
 				return files, log.Error(context.Background(), 500, err, "Invalid glob pattern", glob)
 			}
 			if matched {
-				files = append(files, input.InputFile{Directory: localDir, Filename: entry.Name()})
+				files = append(files, generic.InputFile{Directory: localDir, Filename: entry.Name()})
 			}
 		}
 	} else {
@@ -170,7 +170,7 @@ func downloadTestFiles(client s3_datastore.S3Client, s3Path string, localDir str
 		if status != nil {
 			return files, status
 		}
-		files = append(files, input.InputFile{Directory: localDir, Filename: filename})
+		files = append(files, generic.InputFile{Directory: localDir, Filename: filename})
 	}
 	return files, nil
 }

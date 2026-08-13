@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -24,7 +24,7 @@ func TestUtility_validateBookId(t *testing.T) {
 
 func TestUtility_parseFilenames(t *testing.T) {
 	ctx := context.Background()
-	test1 := input.InputFile{MediaType: request.TextUSXEdit, Directory: "/ABC/DEF", Filename: "001GEN.usx"}
+	test1 := generic.InputFile{MediaType: request.TextUSXEdit, Directory: "/ABC/DEF", Filename: "001GEN.usx"}
 	status := parseFilenames(ctx, &test1)
 	if status != nil {
 		t.Error(status)
@@ -38,7 +38,7 @@ func TestUtility_parseFilenames(t *testing.T) {
 	if test1.BookSeq != "001" && test1.BookSeq != "1" {
 		t.Error("Book Seq should be 001")
 	}
-	test2 := input.InputFile{MediaType: request.TextUSXEdit, Directory: "/ABC/DEF", Filename: "GEN.usx"}
+	test2 := generic.InputFile{MediaType: request.TextUSXEdit, Directory: "/ABC/DEF", Filename: "GEN.usx"}
 	status = parseFilenames(ctx, &test2)
 	if status != nil {
 		t.Error(status)
@@ -49,7 +49,7 @@ func TestUtility_parseFilenames(t *testing.T) {
 	if test2.BookSeq != "1" {
 		t.Error("Book Seq should be 1")
 	}
-	test3 := input.InputFile{MediaType: request.TextUSXEdit, Directory: "/ABC/DEF", Filename: "1GEN.usx"}
+	test3 := generic.InputFile{MediaType: request.TextUSXEdit, Directory: "/ABC/DEF", Filename: "1GEN.usx"}
 	status = parseFilenames(ctx, &test3)
 	if test3.BookId != "GEN" {
 		t.Error("For 1GEN.usx  book_id=GEN")
@@ -95,7 +95,7 @@ func TestUtility_FindAudioBookId(t *testing.T) {
 func TestParseV4AudioFilename(t *testing.T) {
 	ctx := context.Background()
 	var status *log.Status
-	var file input.InputFile
+	var file generic.InputFile
 	file.Filename = `ENGESVN2DA_B001_MAT_001.mp3`
 	status = parseV4AudioFilename(ctx, &file)
 	if status != nil {
@@ -120,7 +120,7 @@ func TestParseV4AudioFilename(t *testing.T) {
 		t.Error(`Verse is incorrect`, file.Verse)
 	}
 	//fmt.Println("File", file)
-	var file2 input.InputFile
+	var file2 generic.InputFile
 	file2.Filename = `IRUNLCP1DA_B013_1TH_001_001-001_010.mp3`
 	status = parseV4AudioFilename(ctx, &file2)
 	if status != nil {

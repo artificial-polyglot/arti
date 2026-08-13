@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/safe"
 )
@@ -35,7 +35,7 @@ func NewUSXParser(conn db.DBAdapter) USXParser {
 	return p
 }
 
-func (p *USXParser) ProcessFiles(inputFiles []input.InputFile) *log.Status {
+func (p *USXParser) ProcessFiles(inputFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	for _, file := range inputFiles {
 		filename := filepath.Join(file.Directory, file.Filename)

@@ -7,7 +7,6 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
-	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/safe"
@@ -34,7 +33,7 @@ func NewScriptReader(db db.DBAdapter, testament request.Testament) ScriptReader 
 	return d
 }
 
-func (r ScriptReader) ProcessFiles(files []input.InputFile) *log.Status {
+func (r ScriptReader) ProcessFiles(files []generic.InputFile) *log.Status {
 	var status *log.Status
 	for _, file := range files {
 		status = r.Read(file.FilePath())

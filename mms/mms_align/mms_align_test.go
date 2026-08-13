@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/artificial-polyglot/arti/books"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
@@ -27,8 +28,8 @@ func TestMMSFA_ProcessFiles(t *testing.T) {
 		t.Fatal(status)
 	}
 	fa := NewMMSAlign(ctx, conn, "eng", "")
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = "MAT"
 	file.Chapter = 22
 	file.MediaId = "ENGWEBN2DA"
@@ -52,8 +53,8 @@ func TestMMSFA_prepareText(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	for _, bookId := range db.BookNT {
-		lastChap := db.BookChapterMap[bookId]
+	for _, bookId := range books.BookNT {
+		lastChap := books.BookChapterMap[bookId]
 		for chap := 1; chap <= lastChap; chap++ {
 			textList, refList, status := fa.prepareText(bookId, chap)
 			if status != nil {
@@ -76,7 +77,7 @@ func TestMMSFA_processPyOutput(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	var file input.InputFile
+	var file generic.InputFile
 	file.BookId = "TIT"
 	file.Chapter = 1
 	file.MediaId = "ENGWEBN2DA"
@@ -126,8 +127,8 @@ func _TestDebugMMSAlign(t *testing.T) {
 		t.Fatal(status)
 	}
 	fa := NewMMSAlign(ctx, conn, "dww", "")
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = "LUK"
 	file.Chapter = 4
 	file.MediaId = "N2DWWWBT"

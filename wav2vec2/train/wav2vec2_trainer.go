@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	req "github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
@@ -48,7 +48,7 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 	return fileInfo.Size() > 10000000 // must be GT 10Meg
 }
 
-func (t *Wav2Vec2Trainer) Train(files []input.InputFile) *log.Status {
+func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 	if len(files) == 0 {
 		return nil
 	}

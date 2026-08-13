@@ -5,15 +5,16 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
 
 // DBPDirectory 1. Assign pattern for OT, NT.  2. Glob files.  3. Assign book/chapter & Prune
 func DBPDirectory(ctx context.Context, bibleId string, fsType request.MediaType, otFileset string,
-	ntFileset string) ([]InputFile, *log.Status) {
-	var results []InputFile
-	var files []InputFile
+	ntFileset string) ([]generic.InputFile, *log.Status) {
+	var results []generic.InputFile
+	var files []generic.InputFile
 	var status *log.Status
 	type run struct {
 		filesetId string
@@ -36,7 +37,7 @@ func DBPDirectory(ctx context.Context, bibleId string, fsType request.MediaType,
 	return results, status
 }
 
-func Directory(ctx context.Context, bibleId string, fsType request.MediaType, filesetId string, tType string) ([]InputFile, *log.Status) {
+func Directory(ctx context.Context, bibleId string, fsType request.MediaType, filesetId string, tType string) ([]generic.InputFile, *log.Status) {
 	var status *log.Status
 	var directory string
 	var search string
@@ -55,7 +56,7 @@ func Directory(ctx context.Context, bibleId string, fsType request.MediaType, fi
 		}
 	}
 	//fmt.Println("search:", tType, search)
-	var files []InputFile
+	var files []generic.InputFile
 	files, status = Glob(ctx, search)
 	for i := range files {
 		files[i].MediaType = fsType

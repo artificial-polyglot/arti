@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"os"
@@ -33,7 +33,7 @@ func NewMFCC(ctx context.Context, conn db.DBAdapter, bibleId string,
 	return m
 }
 
-func (m *MFCC) ProcessFiles(audioFiles []input.InputFile) *log.Status {
+func (m *MFCC) ProcessFiles(audioFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	for _, aFile := range audioFiles {
 		var mfccResp MFCCResp

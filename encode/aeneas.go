@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"os"
@@ -35,7 +35,7 @@ func NewAeneas(ctx context.Context, conn db.DBAdapter, bibleId string, languageI
 	return a
 }
 
-func (a *Aeneas) ProcessFiles(audioFiles []input.InputFile) *log.Status {
+func (a *Aeneas) ProcessFiles(audioFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	if a.detail.Lines {
 		status = a.processScripts(audioFiles)
@@ -46,7 +46,7 @@ func (a *Aeneas) ProcessFiles(audioFiles []input.InputFile) *log.Status {
 	return status
 }
 
-func (a *Aeneas) processScripts(audioFiles []input.InputFile) *log.Status {
+func (a *Aeneas) processScripts(audioFiles []generic.InputFile) *log.Status {
 	for _, aFile := range audioFiles {
 		scripts, status := a.conn.SelectScriptsByBookChapter(aFile.BookId, aFile.Chapter)
 		if status != nil {
@@ -78,7 +78,7 @@ func (a *Aeneas) processScripts(audioFiles []input.InputFile) *log.Status {
 	return nil
 }
 
-func (a *Aeneas) processWords(audioFiles []input.InputFile) *log.Status {
+func (a *Aeneas) processWords(audioFiles []generic.InputFile) *log.Status {
 	for _, aFile := range audioFiles {
 		words, status := a.conn.SelectWordsByBookChapter(aFile.BookId, aFile.Chapter)
 		if status != nil {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
@@ -17,8 +18,8 @@ The key in the form should be "text" or "audio", and it ends in text or audio fi
 type PostFiles struct {
 	ctx   context.Context
 	dir   string
-	text  []InputFile
-	audio []InputFile
+	text  []generic.InputFile
+	audio []generic.InputFile
 }
 
 func NewPostFiles(ctx context.Context) PostFiles {
@@ -34,7 +35,7 @@ func NewPostFiles(ctx context.Context) PostFiles {
 
 func (p *PostFiles) ReadFile(ftype string, source io.Reader, filename string) *log.Status {
 	var status *log.Status
-	var file InputFile
+	var file generic.InputFile
 	target, err := os.Create(filepath.Join(p.dir, filename))
 	if err != nil {
 		return log.Error(p.ctx, 500, err, "Failed to create temp file for uploaded content:", filename)
@@ -56,8 +57,8 @@ func (p *PostFiles) ReadFile(ftype string, source io.Reader, filename string) *l
 	return status
 }
 
-func (p *PostFiles) PostInput(ftype string) ([]InputFile, *log.Status) {
-	var files []InputFile
+func (p *PostFiles) PostInput(ftype string) ([]generic.InputFile, *log.Status) {
+	var files []generic.InputFile
 	if ftype == "text" {
 		files = p.text
 	} else if ftype == "audio" {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -41,8 +42,8 @@ func TestUSXParser(t *testing.T) {
 
 func TestUSXParserAdHoc(t *testing.T) {
 	ctx := context.Background()
-	var file = input.InputFile{Directory: "/Users/gary/Downloads", Filename: "044JHN.usx", BookId: "JHN"}
-	var files []input.InputFile
+	var file = generic.InputFile{Directory: "/Users/gary/Downloads", Filename: "044JHN.usx", BookId: "JHN"}
+	var files []generic.InputFile
 	files = append(files, file)
 	var conn = db.NewDBAdapter(ctx, ":memory:")
 	parser := NewUSXParser(conn)

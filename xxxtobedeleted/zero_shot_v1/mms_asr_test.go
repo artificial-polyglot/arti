@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/request"
 )
 
@@ -16,8 +16,8 @@ func TestMMSASR_ProcessFiles(t *testing.T) {
 	user := request.GetTestUser()
 	conn, status := db.NewerDBAdapter(ctx, false, user, "PlainTextEditScript_ENGWEB")
 	asr := NewMMSASR(ctx, conn, "eng", "")
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = "MRK"
 	file.Chapter = 1
 	file.MediaId = "ENGWEBN2DA"

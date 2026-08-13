@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -48,10 +48,10 @@ func TestEquivalentUSXFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var files []input.InputFile
+	var files []generic.InputFile
 	for _, entry := range entries {
 		if strings.HasSuffix(entry.Name(), "usx") {
-			var file input.InputFile
+			var file generic.InputFile
 			file.Directory = directory
 			file.Filename = entry.Name()
 			files = append(files, file)
@@ -80,10 +80,10 @@ func TestEquivalentUSFMFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var files []input.InputFile
+	var files []generic.InputFile
 	for _, entry := range entries {
 		if strings.HasSuffix(entry.Name(), "SFM") {
-			var file input.InputFile
+			var file generic.InputFile
 			file.Directory = directory
 			file.Filename = entry.Name()
 			file.BookId = file.Filename[2:5]

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/read"
 	"os"
 	"testing"
@@ -72,8 +72,8 @@ func TestTSBucket_LoadTimestamps(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = "MRK"
 	file.Chapter = 1
 	file.MediaId = "ENGWEBN2DA"

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
@@ -91,8 +92,8 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	if status != nil {
 		return status
 	}
-	var files []input.InputFile
-	files, status = input.SelectAudioFiles(a.conn)
+	var files []generic.InputFile
+	files, status = db.SelectAudioFiles(a.conn)
 	if status != nil {
 		return status
 	}
@@ -105,9 +106,9 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	return nil
 }
 
-func (a *QAAlign) processFile(file input.InputFile, tempDir string) *log.Status {
+func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Status {
 	var status *log.Status
-	status = file.Download(a.ctx, a.s3Client, tempDir)
+	status = input.Download(&file, a.ctx, a.s3Client, tempDir)
 	if status != nil {
 		return status
 	}

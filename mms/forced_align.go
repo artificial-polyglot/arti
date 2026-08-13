@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"math"
@@ -41,7 +41,7 @@ func NewForcedAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang
 }
 
 // ProcessFiles will perform Forced Alignment on these files
-func (f *ForcedAlign) ProcessFiles(files []input.InputFile) *log.Status {
+func (f *ForcedAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 	//lang, status := CheckLanguage(f.ctx, f.lang, f.sttLang, "mms_asr") // is this correct for mms_fa
 	//if status != nil {
 	//	return status
@@ -62,7 +62,7 @@ func (f *ForcedAlign) ProcessFiles(files []input.InputFile) *log.Status {
 }
 
 // processFile will process one audio file through mms forced alignment
-func (f *ForcedAlign) processFile(file input.InputFile, lang string) *log.Status {
+func (f *ForcedAlign) processFile(file generic.InputFile, lang string) *log.Status {
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "mms_forced_align_")
 	if err != nil {
@@ -130,7 +130,7 @@ type FAOutput struct {
 	UromanTokens   string  `json:"uroman_tokens"`
 }
 
-func (f *ForcedAlign) processPyOutput(file input.InputFile, outputFile string, references []int64) *log.Status {
+func (f *ForcedAlign) processPyOutput(file generic.InputFile, outputFile string, references []int64) *log.Status {
 	var status *log.Status
 	content, err := os.ReadFile(outputFile)
 	if err != nil {

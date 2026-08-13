@@ -3,7 +3,7 @@ package asr
 import (
 	"context"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/request"
 	"testing"
 )
@@ -14,8 +14,8 @@ func TestWav2Vec2ASR_ProcessFiles(t *testing.T) {
 	user := request.GetTestUser()
 	conn, status := db.NewerDBAdapter(ctx, false, user, "N2KEUWB4")
 	asr := NewWav2Vec2ASR(ctx, conn, "keu", "")
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = "LUK"
 	file.Chapter = 1
 	file.MediaId = "N2KEUWB4N2DA"

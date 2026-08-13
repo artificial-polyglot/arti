@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -20,8 +20,8 @@ func TestMMSASR_ProcessFiles(t *testing.T) {
 	// types: greedy, simple, hotwords, kenlm
 	decoder := request.STTDecoder{Kenlm: true}
 	asr := NewMMSASR(ctx, conn, "eng", "", false, decoder, conn.DatabasePath)
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = "MRK"
 	file.Chapter = 1
 	file.MediaId = "ENGWEBN2DA"

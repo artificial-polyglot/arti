@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
@@ -27,7 +27,7 @@ func NewCSVReader(db db.DBAdapter) CSVReader {
 	return d
 }
 
-func (r CSVReader) ProcessFiles(files []input.InputFile) *log.Status {
+func (r CSVReader) ProcessFiles(files []generic.InputFile) *log.Status {
 	var status *log.Status
 	for _, file := range files {
 		status = r.Read(file.FilePath())

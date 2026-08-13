@@ -2,12 +2,13 @@ package timestamp
 
 import (
 	"context"
+	"github.com/artificial-polyglot/arti/books"
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
-	log "github.com/artificial-polyglot/arti/logger"
 	"io"
 	"os"
 	"strconv"
@@ -85,7 +86,7 @@ func (t *TSBucket) ListPrefix(bucket, prefix string) ([]string, *log.Status) {
 	return results, nil
 }
 
-func (t *TSBucket) ProcessFiles(files []input.InputFile) *log.Status {
+func (t *TSBucket) ProcessFiles(files []generic.InputFile) *log.Status {
 	for _, file := range files {
 		//var scripts []db.Script
 		scripts, status := t.conn.SelectScriptsByChapter(file.BookId, file.Chapter)
@@ -217,7 +218,7 @@ func (t *TSBucket) GetKey(tsType string, mediaId string, bookId string, chapterN
 func (t *TSBucket) GetAeneasKey(bookId string, chapterNum int) string {
 	var result []string
 	result = append(result, `C01`)
-	seq := db.BookSeqMap[bookId] - 40
+	seq := books.BookSeqMap[bookId] - 40
 	seqStr := strconv.Itoa(seq)
 	if len(seqStr) < 2 {
 		seqStr = "0" + seqStr
@@ -260,12 +261,12 @@ func (t *TSBucket) GetScriptTSKey(mediaId string, bookId string, chapterNum int)
 
 func (t *TSBucket) chapterSeq(bookId string, chapterNum int) int {
 	var seq = 0
-	for _, book := range db.BookNT {
+	for _, book := range books.BookNT {
 		if book == bookId {
 			seq += chapterNum
 			break
 		} else {
-			chaps := db.BookChapterMap[book]
+			chaps := books.BookChapterMap[book]
 			seq += chaps
 		}
 	}

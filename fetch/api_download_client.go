@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/books"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -154,10 +154,9 @@ func (d *APIDownloadClient) downloadLocation(filesetId string) ([]LocationRec, *
 func (d *APIDownloadClient) downloadEachLocation(fileset FilesetType) ([]LocationRec, *log.Status) {
 	var result []LocationRec
 	var status *log.Status
-	//var books []string
-	var books = db.RequestedBooks(d.testament)
-	for _, book := range books {
-		maxChapter, _ := db.BookChapterMap[book]
+	var bookIds = books.RequestedBooks(d.testament)
+	for _, book := range bookIds {
+		maxChapter, _ := books.BookChapterMap[book]
 		for ch := 1; ch <= maxChapter; ch++ {
 			chapter := strconv.Itoa(ch)
 			get := HOST + `bibles/filesets/` + fileset.Id + `/` + book + `/` + chapter + `?v=4&`

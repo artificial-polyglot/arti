@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"github.com/artificial-polyglot/arti/utility/uroman"
@@ -35,7 +35,7 @@ func NewWav2Vec2ASR(ctx context.Context, conn db.DBAdapter, lang string, sttLang
 }
 
 // ProcessFiles will perform Auto Speech Recognition on these files
-func (a *Wav2Vec2ASR) ProcessFiles(files []input.InputFile) *log.Status {
+func (a *Wav2Vec2ASR) ProcessFiles(files []generic.InputFile) *log.Status {
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "wav2vec2_asr_")
 	if err != nil {
@@ -91,7 +91,7 @@ type wordRec struct {
 	idx     int
 }
 
-func (a *Wav2Vec2ASR) processFile(file input.InputFile, sampleDB db.DBAdapter) *log.Status {
+func (a *Wav2Vec2ASR) processFile(file generic.InputFile, sampleDB db.DBAdapter) *log.Status {
 	var audioFiles []db.Audio
 	verses, status := a.selectSample(sampleDB, file.BookId, file.Chapter)
 

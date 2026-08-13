@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
 	"github.com/artificial-polyglot/arti/request"
@@ -42,7 +42,7 @@ func NewMMSASR(ctx context.Context, conn db.DBAdapter, lang string, sttLang stri
 }
 
 // ProcessFiles will perform Auto Speech Recognition on these files
-func (a *MMSASR) ProcessFiles(files []input.InputFile) *log.Status {
+func (a *MMSASR) ProcessFiles(files []generic.InputFile) *log.Status {
 	var status *log.Status
 	tempDir, err := os.MkdirTemp(os.Getenv(`FCBH_DATASET_TMP`), "mms_asr_")
 	if err != nil {
@@ -89,7 +89,7 @@ func (a *MMSASR) ProcessFiles(files []input.InputFile) *log.Status {
 }
 
 // processFile
-func (a *MMSASR) processFile(file input.InputFile, tempDir string) *log.Status {
+func (a *MMSASR) processFile(file generic.InputFile, tempDir string) *log.Status {
 	var status *log.Status
 	wavFile, status := ffmpeg.ConvertMp3ToWav(a.ctx, tempDir, file.FilePath())
 	if status != nil {

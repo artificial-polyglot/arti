@@ -3,7 +3,7 @@ package read
 import (
 	"context"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,8 +16,8 @@ func TestCSVReader(t *testing.T) {
 		t.Fatal(status)
 	}
 	reader := NewCSVReader(conn)
-	var files []input.InputFile
-	var file input.InputFile
+	var files []generic.InputFile
+	var file generic.InputFile
 	file.BookId = `MRK`
 	file.Testament = `NT`
 	file.FileExt = `csv`

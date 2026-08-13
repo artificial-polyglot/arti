@@ -625,6 +625,13 @@ export const PAGE_HTML = `<!doctype html>
             .then(function (resp) { return resp.arrayBuffer(); })
             .then(function (bytes) { return WebAssembly.instantiate(bytes, go.importObject); })
             .then(function (result) { go.run(result.instance); });
+
+        // Relative paths of the files found in the last dropped directory,
+        // root directory name included as the prefix (matching what will
+        // later be uploaded to the arti-input bucket). Populated by the
+        // dropzone's drop handler; validated only when Save JSON is
+        // clicked, alongside the form itself - see saveJSON().
+        var droppedFilePaths = [];
         /* ---- old defaulting/validation/nested-settings logic: this is now
         done in Go/WASM on the server instead of here in JS. Left in place,
         commented out, for reference while that port happens. --------------
@@ -867,16 +874,96 @@ export const PAGE_HTML = `<!doctype html>
             return JSON.stringify(buildFormDict());
         }
 
+        // ---- dropzone: walk a dropped directory down to a flat list of
+        // relative file paths (root directory name included), without
+        // reading any file contents or validating anything yet. ------------
+        function readAllEntries(reader) {
+            return new Promise(function (resolve, reject) {
+                var allEntries = [];
+                function readBatch() {
+                    reader.readEntries(function (entries) {
+                        if (entries.length === 0) {
+                            resolve(allEntries);
+                        } else {
+                            allEntries = allEntries.concat(entries);
+                            readBatch();
+                        }
+                    }, reject);
+                }
+                readBatch();
+            });
+        }
+
+        function walkEntry(entry, paths) {
+            if (entry.isFile) {
+                paths.push(entry.fullPath.replace(/^\\//, ''));
+                return Promise.resolve();
+            }
+            if (entry.isDirectory) {
+                return readAllEntries(entry.createReader()).then(function (children) {
+                    return Promise.all(children.map(function (child) {
+                        return walkEntry(child, paths);
+                    }));
+                });
+            }
+            return Promise.resolve();
+        }
+
+        function setupDropzone() {
+            var dropzone = document.getElementById('folderDropzone');
+            var statusEl = document.getElementById('folderStatus');
+
+            dropzone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+            dropzone.addEventListener('dragleave', function () {
+                dropzone.classList.remove('dragover');
+            });
+            dropzone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+
+                var items = e.dataTransfer.items || [];
+                var entries = [];
+                for (var i = 0; i < items.length; i++) {
+                    var entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+                    if (entry) entries.push(entry);
+                }
+
+                var paths = [];
+                Promise.all(entries.map(function (entry) { return walkEntry(entry, paths); }))
+                    .then(function () {
+                        droppedFilePaths = paths;
+                        statusEl.textContent = paths.length + ' file' + (paths.length === 1 ? '' : 's') + ' ready (validated on Save JSON)';
+                        statusEl.className = 'folder-status success';
+                        dropzone.classList.remove('error', 'processing');
+                        dropzone.classList.add('success');
+                    })
+                    .catch(function (err) {
+                        droppedFilePaths = [];
+                        statusEl.textContent = 'Error reading dropped folder: ' + err;
+                        statusEl.className = 'folder-status error';
+                        dropzone.classList.remove('success', 'processing');
+                        dropzone.classList.add('error');
+                    });
+            });
+        }
+
         function saveJSON() {
             var jsonData = generateJSON();
 
             wasmReady.then(function () {
                 // ValidateRequest (registered by validate.wasm's main.go,
                 // which calls validate.ValidateRequestWASM) returns
-                // { request: string, errors: string[] }.
+                // { request: string, errors: string[] }. ValidateFiles
+                // (validate.ValidateFilesWASM) takes the same dropped file
+                // list and returns just string[] errors.
                 var result = ValidateRequest(jsonData);
-                if (result.errors.length > 0) {
-                    showErrors(result.errors);
+                var fileErrors = ValidateFiles(JSON.stringify(droppedFilePaths));
+                var allErrors = result.errors.concat(fileErrors);
+                if (allErrors.length > 0) {
+                    showErrors(allErrors);
                     return;
                 }
                 showErrors([]);
@@ -928,6 +1015,7 @@ export const PAGE_HTML = `<!doctype html>
                 '<div class="folder-status" id="folderStatus">No folder or file selected</div>' +
                 '<div class="folder-progress" id="folderProgress" style="display: none;"></div>';
             folderDropzone.classList.remove('success', 'error', 'processing');
+            droppedFilePaths = [];
 
             updateRedoTrainingState();
             showErrors([]);
@@ -938,6 +1026,7 @@ export const PAGE_HTML = `<!doctype html>
 
         document.addEventListener('DOMContentLoaded', function () {
             updateRedoTrainingState();
+            setupDropzone();
 
             /* ---- old required/optional field validation wiring: commented
             out along with the validation functions above.

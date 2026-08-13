@@ -1,4 +1,4 @@
-package db
+package books
 
 func Testament(bookId string) string {
 	var result string

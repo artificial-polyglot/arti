@@ -13,6 +13,7 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/encode"
 	"github.com/artificial-polyglot/arti/fetch"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input"
 	"github.com/artificial-polyglot/arti/input/precheck"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -158,7 +159,7 @@ func (c *Controller) processSteps() *log.Status {
 		}
 	}
 	// Collect Text Input
-	var textFiles []input.InputFile
+	var textFiles []generic.InputFile
 	if !c.req.TextData.NoText {
 		log.Info(c.ctx, "Load text files.")
 		textFiles, status = c.collectTextInput()
@@ -175,7 +176,7 @@ func (c *Controller) processSteps() *log.Status {
 		}
 	}
 	// Collect Audio Input
-	var audioFiles []input.InputFile
+	var audioFiles []generic.InputFile
 	if !c.req.AudioData.NoAudio {
 		log.Info(c.ctx, "Load audio files.")
 		audioFiles, status = c.collectAudioInput()
@@ -183,12 +184,12 @@ func (c *Controller) processSteps() *log.Status {
 			return status
 		}
 	}
-	status = input.InsertAudioFiles(c.database, audioFiles)
+	status = db.InsertAudioFiles(c.database, audioFiles)
 	if status != nil {
 		return status
 	}
 	// Update Ident Table
-	status = input.UpdateIdent(c.database, &c.ident, textFiles, audioFiles)
+	status = db.UpdateIdent(c.database, &c.ident, textFiles, audioFiles)
 	if status != nil {
 		return status
 	}
@@ -312,8 +313,8 @@ func (c *Controller) fetchData() (db.Ident, *log.Status) {
 	return c.ident, status
 }
 
-func (c *Controller) collectTextInput() ([]input.InputFile, *log.Status) {
-	var files []input.InputFile
+func (c *Controller) collectTextInput() ([]generic.InputFile, *log.Status) {
+	var files []generic.InputFile
 	var status *log.Status
 	var expectFiles = true
 	bb := c.req.TextData.BibleBrain
@@ -343,8 +344,8 @@ func (c *Controller) collectTextInput() ([]input.InputFile, *log.Status) {
 	return files, nil
 }
 
-func (c *Controller) collectAudioInput() ([]input.InputFile, *log.Status) {
-	var files []input.InputFile
+func (c *Controller) collectAudioInput() ([]generic.InputFile, *log.Status) {
+	var files []generic.InputFile
 	var status *log.Status
 	var expectFiles = true
 	bb := c.req.AudioData.BibleBrain
@@ -372,7 +373,7 @@ func (c *Controller) collectAudioInput() ([]input.InputFile, *log.Status) {
 	return files, status
 }
 
-func (c *Controller) readText(textFiles []input.InputFile) *log.Status {
+func (c *Controller) readText(textFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	if len(textFiles) == 0 {
 		return status
@@ -430,7 +431,7 @@ func (c *Controller) readText(textFiles []input.InputFile) *log.Status {
 	return status
 }
 
-func (c *Controller) timestamps(audioFiles []input.InputFile) *log.Status {
+func (c *Controller) timestamps(audioFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	if c.req.Timestamps.BibleBrain {
 		//
@@ -477,7 +478,7 @@ func (c *Controller) timestamps(audioFiles []input.InputFile) *log.Status {
 	return status
 }
 
-func (c *Controller) speechToText(audioFiles []input.InputFile) *log.Status {
+func (c *Controller) speechToText(audioFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	bibleId := c.req.BibleId
 	if c.req.SpeechToText.MMS {
@@ -520,7 +521,7 @@ func (c *Controller) speechToText(audioFiles []input.InputFile) *log.Status {
 	return status
 }
 
-func (c *Controller) encodeAudio(audioFiles []input.InputFile) *log.Status {
+func (c *Controller) encodeAudio(audioFiles []generic.InputFile) *log.Status {
 	var status *log.Status
 	bibleId := c.req.BibleId
 	if c.req.AudioEncoding.MFCC {

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -42,8 +43,8 @@ func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Stat
 
 // AWSS3Input is given a path prefix, that it uses to identify files.
 // Saves each file found to disk, and returns an array of input files
-func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
-	var files []InputFile
+func AWSS3Input(ctx context.Context, path string) ([]generic.InputFile, *log.Status) {
+	var files []generic.InputFile
 	var status *log.Status
 	client, err := s3_datastore.NewS3Client(ctx)
 	if err != nil {
@@ -63,7 +64,7 @@ func AWSS3Input(ctx context.Context, path string) ([]InputFile, *log.Status) {
 	for _, object := range list {
 		objKey := aws.ToString(object.Key)
 		if glob == nil || glob.MatchString(objKey) {
-			var inFile InputFile
+			var inFile generic.InputFile
 			inFile.BaseURL = "s3://" + bucket + "/" + prefix
 			inFile.Directory = directory
 			inFile.Filename = filepath.Base(objKey)

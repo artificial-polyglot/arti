@@ -3,6 +3,7 @@ package precheck
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -11,13 +12,49 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/books"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
 
-func ValidateFiles(ctx context.Context, testament request.Testament, files []input.InputFile) ([]input.InputFile, *log.Status) {
+// ValidateFilesWASM takes a JSON array of the relative file paths found in a
+// dropped directory (root directory name included as the prefix, matching
+// what will later be uploaded to the arti-input bucket) and checks that
+// each filename is recognized: setMediaType identifies the media type from
+// its name/extension, and parseFilenames confirms the naming convention
+// parses (book id, chapter, etc.). It does not look at file contents.
+// Returns one message per problem file; an empty slice means every file in
+// the tree was understood.
+func ValidateFilesWASM(filePathsJSON string) []string {
+	ctx := context.Background()
+	var errs []string
+
+	var paths []string
+	err := json.Unmarshal([]byte(filePathsJSON), &paths)
+	if err != nil {
+		return []string{"Error parsing file list: " + err.Error()}
+	}
+
+	for _, p := range paths {
+		file := generic.InputFile{
+			Filename:  filepath.Base(p),
+			Directory: filepath.Dir(p),
+		}
+		status := setMediaType(ctx, &file)
+		if status != nil {
+			errs = append(errs, status.Message)
+			continue
+		}
+		status = parseFilenames(ctx, &file)
+		if status != nil {
+			errs = append(errs, status.Message)
+		}
+	}
+	return errs
+}
+
+func ValidateFiles(ctx context.Context, testament request.Testament, files []generic.InputFile) ([]generic.InputFile, *log.Status) {
 	var status *log.Status
 	files, status = unzip(ctx, files)
 	if status != nil {
@@ -39,8 +76,8 @@ func ValidateFiles(ctx context.Context, testament request.Testament, files []inp
 	return files, nil
 }
 
-func unzip(ctx context.Context, files []input.InputFile) ([]input.InputFile, *log.Status) {
-	var results []input.InputFile
+func unzip(ctx context.Context, files []generic.InputFile) ([]generic.InputFile, *log.Status) {
+	var results []generic.InputFile
 	if len(files) == 1 && filepath.Ext(files[0].Filename) == `.zip` {
 		r, err := zip.OpenReader(files[0].FilePath())
 		if err != nil {
@@ -76,7 +113,7 @@ func unzip(ctx context.Context, files []input.InputFile) ([]input.InputFile, *lo
 			if err != nil {
 				return results, log.Error(ctx, 500, err, "Error extracting file from zip:", f.FileInfo().Name())
 			}
-			results = append(results, input.InputFile{Filename: f.FileInfo().Name(), Directory: dest})
+			results = append(results, generic.InputFile{Filename: f.FileInfo().Name(), Directory: dest})
 		}
 		sort.Slice(results, func(i, j int) bool {
 			return results[i].Filename < results[j].Filename
@@ -88,7 +125,7 @@ func unzip(ctx context.Context, files []input.InputFile) ([]input.InputFile, *lo
 }
 
 // setMediaType function looks at names and sets the Media Type
-func setMediaType(ctx context.Context, file *input.InputFile) *log.Status {
+func setMediaType(ctx context.Context, file *generic.InputFile) *log.Status {
 	fN := file.Filename
 	fNLower := strings.ToLower(fN)
 	if strings.HasSuffix(fN, `_ET`) || strings.HasSuffix(fN, `_ET.json`) {
@@ -124,7 +161,7 @@ func setMediaType(ctx context.Context, file *input.InputFile) *log.Status {
 	return nil
 }
 
-func parseFilenames(ctx context.Context, file *input.InputFile) *log.Status {
+func parseFilenames(ctx context.Context, file *generic.InputFile) *log.Status {
 	var status *log.Status
 	if file.MediaType == request.TextPlain || file.MediaType == request.TextPlainEdit ||
 		file.MediaType == request.TextCSV {
@@ -143,11 +180,11 @@ func parseFilenames(ctx context.Context, file *input.InputFile) *log.Status {
 		if file.BookId == "" {
 			return log.ErrorNoErr(ctx, 400, "Unable to find bookId in", file.Filename)
 		}
-		seq, found := db.BookSeqMap[file.BookId]
+		seq, found := books.BookSeqMap[file.BookId]
 		if found {
 			file.BookSeq = strconv.Itoa(seq)
 		}
-		file.Testament = db.Testament(file.BookId)
+		file.Testament = books.Testament(file.BookId)
 		file.FileExt = filepath.Ext(file.Filename)
 	} else if file.MediaType == request.TextScript {
 		file.MediaId = strings.Split(file.Filename, `.`)[0]
@@ -181,7 +218,7 @@ func parseFilenames(ctx context.Context, file *input.InputFile) *log.Status {
 	return status
 }
 
-func parseV2AudioFilename(ctx context.Context, file *input.InputFile) *log.Status {
+func parseV2AudioFilename(ctx context.Context, file *generic.InputFile) *log.Status {
 	var status *log.Status
 	var err error
 	file.FileExt = filepath.Ext(file.Filename)
@@ -201,12 +238,12 @@ func parseV2AudioFilename(ctx context.Context, file *input.InputFile) *log.Statu
 			"chapter part:", chapter)
 	}
 	book := strings.Trim(filename[9:21], `_`)
-	file.BookId = db.USFMBookId(ctx, book)
+	file.BookId = books.USFMBookId(ctx, book)
 	file.MediaId = filename[21:]
 	return status
 }
 
-func parseV4AudioFilename(ctx context.Context, file *input.InputFile) *log.Status {
+func parseV4AudioFilename(ctx context.Context, file *generic.InputFile) *log.Status {
 	var status *log.Status
 	var err error
 	file.FileExt = filepath.Ext(file.Filename)
@@ -250,7 +287,7 @@ func parseV4AudioFilename(ctx context.Context, file *input.InputFile) *log.Statu
 	return status
 }
 
-func parseVOXAudioFilename(ctx context.Context, file *input.InputFile) *log.Status {
+func parseVOXAudioFilename(ctx context.Context, file *generic.InputFile) *log.Status {
 	var status *log.Status
 	var err error
 	parts := strings.Split(file.Filename, `_`)
@@ -270,7 +307,7 @@ func parseVOXAudioFilename(ctx context.Context, file *input.InputFile) *log.Stat
 	} else if parts[0][0] == 'O' {
 		file.Testament = `OT`
 	} else if parts[0][0] == 'P' {
-		file.Testament = db.Testament(file.BookId)
+		file.Testament = books.Testament(file.BookId)
 	} else {
 		return log.ErrorNoErr(ctx, 500, "Unknown media type", parts[0])
 	}
@@ -278,8 +315,8 @@ func parseVOXAudioFilename(ctx context.Context, file *input.InputFile) *log.Stat
 	return status
 }
 
-func pruneBooksByRequest(files []input.InputFile, testament request.Testament) []input.InputFile {
-	var results []input.InputFile
+func pruneBooksByRequest(files []generic.InputFile, testament request.Testament) []generic.InputFile {
+	var results []generic.InputFile
 	for _, f := range files {
 		if testament.Has(f.Testament, f.BookId) || f.BookId == `` {
 			results = append(results, f)
@@ -338,7 +375,7 @@ func isBookId(code string) string { //(string, int, int) {
 	if found {
 		code = corrected
 	}
-	_, ok := db.BookChapterMap[code]
+	_, ok := books.BookChapterMap[code]
 	if ok {
 		return code
 	} else {
@@ -375,7 +412,7 @@ func validateBookId(ctx context.Context, bookId string) (string, *log.Status) {
 	if found {
 		bookId = corrected
 	}
-	_, ok := db.BookChapterMap[bookId]
+	_, ok := books.BookChapterMap[bookId]
 	if !ok {
 		return bookId, log.ErrorNoErr(ctx, 500, "Unrecognised book ID:", bookId)
 	}

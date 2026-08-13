@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/safe"
 	"os"
@@ -14,7 +14,7 @@ import (
 	"strconv"
 )
 
-func (w *Whisper) ChopByTimestamp(file input.InputFile, timestamps []db.Timestamp) ([]db.Timestamp, *log.Status) {
+func (w *Whisper) ChopByTimestamp(file generic.InputFile, timestamps []db.Timestamp) ([]db.Timestamp, *log.Status) {
 	var results []db.Timestamp
 	var status *log.Status
 	var command []string
@@ -74,7 +74,7 @@ type WhisperOutputType struct {
 	Language string               `json:"language"`
 }
 
-func (w *Whisper) loadWhisperOutput(outputFile string, file input.InputFile) ([]db.Script, *log.Status) {
+func (w *Whisper) loadWhisperOutput(outputFile string, file generic.InputFile) ([]db.Script, *log.Status) {
 	var status *log.Status
 	var records = make([]db.Script, 0, 100)
 	content, err := os.ReadFile(outputFile)
@@ -104,7 +104,7 @@ func (w *Whisper) loadWhisperOutput(outputFile string, file input.InputFile) ([]
 	return records, status
 }
 
-func (w *Whisper) loadWhisperVerses(outputFile string, file input.InputFile,
+func (w *Whisper) loadWhisperVerses(outputFile string, file generic.InputFile,
 	pieceNum int, piece db.Timestamp) (db.Script, *log.Status) {
 	var rec db.Script
 	var status *log.Status

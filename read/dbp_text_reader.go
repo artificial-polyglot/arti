@@ -9,8 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/artificial-polyglot/arti/books"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -29,7 +30,7 @@ func NewDBPTextReader(conn db.DBAdapter, testament request.Testament) DBPTextRea
 	return d
 }
 
-func (d *DBPTextReader) ProcessFiles(files []input.InputFile) *log.Status {
+func (d *DBPTextReader) ProcessFiles(files []generic.InputFile) *log.Status {
 	var status *log.Status
 	for _, file := range files {
 		filePath := filepath.Join(file.Directory, file.Filename)
@@ -57,7 +58,7 @@ func (d *DBPTextReader) ProcessFiles(files []input.InputFile) *log.Status {
 		}
 		var verses = response.Data
 		for i, vs := range verses {
-			verses[i].BookSeq = db.BookSeqMap[vs.BookId]
+			verses[i].BookSeq = books.BookSeqMap[vs.BookId]
 		}
 		sort.Slice(verses, func(i, j int) bool {
 			if verses[i].BookSeq != verses[j].BookSeq {
