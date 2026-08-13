@@ -1,7 +1,6 @@
 package validate
 
 import (
-	"reflect"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/request"
@@ -10,20 +9,17 @@ import (
 func (r *RequestValidator) Validate(req *request.Request) {
 	r.checkRequired(req)
 	r.checkTestament(&req.Testament)
-	r.checkAudioData(&req.AudioData, `AudioData`)
-	r.checkTextData(&req.TextData, `TextData`)
-	r.checkSpeechToText(&req.SpeechToText, `SpeechToText`)
-	r.checkSTTDecoder(&req.STTDecoder, "STTDecoder")
+	r.checkAudioData(&req.AudioData)
+	r.checkTextData(&req.TextData)
+	r.checkSpeechToText(&req.SpeechToText)
+	r.checkSTTDecoder(&req.STTDecoder)
 	r.checkDetail(&req.Detail)
-	r.checkTimestamps(&req.Timestamps, `Timestamps`)
-	r.checkTraining(&req.Training, `Training`)
-	r.checkAudioEncoding(&req.AudioEncoding, `AudioEncoding`)
-	r.checkTextEncoding(&req.TextEncoding, `TextEncoding`)
-	//checkCompare(req.Compare, &msgs)
-	r.checkForOne(reflect.ValueOf(req.Compare.CompareSettings.DoubleQuotes), `DoubleQuotes`, true)
-	r.checkForOne(reflect.ValueOf(req.Compare.CompareSettings.Apostrophe), `Apostrophe`, true)
-	r.checkForOne(reflect.ValueOf(req.Compare.CompareSettings.Hyphen), `Hyphen`, true)
-	r.checkForOne(reflect.ValueOf(req.Compare.CompareSettings.DiacriticalMarks), `DiscriticalMarks`, true)
+	r.checkTimestamps(&req.Timestamps)
+	r.checkTraining(&req.Training)
+	r.checkCompareChoice(&req.Compare.CompareSettings.DoubleQuotes, "DoubleQuotes")
+	r.checkCompareChoice(&req.Compare.CompareSettings.Apostrophe, "Apostrophe")
+	r.checkCompareChoice(&req.Compare.CompareSettings.Hyphen, "Hyphen")
+	r.checkDiacriticalMarks(&req.Compare.CompareSettings.DiacriticalMarks)
 }
 
 func (r *RequestValidator) checkRequired(req *request.Request) {
@@ -51,34 +47,116 @@ func (r *RequestValidator) checkTestament(req *request.Testament) {
 
 // checkAudioData Is checking that no more than one item is selected.
 // if none are selected, it will set the default: NoAudio
-func (r *RequestValidator) checkAudioData(req *request.AudioData, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
+func (r *RequestValidator) checkAudioData(req *request.AudioData) {
+	var count int
+	if req.BibleBrain.MP3_64 {
+		count += 1
+	}
+	if req.BibleBrain.MP3_16 {
+		count += 1
+	}
+	if req.BibleBrain.OPUS {
+		count += 1
+	}
+	if req.File != "" {
+		count += 1
+	}
+	if req.AWSS3 != "" {
+		count += 1
+	}
+	if req.POST != "" {
+		count += 1
+	}
 	if count == 0 {
 		req.NoAudio = true
+	} else if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on AudioData")
 	}
 }
 
 // checkTextData Is checking that no more than one item is selected.
 // if none are selected, it will set the default: NoAudio
-func (r *RequestValidator) checkTextData(req *request.TextData, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
+func (r *RequestValidator) checkTextData(req *request.TextData) {
+	var count int
+	if req.BibleBrain.TextUSXEdit {
+		count += 1
+	}
+	if req.BibleBrain.TextPlainEdit {
+		count += 1
+	}
+	if req.BibleBrain.TextPlain {
+		count += 1
+	}
+	if req.File != "" {
+		count += 1
+	}
+	if req.AWSS3 != "" {
+		count += 1
+	}
+	if req.POST != "" {
+		count += 1
+	}
 	if count == 0 {
 		req.NoText = true
+	} else if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on TextData")
 	}
 }
 
-func (r *RequestValidator) checkSpeechToText(req *request.SpeechToText, fieldName string) {
-	//whisper := req.Whisper
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
+func (r *RequestValidator) checkSpeechToText(req *request.SpeechToText) {
+	var count int
+	if req.MMS {
+		count += 1
+	}
+	if req.MMSAdapter {
+		count += 1
+	}
+	if req.Wav2Vec2ASR {
+		count += 1
+	}
+	if req.Whisper.Model.Large {
+		count += 1
+	}
+	if req.Whisper.Model.Medium {
+		count += 1
+	}
+	if req.Whisper.Model.Small {
+		count += 1
+	}
+	if req.Whisper.Model.Base {
+		count += 1
+	}
+	if req.Whisper.Model.Tiny {
+		count += 1
+	}
+	if req.MMSASRAlign {
+		count += 1
+	}
 	if count == 0 {
 		req.NoSpeechToText = true
+	} else if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on SpeechToText")
 	}
 }
 
-func (r *RequestValidator) checkSTTDecoder(req *request.STTDecoder, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
+func (r *RequestValidator) checkSTTDecoder(req *request.STTDecoder) {
+	var count int
+	if req.Greedy {
+		count += 1
+	}
+	if req.Simple {
+		count += 1
+	}
+	if req.Hotwords {
+		count += 1
+	}
+	if req.Kenlm {
+		count += 1
+	}
 	if count == 0 {
 		req.NoSTTDecoder = true
+	} else if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on STTDecoder")
 	}
 }
 
@@ -88,79 +166,76 @@ func (r *RequestValidator) checkDetail(req *request.Detail) {
 	}
 }
 
-func (r *RequestValidator) checkTimestamps(req *request.Timestamps, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
+func (r *RequestValidator) checkTimestamps(req *request.Timestamps) {
+	var count int
+	if req.BibleBrain {
+		count += 1
+	}
+	if req.Aeneas {
+		count += 1
+	}
+	if req.TSBucket {
+		count += 1
+	}
+	if req.MMSFAVerse {
+		count += 1
+	}
+	if req.MMSAlign {
+		count += 1
+	}
 	if count == 0 {
 		req.NoTimestamps = true
+	} else if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on Timestamps")
 	}
 }
 
-func (r *RequestValidator) checkTraining(req *request.Training, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, false)
+func (r *RequestValidator) checkTraining(req *request.Training) {
+	var count int
+	if req.MMSAdapter.NumEpochs != 0 {
+		count += 1
+	}
+	if req.Wav2Vec2Word.NumEpochs != 0 {
+		count += 1
+	}
 	if count == 0 {
 		req.NoTraining = true
-	} else if req.MMSAdapter.NumEpochs == 0 && req.Wav2Vec2Word.NumEpochs == 0 {
-		req.NoTraining = true
+	} else if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on Training")
 	}
 }
 
-func (r *RequestValidator) checkAudioEncoding(req *request.AudioEncoding, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
-	if count == 0 {
-		req.NoEncoding = true
+func (r *RequestValidator) checkCompareChoice(req *request.CompareChoice, fieldName string) {
+	var count int
+	if req.Remove {
+		count += 1
+	}
+	if req.Normalize {
+		count += 1
+	}
+	if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on "+fieldName)
 	}
 }
 
-func (r *RequestValidator) checkTextEncoding(req *request.TextEncoding, fieldName string) {
-	count := r.checkForOne(reflect.ValueOf(*req), fieldName, true)
-	if count == 0 {
-		req.NoEncoding = true
+func (r *RequestValidator) checkDiacriticalMarks(req *request.DiacriticalChoice) {
+	var count int
+	if req.Remove {
+		count += 1
 	}
-}
-
-func (r *RequestValidator) checkForOne(structVal reflect.Value, fieldName string, recurse bool) int {
-	var errorCount int
-	var wasSet []string
-	r.checkForOneRecursive(structVal, &wasSet, recurse)
-	errorCount += len(wasSet)
-	if len(wasSet) > 1 && recurse {
-		msg := `Only 1 field can be set on ` + fieldName + `: ` + strings.Join(wasSet, `,`)
-		r.errors = append(r.errors, msg)
+	if req.NormalizeNFC {
+		count += 1
 	}
-	return errorCount
-}
-
-func (r *RequestValidator) checkForOneRecursive(sVal reflect.Value, wasSet *[]string, recurse bool) {
-	for i := 0; i < sVal.NumField(); i++ {
-		field := sVal.Field(i)
-		fieldName := sVal.Type().Field(i).Name
-
-		// Skip SetTypeCode as it's a configuration option, not a mutually exclusive choice
-		if fieldName == "SetTypeCode" {
-			continue
-		}
-
-		if field.Kind() == reflect.String {
-			if field.String() != `` {
-				*wasSet = append(*wasSet, fieldName)
-			}
-		} else if field.Kind() == reflect.Bool {
-			if field.Bool() {
-				*wasSet = append(*wasSet, fieldName)
-			}
-		} else if field.Kind() == reflect.Int {
-			if field.Int() != 0 && len(*wasSet) == 0 {
-				*wasSet = append(*wasSet, fieldName)
-			}
-		} else if field.Kind() == reflect.Float64 {
-			if field.Float() != 0 && len(*wasSet) == 0 {
-				*wasSet = append(*wasSet, fieldName)
-			}
-		} else if field.Kind() == reflect.Struct {
-			r.checkForOneRecursive(field, wasSet, recurse)
-		} else {
-			msg := fieldName + ` has unexpected type ` + field.Type().Name()
-			r.errors = append(r.errors, msg)
-		}
+	if req.NormalizeNFD {
+		count += 1
+	}
+	if req.NormalizeNFKC {
+		count += 1
+	}
+	if req.NormalizeNFKD {
+		count += 1
+	}
+	if count > 1 {
+		r.errors = append(r.errors, "Only 1 field can be set on DiacriticalMarks")
 	}
 }
