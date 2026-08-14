@@ -11,6 +11,7 @@ import (
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
 )
 
@@ -35,7 +36,7 @@ func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
 	var status *log.Status
 	c.ctx = context.WithValue(c.ctx, "runType", c.courier.Component)
 	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
-	c.req, status = request.Decode(c.ctx, []byte(c.courier.yamlContent))
+	c.req, status = decode.Decode(c.ctx, []byte(c.courier.yamlContent))
 	if status != nil {
 		return c.database, status
 	}

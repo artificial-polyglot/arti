@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/artificial-polyglot/arti/controller"
 	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/decode"
 	"strings"
 	"testing"
 )
@@ -38,7 +39,7 @@ func DirectTestUtility(requestYaml string, tests []CtlTest, t *testing.T) {
 		if numLines != tst.Expected {
 			t.Error(`Expected `, tst.Expected, `records, got`, numLines)
 		}
-		reqObj, status := request.Decode(ctx, []byte(req))
+		reqObj, status := decode.Decode(ctx, []byte(req))
 		if status != nil {
 			t.Fatal(status)
 		}

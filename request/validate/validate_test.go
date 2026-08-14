@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/decode"
 )
 
 func TestValidate(t *testing.T) {
@@ -14,7 +14,7 @@ func TestValidate(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	var req, _ = request.Decode(context.Background(), content)
+	var req, _ = decode.Decode(context.Background(), content)
 	var d RequestValidator
 	req.IsNew = true
 	//req.BibleId = `EBGESV`

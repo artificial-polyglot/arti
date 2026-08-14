@@ -27,6 +27,7 @@ import (
 	"github.com/artificial-polyglot/arti/read"
 	"github.com/artificial-polyglot/arti/read/script_reader"
 	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
 	"github.com/artificial-polyglot/arti/speech_to_text"
 	"github.com/artificial-polyglot/arti/timestamp"
@@ -102,7 +103,7 @@ func (c *Controller) processSteps() *log.Status {
 	var status *log.Status
 	// Decode YAML Request File
 	log.Info(c.ctx, "Parse .yaml file.")
-	c.req, status = request.Decode(c.ctx, c.yamlRequest)
+	c.req, status = decode.Decode(c.ctx, c.yamlRequest)
 	if status != nil {
 		return status
 	}

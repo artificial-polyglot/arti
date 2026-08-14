@@ -30,11 +30,6 @@ func (r *RequestValidator) Depend(req request.Request) {
 			r.errors = append(r.errors, `Timestamp estimation requested, but there is no text data`)
 		}
 	}
-	if !req.TextEncoding.NoEncoding {
-		if req.TextData.NoText {
-			r.errors = append(r.errors, `Text encoding requested, but there is no text data`)
-		}
-	}
 	if !req.SpeechToText.NoSpeechToText {
 		if req.AudioData.NoAudio {
 			r.errors = append(r.errors, `Speech to Text is requested, but there is no audio`)
@@ -42,11 +37,6 @@ func (r *RequestValidator) Depend(req request.Request) {
 		//if req.Timestamps.NoTimestamps {
 		//	r.errors = append(r.errors, `Speech to Text is requested, but there are no timestamps`)
 		//}
-	}
-	if req.AudioEncoding.MFCC {
-		if req.Timestamps.NoTimestamps {
-			r.errors = append(r.errors, `MFCC's are requested', but there are no timestamps`)
-		}
 	}
 	if req.AudioProof.HTMLReport {
 		if req.IsNew {

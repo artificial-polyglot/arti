@@ -13,7 +13,9 @@ import (
 func TestRun(t *testing.T) {
 	log.SetOutput("stderr")
 	courier.IsCourierTest = true
-	content, err := os.ReadFile("/Users/gary/arti2/N2ATGMLT_rpt.yaml")
+	//filename := "/Users/gary/arti2/N2ATGMLT_rpt.yaml"
+	filename := "/Users/gary/arti2/N2MGUPNG_rpt.yaml"
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -3,7 +3,7 @@ package courier
 import (
 	"context"
 	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
 	"strings"
 	"testing"
@@ -20,7 +20,7 @@ language_iso: eng
 notify_ok: [gary@shortsands.com, sqs/vessel]
 notify_err: [gary@shortsands.com, sqs/vessel]
 `
-	request, status := request.Decode(ctx, []byte(yamlRequest))
+	request, status := decode.Decode(ctx, []byte(yamlRequest))
 	if status != nil {
 		t.Fatal(status)
 	}

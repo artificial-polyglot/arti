@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -25,7 +25,7 @@ func main() {
 		os.Exit(1)
 	}
 	ctx := context.Background()
-	request, status := request.Decode(ctx, yamlRequest)
+	request, status := decode.Decode(ctx, yamlRequest)
 	if status != nil {
 		fmt.Println(status)
 		os.Exit(1)
