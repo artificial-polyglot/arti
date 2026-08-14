@@ -9,17 +9,19 @@
 //     client, which isn't used here)
 //   - the Upload button, YAML file-load input, and validation error modal
 //     (all dead weight without arti-main.js/arti-upload.js/arti-validation.js)
-// The folder dropzone markup is kept for a later pass but isn't wired to any
-// JS here.
+// The folder dropzone is wired to a drop handler that walks a dropped
+// directory into a flat list of relative paths (see setupDropzone below),
+// but validation of those files doesn't happen until Save JSON is clicked.
 //
 // Everything under the <script> tags is new: it reads the form fields into
-// one flat dict and JSON.stringifies it, hands that JSON to the
-// request/validate WASM module (validate.wasm, built from
-// web-cloudflare/validate_wasm) for the same validation the server does.
-// On failure, the returned errors are listed at the top of the page; on
-// success, the "Save JSON" button downloads the generated JSON as before.
-// "Save JSON" stands in for a future "Submit Job" button - for now all
-// operations (validate, then save) are tied to it.
+// one flat dict, JSON.stringifies it, and hands that JSON plus the dropped
+// file list (NUL-joined) to the request/validate WASM module's ValidateAll
+// (validate.wasm, built from web-cloudflare/validate_wasm) for the same
+// validation the server does - which also populates AudioData/TextData
+// from the dropped files. On failure, the returned errors are listed at
+// the top of the page; on success, the "Save JSON" button downloads the
+// resulting YAML. "Save JSON" stands in for a future "Submit Job" button -
+// for now all operations (validate, then save) are tied to it.
 
 export const PAGE_HTML = `<!doctype html>
 <html lang="en">
@@ -954,26 +956,26 @@ export const PAGE_HTML = `<!doctype html>
             var jsonData = generateJSON();
 
             wasmReady.then(function () {
-                // ValidateRequest (registered by validate.wasm's main.go,
-                // which calls validate.ValidateRequestWASM) returns
-                // { request: string, errors: string[] }. ValidateFiles
-                // (validate.ValidateFilesWASM) takes the same dropped file
-                // list - NUL-joined rather than JSON, since NUL can never
-                // appear in a real filename and a plain split is simpler
-                // than parsing JSON - and returns just string[] errors.
-                var result = ValidateRequest(jsonData);
-                var fileErrors = ValidateFiles(droppedFilePaths.join('\\0'));
-                var allErrors = result.errors.concat(fileErrors);
-                if (allErrors.length > 0) {
-                    showErrors(allErrors);
+                // ValidateAll (registered by validate.wasm's main.go, which
+                // calls validate.ValidateAllWASM) builds the Request from
+                // jsonData, validates it, then hands that same Request to
+                // file validation so it can populate AudioData/TextData
+                // from the dropped directory (NUL-joined rather than
+                // JSON - NUL can never appear in a real filename, so a
+                // plain split is all the Go side needs). Only once both
+                // steps succeed does it marshal to YAML, returned here as
+                // { request: string, errors: string[] }.
+                var result = ValidateAll(jsonData, droppedFilePaths.join('\\0'));
+                if (result.errors.length > 0) {
+                    showErrors(result.errors);
                     return;
                 }
                 showErrors([]);
 
                 var datasetName = document.getElementById('datasetName').value.trim();
-                var filename = (datasetName ? datasetName : 'request') + '.json';
+                var filename = (datasetName ? datasetName : 'request') + '.yaml';
 
-                var blob = new Blob([jsonData], { type: 'application/json;charset=utf-8' });
+                var blob = new Blob([result.request], { type: 'application/x-yaml;charset=utf-8' });
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;

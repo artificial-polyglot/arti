@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/artificial-polyglot/arti/input/precheck"
 	"github.com/artificial-polyglot/arti/request"
 )
 
@@ -12,17 +13,28 @@ type RequestValidator struct {
 	errors []string
 }
 
-func ValidateRequestWASM(htmlValues string) ([]byte, []string) {
-	var req request.Request
-	var byts []byte
-	var err error
-	req = CreateRequestFromHTML(htmlValues)
+// ValidateAllWASM is the single entry point the WASM build exposes to
+// runner_page.js's Save JSON button: it builds the Request from the form's
+// JSON dict, validates it, then hands the same *Request to file
+// validation so it can read Testament/text_format and populate
+// AudioData/TextData.AWSS3 from the dropped directory - all within one Go
+// call, so the two validation steps share state as plain pointer passing
+// instead of needing any cross-WASM-call mechanism. Only marshals to YAML
+// once both steps have had their say.
+func ValidateAllWASM(htmlValues string, filePaths string) ([]byte, []string) {
+	reqMap := jsonToMap(htmlValues)
+	req := createRequestFromMap(reqMap)
+
 	errors := ValidateRequest(context.Background(), &req)
-	if len(errors) == 0 {
-		byts, err = Marshal(req)
-		if err != nil {
-			errors = append(errors, err.Error())
-		}
+	fileErrors := precheck.ValidateFilesWASM(&req, filePaths, reqMap["text_format_sfm"] == "true")
+	errors = append(errors, fileErrors...)
+
+	if len(errors) > 0 {
+		return nil, errors
+	}
+	byts, err := Marshal(req)
+	if err != nil {
+		errors = append(errors, err.Error())
 	}
 	return byts, errors
 }

@@ -17,41 +17,91 @@ import (
 	"github.com/artificial-polyglot/arti/request"
 )
 
+// arti-input is the bucket the browser uploads a dropped directory to -
+// see the drop handler in web-cloudflare/runner/runner_page.js.
+const artiInputBucket = "s3://arti-input/"
+
 // ValidateFilesWASM takes the relative file paths found in a dropped
 // directory (root directory name included as the prefix, matching what
-// will later be uploaded to the arti-input bucket), joined with NUL bytes
-// rather than JSON-encoded - NUL can never appear in a real filename, so a
-// plain split is all the parsing this needs. Checks that each filename is
-// recognized: setMediaType identifies the media type from its
-// name/extension, and parseFilenames confirms the naming convention parses
-// (book id, chapter, etc.). It does not look at file contents. Returns one
-// message per problem file; an empty slice means every file in the tree
-// was understood.
-func ValidateFilesWASM(filePaths string) []string {
+// gets uploaded to the arti-input bucket), NUL-joined rather than
+// JSON-encoded - NUL can never appear in a real filename, so a plain split
+// is all the parsing this needs. isSFM selects which text format to look
+// for (.sfm files when true, .usx when false), mirroring the form's
+// text_format_sfm/text_format_usx radio choice.
+//
+// It checks that each filename is recognized - setMediaType identifies
+// the media type from its name/extension, and parseFilenames confirms the
+// naming convention parses (book id, chapter, etc.) - without looking at
+// file contents, using req.Testament to prune books the request didn't
+// ask for. On success it writes a glob pattern covering the matched files
+// (e.g. s3://arti-input/MyFolder/audio/*.mp3) into req.AudioData.AWSS3
+// and req.TextData.AWSS3; the full InputFile-level processing this
+// package also does (unzip, setMediaType, parseFilenames) happens again
+// for real once the files are uploaded and the server picks up the
+// request.
+//
+// Returns one message per problem file; an empty slice means every file
+// in the tree was understood.
+func ValidateFilesWASM(req *request.Request, filePaths string, isSFM bool) []string {
+	if filePaths == "" {
+		return nil
+	}
+	return validateAndPopulate(req, strings.Split(filePaths, "\x00"), isSFM)
+}
+
+func validateAndPopulate(req *request.Request, filePaths []string, isSFM bool) []string {
 	ctx := context.Background()
 	var errs []string
-
-	if filePaths == "" {
-		return errs
-	}
-	paths := strings.Split(filePaths, "\x00")
-
-	for _, p := range paths {
+	var usx, sfm, mp3, wav []generic.InputFile
+	for _, p := range filePaths {
 		file := generic.InputFile{
 			Filename:  filepath.Base(p),
 			Directory: filepath.Dir(p),
 		}
-		status := setMediaType(ctx, &file)
-		if status != nil {
-			errs = append(errs, status.Message)
-			continue
-		}
-		status = parseFilenames(ctx, &file)
-		if status != nil {
-			errs = append(errs, status.Message)
+		switch strings.ToLower(filepath.Ext(p)) {
+		case ".usx":
+			usx = append(usx, file)
+		case ".sfm":
+			sfm = append(sfm, file)
+		case ".mp3":
+			mp3 = append(mp3, file)
+		case ".wav":
+			wav = append(wav, file)
 		}
 	}
+
+	textData := usx
+	if isSFM {
+		textData = sfm
+	}
+	textData, status := ValidateFiles(ctx, req.Testament, textData)
+	if status != nil {
+		errs = append(errs, status.Message)
+	} else if len(textData) > 0 {
+		req.TextData.AWSS3 = globFor(textData)
+	}
+
+	audioData := wav
+	if len(mp3) > 0 {
+		audioData = mp3
+	}
+	audioData, status = ValidateFiles(ctx, req.Testament, audioData)
+	if status != nil {
+		errs = append(errs, status.Message)
+	} else if len(audioData) > 0 {
+		req.AudioData.AWSS3 = globFor(audioData)
+	}
+
 	return errs
+}
+
+// globFor builds an S3 glob pattern covering every file in files, assuming
+// - as a dropped directory naturally produces - they all share one
+// directory and extension.
+func globFor(files []generic.InputFile) string {
+	dir := files[0].Directory
+	ext := filepath.Ext(files[0].Filename)
+	return artiInputBucket + dir + "/*" + ext
 }
 
 func ValidateFiles(ctx context.Context, testament request.Testament, files []generic.InputFile) ([]generic.InputFile, *log.Status) {

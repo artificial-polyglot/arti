@@ -7,9 +7,7 @@ import (
 	"github.com/artificial-polyglot/arti/request"
 )
 
-func CreateRequestFromHTML(json string) request.Request {
-	var reqMap map[string]string
-	reqMap = jsonToMap(json)
+func createRequestFromMap(reqMap map[string]string) request.Request {
 	var req request.Request
 	req.IsNew = true
 	req.Username = reqMap["username"]
@@ -29,8 +27,10 @@ func CreateRequestFromHTML(json string) request.Request {
 	req.Database.AWSS3 = "" // Not used in HTML
 	req.AudioData.AWSS3 = reqMap["audioData"]
 	req.TextData.AWSS3 = reqMap["textData"]
-	//dict['text_format_sfm'] = document.getElementById('text_format_sfm').checked
-	//dict['text_format_usx'] = document.getElementById('text_format_usx').checked
+	// text_format_sfm/text_format_usx aren't Request fields - they're read
+	// directly out of reqMap by ValidateAllWASM and passed to
+	// precheck.ValidateFilesWASM, which overwrites AudioData/TextData.AWSS3
+	// above with a glob over the dropped files when there are any.
 	req.Training.RedoTraining = reqMap["redoTraining"] == "true"
 	if reqMap["training_mms_adapter"] == "true" {
 		req.Training.MMSAdapter.BatchMB = 4
