@@ -42,14 +42,11 @@ const artiInputBucket = "s3://arti-input/"
 //
 // Returns one message per problem file; an empty slice means every file
 // in the tree was understood.
-func ValidateFilesWASM(req *request.Request, filePaths string, isSFM bool) []string {
-	if filePaths == "" {
+func ValidateFilesWASM(req *request.Request, paths string, isSFM bool) []string {
+	if paths == "" {
 		return nil
 	}
-	return validateAndPopulate(req, strings.Split(filePaths, "\x00"), isSFM)
-}
-
-func validateAndPopulate(req *request.Request, filePaths []string, isSFM bool) []string {
+	filePaths := strings.Split(paths, "\x00")
 	ctx := context.Background()
 	var errs []string
 	var usx, sfm, mp3, wav []generic.InputFile
