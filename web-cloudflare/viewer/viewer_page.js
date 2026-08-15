@@ -353,10 +353,13 @@ export const PAGE_HTML = `<!doctype html>
         viewTd.append(actionButton(viewLabel[row.viewMode], () => runAction(row.viewMode, "output", row.viewKey, row.label, tail)));
       }
       const downloadTd = document.createElement("td");
-      if (row.downloadKey) downloadTd.append(actionButton("Download", () => runAction("download", "output", row.downloadKey, row.label)));
-      const labelTd = document.createElement("td"); labelTd.textContent = row.label;
+      if (row.downloadKey) {
+        downloadTd.append(actionButton("Download", () => runAction("download", "output", row.downloadKey, row.label)));
+      } else {
+        downloadTd.textContent = row.label;
+      }
       const valueTd = document.createElement("td"); valueTd.textContent = row.value;
-      tr.append(viewTd, downloadTd, labelTd, valueTd);
+      tr.append(viewTd, downloadTd, valueTd);
       tbody.append(tr);
     });
     table.append(tbody);
