@@ -2,17 +2,20 @@ package tests
 
 import (
 	"fmt"
-	log "github.com/artificial-polyglot/arti/logger"
 	"testing"
 	"time"
+
+	"github.com/artificial-polyglot/arti/courier"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const mmsAlignTest = `is_new: yes
 dataset_name: 13e_mms_align
 bible_id: ENGWEB
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_plain_edit: yes
@@ -30,8 +33,8 @@ testament:
 // When I restore that the counts will need to be increased.
 
 func TestMMSAlignDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	start := time.Now()
-	//log.SetOutput("stdout")
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 26})
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 25})

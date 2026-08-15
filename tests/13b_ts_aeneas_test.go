@@ -3,14 +3,17 @@ package tests
 import (
 	"strings"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 const tSAeneasTest = `is_new: yes
 dataset_name: 13b_ts_aeneas
 bible_id: {bibleId}
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_plain_edit: yes
@@ -24,6 +27,7 @@ testament:
 `
 
 func TestTSAeneasDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 110})
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 105})

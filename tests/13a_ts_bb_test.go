@@ -3,14 +3,17 @@ package tests
 import (
 	"strings"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 const tSBibleBrain = `is_new: yes
 dataset_name: 13a_ts_bb
 bible_id: {bibleId}
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_plain_edit: yes
@@ -24,6 +27,7 @@ testament:
 `
 
 func TestTSBB(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 694})
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 678})

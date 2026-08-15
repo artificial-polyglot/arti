@@ -2,14 +2,17 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 const usfmVsUSX = `is_new: yes
-dataset_name: 3c_usfm_vs_usx_O2
+dataset_name: 03c_usfm_vs_usx_O2
 bible_id: O2NHEWYI
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   aws_s3: s3://arti-input/N2QAEBSP/Text Files/SFM Text/*.SFM
 detail:
@@ -19,6 +22,7 @@ detail:
 // This is not yet testing usfm vs usx
 
 func TestUSFMReadDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests1 []SqliteTest
 	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM scripts", 3866})
 	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM words where ttype='W'", 101151})

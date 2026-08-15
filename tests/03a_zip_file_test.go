@@ -7,16 +7,16 @@ import (
 )
 
 const zipFile = `is_new: yes
-dataset_name: 3a_zip_file
+dataset_name: 03a_zip_file
 bible_id: ENGWEB
 username: Tests
 output:
   directory: ~/Downloads
   csv: yes
 audio_data:
-  file: 3a_zip_file_test_data/ENGWEBN2DA.zip
+  file: 03a_zip_file_test_data/ENGWEBN2DA.zip
 text_data:
-  file: 3a_zip_file_test_data/ENGWEB-usx.zip
+  file: 03a_zip_file_test_data/ENGWEB-usx.zip
 testament:
   nt_books: [MRK]
 `

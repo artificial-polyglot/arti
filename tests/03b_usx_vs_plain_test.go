@@ -14,7 +14,7 @@ import (
 )
 
 const usxVsPlain = `is_new: yes
-dataset_name: 3b_usx_vs_plain_{BIBLE_ID}
+dataset_name: 03b_usx_vs_plain_{BIBLE_ID}
 bible_id: {BIBLE_ID}
 username: Tests
 testament:

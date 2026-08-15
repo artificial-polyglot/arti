@@ -2,15 +2,18 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 const fAVerseTest = `is_new: yes
 dataset_name: 13d_fa_verse
 bible_id: ENGWEB
 alt_language: xxx
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_plain_edit: yes
@@ -24,6 +27,7 @@ testament:
 `
 
 func TestFAVerseDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 26})
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 25})
