@@ -213,6 +213,31 @@ func (t S3Client) PutDirectory(bucket, prefix, localDir string) *log.Status {
 	return status
 }
 
+func (t S3Client) ClearDirectory(bucket string, prefix string) *log.Status {
+	list, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	})
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Error listing S3 objects to clear", prefix)
+	}
+	if len(list.Contents) == 0 {
+		return nil
+	}
+	var objects []types.ObjectIdentifier
+	for _, obj := range list.Contents {
+		objects = append(objects, types.ObjectIdentifier{Key: obj.Key})
+	}
+	_, err = t.Client.DeleteObjects(t.ctx, &s3.DeleteObjectsInput{
+		Bucket: aws.String(bucket),
+		Delete: &types.Delete{Objects: objects},
+	})
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Error deleting S3 objects under", prefix)
+	}
+	return nil
+}
+
 func (t S3Client) DownloadFileTree(bucket string, prefix string, localDir string) *log.Status {
 	list, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{
 		Bucket: &bucket,

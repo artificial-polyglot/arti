@@ -115,7 +115,7 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 			return status
 		}
 		var run int
-		run, status = b.findLastRun(client.Client)
+		run, status = b.findLastRun(client)
 		allStatus = append(allStatus, status)
 		run++
 		_, status = b.uploadString(client, run, "request", b.dataset+".yaml", b.yamlContent)
@@ -191,11 +191,16 @@ func (b *Courier) parseYaml(name string) string {
 	return result
 }
 
-func (b *Courier) findLastRun(client *s3.Client) (int, *log.Status) {
+func (b *Courier) findLastRun(client s3_datastore.S3Client) (int, *log.Status) {
+	if testing.Testing() {
+		prefix := b.username + "/" + b.dataset + "/"
+		status := client.ClearDirectory(b.bucket, prefix)
+		return 0, status
+	}
 	var result int
 	var status *log.Status
 	prefix := b.username + "/" + b.dataset + "/" + b.Component + "/"
-	output, err := client.ListObjectsV2(b.ctx, &s3.ListObjectsV2Input{
+	output, err := client.Client.ListObjectsV2(b.ctx, &s3.ListObjectsV2Input{
 		Bucket: &b.bucket,
 		Prefix: &prefix,
 	})
