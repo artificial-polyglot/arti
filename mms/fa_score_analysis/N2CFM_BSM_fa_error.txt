@@ -1,0 +1,39 @@
+N2CFM_BSM FA Error Analysis
+
+Mean: 0.10
+StdDev: 0.52
+Minimum: 0.00
+Maximum: 7.71
+Skewness: 7.08
+Kurtosis: 54.87
+
+Percentiles
+Percentile 99.00: 3.33
+Percentile 99.10: 3.51
+Percentile 99.20: 3.68
+Percentile 99.30: 3.85
+Percentile 99.40: 4.01
+Percentile 99.50: 4.18
+Percentile 99.60: 4.38
+Percentile 99.70: 4.59
+Percentile 99.80: 4.86
+Percentile 99.90: 5.36
+Percentile 99.91: 5.44
+Percentile 99.92: 5.51
+Percentile 99.93: 5.60
+Percentile 99.94: 5.69
+Percentile 99.95: 5.79
+Percentile 99.96: 5.93
+Percentile 99.97: 6.05
+Percentile 99.98: 6.20
+Percentile 99.99: 6.49
+
+HISTOGRAM
+Cat: 0-1 = 97.0918%
+Cat: 1-2 = 1.0716%
+Cat: 2-3 = 0.6544%
+Cat: 3-4 = 0.5732%
+Cat: 4-5 = 0.4478%
+Cat: 5-6 = 0.1288%
+Cat: 6-7 = 0.0310%
+Cat: 7-8 = 0.0014%

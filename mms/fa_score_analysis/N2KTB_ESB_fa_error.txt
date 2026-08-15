@@ -1,0 +1,39 @@
+N2KTB_ESB FA Error Analysis
+
+Mean: 0.51
+StdDev: 1.15
+Minimum: 0.00
+Maximum: 7.35
+Skewness: 2.55
+Kurtosis: 5.91
+
+Percentiles
+Percentile 99.00: 4.96
+Percentile 99.10: 5.03
+Percentile 99.20: 5.11
+Percentile 99.30: 5.19
+Percentile 99.40: 5.28
+Percentile 99.50: 5.39
+Percentile 99.60: 5.51
+Percentile 99.70: 5.65
+Percentile 99.80: 5.84
+Percentile 99.90: 6.12
+Percentile 99.91: 6.16
+Percentile 99.92: 6.20
+Percentile 99.93: 6.25
+Percentile 99.94: 6.30
+Percentile 99.95: 6.35
+Percentile 99.96: 6.42
+Percentile 99.97: 6.51
+Percentile 99.98: 6.61
+Percentile 99.99: 6.74
+
+HISTOGRAM
+Cat: 0-1 = 83.7298%
+Cat: 1-2 = 5.2204%
+Cat: 2-3 = 4.3451%
+Cat: 3-4 = 3.5045%
+Cat: 4-5 = 2.2588%
+Cat: 5-6 = 0.8042%
+Cat: 6-7 = 0.1358%
+Cat: 7-8 = 0.0014%

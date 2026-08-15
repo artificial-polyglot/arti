@@ -1,0 +1,39 @@
+N2CUL_MNT FA Error Analysis
+
+Mean: 0.89
+StdDev: 1.57
+Minimum: 0.00
+Maximum: 7.70
+Skewness: 1.54
+Kurtosis: 0.99
+
+Percentiles
+Percentile 99.00: 5.50
+Percentile 99.10: 5.59
+Percentile 99.20: 5.68
+Percentile 99.30: 5.78
+Percentile 99.40: 5.89
+Percentile 99.50: 6.00
+Percentile 99.60: 6.13
+Percentile 99.70: 6.28
+Percentile 99.80: 6.44
+Percentile 99.90: 6.66
+Percentile 99.91: 6.69
+Percentile 99.92: 6.72
+Percentile 99.93: 6.76
+Percentile 99.94: 6.79
+Percentile 99.95: 6.83
+Percentile 99.96: 6.88
+Percentile 99.97: 6.94
+Percentile 99.98: 7.01
+Percentile 99.99: 7.12
+
+HISTOGRAM
+Cat: 0-1 = 74.8004%
+Cat: 1-2 = 2.3860%
+Cat: 2-3 = 6.6110%
+Cat: 3-4 = 8.8986%
+Cat: 4-5 = 5.5594%
+Cat: 5-6 = 1.2426%
+Cat: 6-7 = 0.4810%
+Cat: 7-8 = 0.0209%
