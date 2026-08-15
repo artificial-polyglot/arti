@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
@@ -251,58 +252,34 @@ func (h *HTMLWriter) WriteEnd() {
 
 `
 	_, _ = h.out.WriteString(script)
-	script = `let playbackRate = 1;
+	script = `window.avPlaybackRate = 1;
 $('#playSpeed').on('change', function () {
-	playbackRate = parseFloat(this.value);
-	if (currentAudio) currentAudio.playbackRate = playbackRate;   // change speed live
+	window.avPlaybackRate = parseFloat(this.value);
+	const audio = document.getElementById('validateAudio');
+	if (audio && !audio.paused) audio.playbackRate = window.avPlaybackRate;
 });
+
 let currentSpans = null;
-let currentAudio = null;
-let currentEndTS = null;                 // <-- remember where to stop
 
-function playVerse(button, audioFile, beginTS, endTS) {
-    if (currentAudio) {
-        currentAudio.pause();
-        clearHighlight();
-    }
-    currentEndTS = endTS;                 // <-- store it for onTimeUpdate
-
+window.avOnVerseStart = function (button, beginTS, endTS) {
     const scope = button.closest('tr');
     currentSpans = Array.from(scope.querySelectorAll('span[data-begin]')).filter(span => {
         const start = parseFloat(span.dataset.begin);
         return start >= beginTS && start < endTS;
     });
+};
 
-    currentAudio = new Audio(audioFile);
-	currentAudio.playbackRate = playbackRate;      // <-- apply the chosen speed
-	currentAudio.addEventListener('loadedmetadata', () => {
-    	currentAudio.currentTime = beginTS;
-	});
-
-    // seek to the verse start once the browser knows the file's duration
-    currentAudio.addEventListener('loadedmetadata', () => {
-        currentAudio.currentTime = beginTS;
-    });
-    currentAudio.addEventListener('timeupdate', onTimeUpdate);
-    currentAudio.addEventListener('ended', clearHighlight);
-    currentAudio.play().catch(err => console.error('play failed', err));
-}
-
-function onTimeUpdate() {
-    const t = currentAudio.currentTime;
-
-    if (currentEndTS !== null && t >= currentEndTS) {
-        currentAudio.pause();
-        clearHighlight();
-        return;
-    }
+window.avOnTimeUpdate = function (audio, t) {
     clearHighlight();
-    // the current word is the LAST one whose begin time has been reached
     const word = currentSpans
         .filter(span => parseFloat(span.dataset.begin) <= t)
         .pop();
     if (word) word.classList.add('highlight');
-}
+};
+
+window.avOnVerseStop = function () {
+    clearHighlight();
+};
 
 function clearHighlight() {
     if (currentSpans) {
@@ -310,10 +287,12 @@ function clearHighlight() {
     }
 }
 	</script>
-</body>
-</html>
 `
 	_, _ = h.out.WriteString(script)
+	_, _ = h.out.WriteString("<script>\n")
+	_, _ = h.out.WriteString(audioplayer.Script)
+	_, _ = h.out.WriteString("\n</script>\n")
+	_, _ = h.out.WriteString("</body>\n</html>\n")
 	_ = h.out.Close()
 }
 

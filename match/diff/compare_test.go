@@ -3,12 +3,13 @@ package diff
 import (
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/db"
-	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/request"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/db"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 type compareTest struct {
@@ -38,12 +39,12 @@ func TestCompare(t *testing.T) {
 	}
 }
 
-func runCompareTest(tst compareTest) ([]Pair, string, string, *log.Status) {
+func runCompareTest(tst compareTest) ([]Pair, map[string]string, string, *log.Status) {
 	var records []Pair
-	var fileMap string
+	var fileMap map[string]string
 	var languageISO string
 	ctx := context.Background()
-	user := ``
+	user := `GaryNTest`
 	var testament = request.Testament{NT: true}
 	var cfg request.CompareSettings
 	cfg.LowerCase = true

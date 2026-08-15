@@ -10,10 +10,10 @@ import (
 This code is in development as of Nov 12, 2025 GNG
 */
 
-func (a *Compare) CompareASR2() ([]Pair, string, string, *log.Status) {
+func (a *Compare) CompareASR2() ([]Pair, map[string]string, string, *log.Status) {
 	pairs, status := a.selectASRPairs()
 	if status != nil {
-		return pairs, "", "", status
+		return pairs, nil, "", status
 	}
 	for i := range pairs {
 		pairs[i].Base.Text = a.cleanup(pairs[i].Base.Text)

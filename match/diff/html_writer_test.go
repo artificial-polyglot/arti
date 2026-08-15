@@ -3,6 +3,7 @@ package diff
 import (
 	"context"
 	"fmt"
+	"github.com/artificial-polyglot/arti/request"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,7 +17,7 @@ func TestHTMLWriter(t *testing.T) {
 	}
 	ctx := context.Background()
 	writer := NewHTMLWriter(ctx, test.project)
-	filename, status := writer.WriteReport(test.baseDB, records, languageISO, fileMap)
+	filename, status := writer.WriteReport(test.baseDB, records, languageISO, fileMap, request.SpeechToText{})
 	if status != nil {
 		t.Fatal(status)
 	}

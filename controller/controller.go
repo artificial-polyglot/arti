@@ -561,7 +561,7 @@ func (c *Controller) audioProofing() (string, *log.Status) {
 
 func (c *Controller) matchText() (string, *log.Status) {
 	var records []diff.Pair
-	var fileMap string
+	var fileMap map[string]string
 	var languageISO string
 	var status *log.Status
 	compare := diff.NewCompare(c.ctx, c.req.Username, c.req.Compare.BaseDataset, c.database, c.ident.LanguageISO, c.req.Testament, c.req.Compare.CompareSettings)

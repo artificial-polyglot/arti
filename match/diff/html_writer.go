@@ -2,6 +2,7 @@ package diff
 
 import (
 	"context"
+	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -17,6 +18,7 @@ type HTMLWriter struct {
 	datasetName string
 	diffMatch   *diffmatchpatch.DiffMatchPatch
 	out         *os.File
+	fileMap     map[string]string
 	diffCount   int
 	insertSum   int
 	deleteSum   int
@@ -30,10 +32,11 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO string, fileMap string,
+func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO string, fileMap map[string]string,
 	asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
+	h.fileMap = fileMap
 	switch asr {
 	case request.SpeechToText{MMS: true}:
 		model = "Model: MMS"
@@ -52,7 +55,7 @@ func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO
 	for _, pair := range records {
 		h.WriteLine(pair)
 	}
-	h.WriteEnd(fileMap)
+	h.WriteEnd()
 	return filename, nil
 }
 
@@ -134,8 +137,8 @@ func (h *HTMLWriter) WriteLine(verse Pair) {
 		//h.writeCell(h.minSecFormat(verse.beginTS))
 		var params []string
 		params = append(params, "this")
-		params = append(params, "'"+verse.Ref.BookId+"'")
-		params = append(params, strconv.Itoa(verse.Ref.ChapterNum))
+		audioFile := h.fileMap[verse.Ref.BookId+strconv.Itoa(verse.Ref.ChapterNum)]
+		params = append(params, "'"+audioFile+"'")
 		params = append(params, strconv.FormatFloat(verse.BeginTS, 'f', 4, 64))
 		params = append(params, strconv.FormatFloat(verse.EndTS, 'f', 4, 64))
 		h.writeCell("<button title=\"" + h.minSecFormat(verse.BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
@@ -152,7 +155,7 @@ func (h *HTMLWriter) writeCell(content string) {
 	_, _ = h.out.WriteString(`</td>`)
 }
 
-func (h *HTMLWriter) WriteEnd(filenameMap string) {
+func (h *HTMLWriter) WriteEnd() {
 	table := `</tbody>
 	</table>
 `
@@ -211,38 +214,16 @@ func (h *HTMLWriter) WriteEnd(filenameMap string) {
     	$('#hideVerse0').prop('checked', true);
     	table.draw();
     	$('#hideVerse0').on('change', function() {
-        	table.draw(); 
+        	table.draw();
     	});
     });
-	function playVerse(button, book, chapter, startTime, endTime) {
-`
-	_, _ = h.out.WriteString(script)
-	_, _ = h.out.WriteString("\t" + filenameMap)
-	script = `filename = fileMap[book + chapter]
-		let directory = document.getElementById("directory").value
-		audioFile = directory + '/' + filename;
-		const audio = document.getElementById('validateAudio');
-		/* const rect = button.getBoundingClientRect();
-    	audio.style.position = 'fixed';
-    	audio.style.left = rect.left + window.scrollX + 'px';
-    	audio.style.top = (rect.bottom + window.scrollY + 5) + 'px'; */
-		audio.src = audioFile;
-		audio.playbackRate = 0.75;
-		audio.currentTime = startTime;
-		audio.controls = false;
-		audio.play();
-		audio.ontimeupdate = function() {
-			if (audio.currentTime >= endTime) {
-				audio.pause();
-				audio.ontimeupdate = null;
-			}
-		}
-	}
     </script>
-</body>
-</html>
 `
 	_, _ = h.out.WriteString(script)
+	_, _ = h.out.WriteString("<script>\n")
+	_, _ = h.out.WriteString(audioplayer.Script)
+	_, _ = h.out.WriteString("\n</script>\n")
+	_, _ = h.out.WriteString("</body>\n</html>\n")
 	_ = h.out.Close()
 }
 

@@ -7,8 +7,8 @@ import (
 )
 
 // CompareChapters deprecated 3/6/2025. It was determined to not be necessary
-func (c *Compare) CompareChapters() ([]Pair, string, *log.Status) {
-	var fileMap string
+func (c *Compare) CompareChapters() ([]Pair, map[string]string, *log.Status) {
+	var fileMap map[string]string
 	var status *log.Status
 	var scripts []db.Script
 	scripts, status = c.database.SelectBookChapter()

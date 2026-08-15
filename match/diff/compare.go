@@ -66,9 +66,9 @@ func NewCompare(ctx context.Context, user string, baseDSet string, db db.DBAdapt
 	return c
 }
 
-func (c *Compare) Process() ([]Pair, string, string, *log.Status) {
+func (c *Compare) Process() ([]Pair, map[string]string, string, *log.Status) {
 	var records []Pair
-	var fileMap string
+	var fileMap map[string]string
 	var languageISO string
 	var status *log.Status
 	var ident db.Ident
@@ -429,24 +429,17 @@ func (c *Compare) ensureClean(diffs []diffmatchpatch.Diff) {
 	}
 }
 
-// generateBookChapterFilenameMap could be eliminated.  The filenames are now passed in []Pair slice
-func (c *Compare) generateBookChapterFilenameMap() (string, *log.Status) {
+func (c *Compare) generateBookChapterFilenameMap() (map[string]string, *log.Status) {
 	chapters, status := c.database.SelectBookChapterFilename()
 	if status != nil {
-		return "", status
+		return nil, status
 	}
-	var result []string
-	result = append(result, "let fileMap = {\n")
-	for i, ch := range chapters {
+	result := make(map[string]string, len(chapters))
+	for _, ch := range chapters {
 		key := ch.BookId + strconv.Itoa(ch.ChapterNum)
-		result = append(result, "\t'"+key+"': '"+ch.AudioFile+"'")
-		if i < len(chapters)-1 {
-			result = append(result, ",\n")
-		} else {
-			result = append(result, "};\n")
-		}
+		result[key] = ch.AudioFile
 	}
-	return strings.Join(result, ""), status
+	return result, status
 }
 
 func (c *Compare) SetIsLatin(records []db.Script) {
