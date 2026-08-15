@@ -8,17 +8,19 @@ import (
 	"time"
 
 	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/request"
 )
 
 const uSXTextEditScript = `is_new: yes
 dataset_name: 01c_usx_text_edit_{bibleId}
 bible_id: {bibleId}
-username: GaryNTest
+username: Tests
 testament:
   nt: yes
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_usx_edit: yes
@@ -27,6 +29,7 @@ detail:
 `
 
 func TestUSXTextEditDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 8213})
 	testName := strings.Replace(uSXTextEditScript, "{bibleId}", "ENGWEB", -1)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -15,11 +16,12 @@ import (
 const usxVsPlain = `is_new: yes
 dataset_name: 3b_usx_vs_plain_{BIBLE_ID}
 bible_id: {BIBLE_ID}
-username: GaryNTest
+username: Tests
 testament:
   nt: yes
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     {TEXT_TYPE}: yes
@@ -28,16 +30,20 @@ detail:
 `
 
 func TestTextReadDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests1 []SqliteTest
 	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM scripts", 8213})
 	tests1 = append(tests1, SqliteTest{"SELECT count(*) FROM words where ttype='W'", 175764})
 	test1 := strings.ReplaceAll(usxVsPlain, "{BIBLE_ID}", "ENGWEB")
+	test1 = strings.ReplaceAll(test1, "3b_usx_vs_plain", "3b_usx")
 	test1USX := strings.ReplaceAll(test1, "{TEXT_TYPE}", "text_usx_edit")
 	database1 := DirectSqlTest(test1USX, tests1, t)
 	var tests2 []SqliteTest
 	tests2 = append(tests2, SqliteTest{"SELECT count(*) FROM scripts", 8218})
 	tests2 = append(tests2, SqliteTest{"SELECT count(*) FROM words where ttype='W'", 175764})
-	text2TXT := strings.ReplaceAll(test1, "{TEXT_TYPE}", "text_plain_edit")
+	test2 := strings.ReplaceAll(usxVsPlain, "{BIBLE_ID}", "ENGWEB")
+	test2 = strings.ReplaceAll(test2, "3b_usx_vs_plain", "3b_plain")
+	text2TXT := strings.ReplaceAll(test2, "{TEXT_TYPE}", "text_plain_edit")
 	database2 := DirectSqlTest(text2TXT, tests2, t)
 	diffCount := DifferenceTest(database1, database2)
 	if diffCount != 0 {
@@ -48,11 +54,12 @@ func TestTextReadDirect(t *testing.T) {
 func DifferenceTest(database1 string, database2 string) int {
 	ctx := context.Background()
 	diffMatch := diffmatchpatch.New()
-	conn1 := db.NewDBAdapter(ctx, "./"+database1)
+	conn1 := db.NewDBAdapter(ctx, database1)
 	records1, status := conn1.SelectScripts()
 	if status != nil {
 		panic(status)
 	}
+	conn1.Close()
 	var usxMap = make(map[string]string)
 	for _, rec := range records1 {
 		var lf generic.VerseRef
@@ -61,9 +68,9 @@ func DifferenceTest(database1 string, database2 string) int {
 		lf.VerseStr = rec.VerseStr
 		usxMap[lf.UniqueKey()] = rec.ScriptText
 	}
-	conn1.Close()
-	conn2 := db.NewDBAdapter(ctx, "./"+database2)
+	conn2 := db.NewDBAdapter(ctx, database2)
 	plainRec2, _ := conn2.SelectScripts()
+	conn2.Close()
 	var diffCount = 0
 	for _, rec := range plainRec2 {
 		var lf generic.VerseRef

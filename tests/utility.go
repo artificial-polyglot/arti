@@ -10,11 +10,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -37,15 +39,16 @@ func DirectSqlTest(request string, tests []SqliteTest, t *testing.T) string {
 		fmt.Println(status.Trace)
 		t.Fatal(status)
 	}
-	var database string
-	for _, file := range output.FilePaths {
-		if strings.HasSuffix(file, ".sqlite") {
-			database = file
-			break
-		}
+	if len(output.FilePaths) > 0 {
+		fmt.Println(output.Directory)
 	}
-	fmt.Println("Test output", database)
-	conn, err := sql.Open("sqlite", database)
+	for _, file := range output.FilePaths {
+		fmt.Println(file)
+	}
+	username := courier.ParseYaml(request, `username`)
+	dataset := courier.ParseYaml(request, `dataset_name`)
+	database := filepath.Join(os.Getenv("FCBH_DATASET_DB"), username, dataset)
+	conn, err := sql.Open("sqlite", database+".db")
 	if err != nil {
 		t.Fatal(err)
 	}

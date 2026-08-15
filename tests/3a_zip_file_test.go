@@ -2,23 +2,27 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 const zipFile = `is_new: yes
 dataset_name: 3a_zip_file
 bible_id: ENGWEB
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 audio_data:
-  file: /Users/gary/FCBH2024/download/ENGWEBN2DA-mp3-64.zip
+  file: 3a_zip_file_test_data/ENGWEBN2DA.zip
 text_data:
-  file: /Users/gary/FCBH2024/download/ENGWEBN_ET-usx.zip
+  file: 3a_zip_file_test_data/ENGWEB-usx.zip
 testament:
   nt_books: [MRK]
 `
 
 func TestZipFileDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 694})
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 0})

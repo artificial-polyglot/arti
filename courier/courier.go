@@ -47,8 +47,8 @@ func NewCourier(ctx context.Context, yaml []byte) Courier {
 	b.bucket = os.Getenv("FCBH_DATASET_IO_BUCKET")
 	b.Component = "arti" // default
 	b.yamlContent = string(yaml)
-	b.username = b.parseYaml(`username`)
-	b.dataset = b.parseYaml(`dataset_name`)
+	b.username = ParseYaml(b.yamlContent, `username`)
+	b.dataset = ParseYaml(b.yamlContent, `dataset_name`)
 
 	logFile := os.Getenv("FCBH_DATASET_LOG_FILE")
 	b.AddLogFile(logFile)
@@ -178,15 +178,15 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 	return nil
 }
 
-func (b *Courier) parseYaml(name string) string {
+func ParseYaml(yamlContent string, name string) string {
 	var result string
-	index := strings.Index(b.yamlContent, name+":")
+	index := strings.Index(yamlContent, name+":")
 	if index == -1 {
 		result = "unknown-" + name
 	} else {
 		start := index + len(name) + 1
-		end := strings.Index(b.yamlContent[start:], "\n")
-		result = strings.TrimSpace(b.yamlContent[start : start+end])
+		end := strings.Index(yamlContent[start:], "\n")
+		result = strings.TrimSpace(yamlContent[start : start+end])
 	}
 	return result
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func CLIProcessEntry(yaml []byte) (OutputFiles, *log.Status) {
@@ -16,6 +17,13 @@ func CLIProcessEntry(yaml []byte) (OutputFiles, *log.Status) {
 	output, status = control.ProcessV2()
 	if status != nil {
 		return output, status
+	}
+	if output.Directory != `` {
+		output.Directory = expandHome(ctx, output.Directory)
+		err := os.MkdirAll(output.Directory, os.ModePerm)
+		if err != nil {
+			log.Warn(ctx, "Failed to create Output.Directory", output.Directory, err)
+		}
 	}
 	var err error
 	for i, file := range output.FilePaths {
@@ -32,9 +40,25 @@ func CLIProcessEntry(yaml []byte) (OutputFiles, *log.Status) {
 		}
 		if err == nil {
 			output.FilePaths[i] = targetPath
+		} else {
+			log.Warn(ctx, "Failed to move output file", file, "to", targetPath, err)
 		}
 	}
 	return output, status
+}
+
+// expandHome resolves a leading "~" or "~/..." in directory to the current
+// user's home directory, so an Output.Directory setting is portable across users.
+func expandHome(ctx context.Context, directory string) string {
+	if directory != `~` && !strings.HasPrefix(directory, `~/`) {
+		return directory
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Warn(ctx, "Failed to resolve home directory for Output.Directory", directory, err)
+		return directory
+	}
+	return filepath.Join(home, directory[1:])
 }
 
 func copyFile(src, dst string) error {

@@ -8,17 +8,19 @@ import (
 	"time"
 
 	"github.com/artificial-polyglot/arti/controller"
+	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/request"
 )
 
 const plainTextEditScript = `is_new: yes
 dataset_name: 01b_plain_text_edit_{bibleId}
 bible_id: {bibleId}
-username: GaryNTest
+username: Tests
 testament:
   nt: yes
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_plain_edit: yes
@@ -27,6 +29,7 @@ detail:
 `
 
 func TestPlainTextEditDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 8218})
 	testName := strings.Replace(plainTextEditScript, "{bibleId}", "ENGWEB", -1)
