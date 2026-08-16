@@ -83,6 +83,9 @@ def train_mms_adapter(model, dataset, num_epochs=3, lr=5e-5,
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     logger.warn("Cleared CUDA cache due to fragmentation")
+                elif torch.backends.mps.is_available():
+                    torch.mps.empty_cache()
+                    logger.warning("Cleared MPS cache due to fragmentation")
         avg_epoch_loss = epoch_loss / len(dataloader)
         logger.info(f"Epoch {epoch + 1} completed. Average loss: {avg_epoch_loss:.4f}")
 
@@ -140,7 +143,12 @@ adapter_weights = model._get_adapters()
 for param in adapter_weights.values():
     param.requires_grad = True
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    device = 'cuda'
+elif torch.backends.mps.is_available():
+    device = 'mps'
+else:
+    device = 'cpu'
 model.to(device)
 
 dataset = MyDataset(sampleDB)

@@ -12,7 +12,12 @@ from torchaudio.pipelines import MMS_FA as bundle
 
 batch_size = 50
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    device = 'cuda'
+elif torch.backends.mps.is_available():
+    device = 'mps'
+else:
+    device = 'cpu'
 model = bundle.get_model(with_star=False)
 model.to(device)
 tokenizer = bundle.get_tokenizer()

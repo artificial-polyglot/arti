@@ -22,7 +22,7 @@ import torchaudio.functional as F
 
 SAMPLING_FREQ = 16000
 EMISSION_INTERVAL = 30
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # MPS is not supported
 setup_error_handler()
 
 def generate_emissions(model, audio_file):
