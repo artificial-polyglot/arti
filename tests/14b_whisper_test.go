@@ -2,14 +2,17 @@ package tests
 
 import (
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 const whisperTest = `is_new: yes
 dataset_name: 14b_whisper
 bible_id: ENGWEB
-username: GaryNTest
+username: Tests
 output:
-  sqlite: yes
+  directory: ~/Downloads
+  csv: yes
 testament: 
   nt_books: [PHM]
 text_data:
@@ -27,6 +30,7 @@ speech_to_text:
 `
 
 func TestWhisperDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 26})
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 25})

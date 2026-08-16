@@ -1,14 +1,19 @@
 package tests
 
 import (
-	"github.com/artificial-polyglot/arti/request"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 const mMSASRCompare = `is_new: yes
 dataset_name: 15a_mms_asr
 bible_id: ENGWEB
-username: GaryNTest
+username: Tests
+output:
+  directory: ~/Downloads
+  csv: yes
 text_data:
   bible_brain:
     text_usx_edit: yes
@@ -18,7 +23,7 @@ audio_data:
 timestamps:
   bible_brain: yes
 testament:
-  nt_books: ['3JN']
+  nt_books: ['1JN']
 speech_to_text:
   mms_asr: yes
 compare:
@@ -38,8 +43,9 @@ compare:
 `
 
 func TestMMSASRCompare(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []CtlTest
-	tests = append(tests, CtlTest{BibleId: "ENGWEB", Expected: 7, TextNtId: "ENGWEBN_ET-usx",
+	tests = append(tests, CtlTest{BibleId: "ENGWEB", Expected: 29, TextNtId: "ENGWEBN_ET-usx",
 		TextType: request.TextUSXEdit, AudioNTId: "ENGWEBN2DA", Language: "eng"})
 	//tests = append(tests, CtlTest{BibleId: "APFCMU", Expected: 16, TextNtId: "APFCMUN_ET-usx",
 	//	AudioNTId: `APFCMUN1DA`, TextType: request.TextUSXEdit, Language: "apf"})
