@@ -296,6 +296,10 @@ func (c *Controller) processSteps() *log.Status {
 }
 
 func (c *Controller) fetchData() (db.Ident, *log.Status) {
+	if c.req.BibleId == "" {
+		c.ident.LanguageISO = c.req.LanguageISO
+		return c.ident, nil
+	}
 	var status *log.Status
 	var info fetch.BibleInfoType
 	client := fetch.NewAPIDBPClient(c.ctx, c.req.BibleId)
