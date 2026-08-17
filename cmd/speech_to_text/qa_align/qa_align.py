@@ -47,7 +47,7 @@ adapter = len(sys.argv) > 2 and sys.argv[2].lower() == "adapter"
 if torch.cuda.is_available():
     device = 'cuda'
 elif torch.backends.mps.is_available():
-    device = 'mps'
+    device = 'cpu' # not implemented
 else:
     device = 'cpu'
 modelId = "facebook/mms-1b-all"
