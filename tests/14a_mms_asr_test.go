@@ -11,6 +11,7 @@ const mMSASRTest = `is_new: yes
 dataset_name: 14a_mms_asr
 bible_id: ENGWEB
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

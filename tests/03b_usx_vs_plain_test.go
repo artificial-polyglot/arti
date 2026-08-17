@@ -17,6 +17,7 @@ const usxVsPlain = `is_new: yes
 dataset_name: 03b_usx_vs_plain_{BIBLE_ID}
 bible_id: {BIBLE_ID}
 username: Tests
+notify_err: [ntfy/arti2]
 testament:
   nt: yes
 output:

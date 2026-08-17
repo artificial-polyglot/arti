@@ -11,6 +11,7 @@ const tSBibleBrain = `is_new: yes
 dataset_name: 13a_ts_bb
 bible_id: {bibleId}
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

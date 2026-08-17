@@ -10,6 +10,7 @@ const zipFile = `is_new: yes
 dataset_name: 03a_zip_file
 bible_id: ENGWEB
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

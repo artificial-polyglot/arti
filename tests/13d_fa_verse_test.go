@@ -11,6 +11,7 @@ dataset_name: 13d_fa_verse
 bible_id: ENGWEB
 alt_language: xxx
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

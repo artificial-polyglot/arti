@@ -10,6 +10,7 @@ const whisperTest = `is_new: yes
 dataset_name: 14b_whisper
 bible_id: ENGWEB
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

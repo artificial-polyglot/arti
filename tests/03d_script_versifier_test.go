@@ -10,6 +10,7 @@ const scriptVersifierScript = `is_new: yes
 dataset_name: 03d_script_versifier
 username: Tests
 language_iso: ako
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

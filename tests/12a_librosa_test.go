@@ -11,6 +11,7 @@ const librosa = `is_new: yes
 dataset_name: 12a_librosa
 bible_id: {bibleId}
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

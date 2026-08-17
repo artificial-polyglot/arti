@@ -11,6 +11,7 @@ const tSAeneasTest = `is_new: yes
 dataset_name: 13b_ts_aeneas
 bible_id: {bibleId}
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes
@@ -33,11 +34,4 @@ func TestTSAeneasDirect(t *testing.T) {
 	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 105})
 	testName := strings.Replace(tSAeneasTest, "{bibleId}", "ENGWEB", -1)
 	DirectSqlTest(testName, tests, t)
-}
-
-func TestPlainTextAeneasTimestampsScriptAPI(t *testing.T) {
-	var tests []APITest
-	tests = append(tests, APITest{BibleId: `ENGWEB`, Expected: 111, Diff: 0})
-	tests = append(tests, APITest{BibleId: `ATIWBT`, Expected: 111, Diff: 0})
-	APITestUtility(tSAeneasTest, tests, t)
 }

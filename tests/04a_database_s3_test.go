@@ -10,6 +10,7 @@ const databaseS3 = `is_new: no
 dataset_name: 04a_database_s3_ENGWEB
 bible_id: ENGWEB
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes

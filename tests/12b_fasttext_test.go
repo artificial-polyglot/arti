@@ -11,6 +11,7 @@ const fastText = `is_new: yes
 dataset_name: 12b_fasttext
 bible_id: {bibleId}
 username: Tests
+notify_err: [ntfy/arti2]
 output:
   directory: ~/Downloads
   csv: yes
