@@ -8,7 +8,7 @@ import (
 
 const runAnything = `is_new: yes
 dataset_name: N2QAEBSP
-username: GaryNTest
+username: Tests
 language_iso: qae
 notify_ok: [ntfy/artificial-polyglot]
 notify_err: [ntfy/artificial-polyglot,gary@shortsands.com]
