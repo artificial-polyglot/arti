@@ -72,7 +72,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	if status != nil {
 		return status
 	}
-	status = a.s3Client.DownloadFileTree(bucket, prefix, localDir)
+	status = a.s3Client.DownloadLatestFileTree(bucket, prefix, localDir)
 	if status != nil {
 		return status
 	}

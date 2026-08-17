@@ -53,7 +53,7 @@ func TestPutDirectory(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = s3.PutDirectory("arti-input", "N2ATGMLT", "/Users/gary/arti2/fcbh_data/Arhe N2ATGMLT")
+	err = s3.PutDirectory("arti-input", "17a_mms_adapter_test_data", "/Users/gary/Documents/go2/arti/tests/17a_mms_adapter_test_data")
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,4 +103,19 @@ func TestDownloadFileTree(t *testing.T) {
 		t.Error(err)
 	}
 	err = s3.DownloadFileTree(bucket, prefix, localDir)
+}
+
+func TestDownloadLatestFileTree(t *testing.T) {
+	bucket := "arti-output"
+	prefix := "GaryNTest/N2XNRPMS/arti"
+	localDir := filepath.Join(os.Getenv("HOME"), "Downloads", "N2XNRPMS_latest")
+	ctx := context.Background()
+	s3, err := NewS3Client(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	err = s3.DownloadLatestFileTree(bucket, prefix, localDir)
+	if err != nil {
+		t.Error(err)
+	}
 }

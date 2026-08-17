@@ -8,6 +8,7 @@ import (
 
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
@@ -259,6 +260,53 @@ func (t S3Client) DownloadFileTree(bucket string, prefix string, localDir string
 		}
 	}
 	return nil
+}
+
+// DownloadLatestFileTree is like DownloadFileTree, except the directory one
+// level below prefix may be a 5-digit zero-filled run/version number (e.g.
+// mms_adapters/atg/00005/). When such run directories exist, it selects the
+// highest numbered one and downloads its contents, dropping the run number
+// from the local path. When no run directories exist, it behaves exactly
+// like DownloadFileTree.
+func (t S3Client) DownloadLatestFileTree(bucket string, prefix string, localDir string) *log.Status {
+	trimmedPrefix := strings.TrimSuffix(prefix, "/")
+	prefixes, status := t.ListPrefixes(bucket, trimmedPrefix+"/")
+	if status != nil {
+		return status
+	}
+	maxRun := -1
+	var maxRunStr string
+	for _, p := range prefixes {
+		parts := strings.Split(strings.TrimSuffix(p, "/"), "/")
+		runStr := parts[len(parts)-1]
+		if !isRunNumber(runStr) {
+			continue
+		}
+		runNum, err := strconv.Atoi(runStr)
+		if err != nil {
+			return log.Error(t.ctx, 500, err, "Error converting run number to int; value:", runStr)
+		}
+		if runNum > maxRun {
+			maxRun = runNum
+			maxRunStr = runStr
+		}
+	}
+	if maxRun < 0 {
+		return t.DownloadFileTree(bucket, trimmedPrefix, localDir)
+	}
+	return t.DownloadFileTree(bucket, trimmedPrefix+"/"+maxRunStr, localDir)
+}
+
+func isRunNumber(s string) bool {
+	if len(s) != 5 {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (t S3Client) DownloadFile(bucket, key, localPath string) *log.Status {
