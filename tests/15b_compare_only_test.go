@@ -3,6 +3,8 @@ package tests
 import (
 	"strings"
 	"testing"
+
+	"github.com/artificial-polyglot/arti/courier"
 )
 
 // Test expects JMDYPM_audio.db and JMDYPM_text.db to exist.
@@ -10,7 +12,7 @@ import (
 const compareOnly = `is_new: no
 dataset_name: 15b_compare_only_audio
 bible_id: JMDYPM
-username: GaryNTest
+username: Tests
 testament:
   nt_books: [MAT,MRK,LUK,JHN,ACT]
 compare:
@@ -31,6 +33,7 @@ compare:
 `
 
 func TestTwoCompareDirect(t *testing.T) {
+	courier.IsCourierTest = true
 	var tests []SqliteTest
 	//tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 26})
 	//tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 25})

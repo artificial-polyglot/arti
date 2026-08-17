@@ -14,7 +14,7 @@ output:
   directory: ~/Downloads
   csv: yes
 text_data:
-  file: 03d_script_versifier_test_data/Text_Aokho_N2IKHMLT.xlsx
+  aws_s3: s3://arti-input/03d_script_versifier_test_data/Text_Aokho_N2IKHMLT.xlsx
 detail:
   verses: true
 `

@@ -14,9 +14,9 @@ output:
   directory: ~/Downloads
   csv: yes
 audio_data:
-  file: 03a_zip_file_test_data/ENGWEBN2DA.zip
+  aws_s3: s3://arti-input/03a_zip_file_test_data/ENGWEBN2DA.zip
 text_data:
-  file: 03a_zip_file_test_data/ENGWEB-usx.zip
+  aws_s3: s3://arti-input/03a_zip_file_test_data/ENGWEB-usx.zip
 testament:
   nt_books: [MRK]
 `

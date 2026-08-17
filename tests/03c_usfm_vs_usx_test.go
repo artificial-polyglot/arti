@@ -8,7 +8,7 @@ import (
 
 const usfmVsUSX = `is_new: yes
 dataset_name: 03c_usfm_vs_usx_O2
-bible_id: O2NHEWYI
+language_iso: qae
 username: Tests
 output:
   directory: ~/Downloads
