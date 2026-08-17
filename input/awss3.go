@@ -58,8 +58,7 @@ func AWSS3Input(ctx context.Context, path string) ([]generic.InputFile, *log.Sta
 	if err != nil {
 		return files, log.Error(ctx, 400, err, "Failed to list S3 objects at path:", path)
 	}
-	bibleId, mediaId := findBibleIdMediaId(prefix)
-	directory := filepath.Join(os.Getenv(`FCBH_DATASET_FILES`), bibleId, mediaId)
+	directory := filepath.Join(os.Getenv("FCBH_DATASET_FILES"), prefix)
 	status = EnsureDirectory(ctx, directory)
 	for _, object := range list {
 		objKey := aws.ToString(object.Key)
