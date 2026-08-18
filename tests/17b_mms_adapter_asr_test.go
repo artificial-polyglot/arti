@@ -3,6 +3,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/artificial-polyglot/arti/courier"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
@@ -13,16 +14,18 @@ import (
 
 const mmsAdapterASR = `is_new: no
 dataset_name: 17a_mms_adapter
-username: GaryNTest
-language_iso: cul
-notify_ok: [gary@shortsands.com]
-notify_err: [gary@shortsands.com]
+username: Tests
+language_iso: atg
+notify_err: [ntfy/arti2]
+output:
+  directory: ~/Downloads
+  csv: yes
 testament:
-  nt_books: [PHM]
-#database:
-#  file: /Users/gary/FCBH2024/GaryNTest/17a_mms_adapter.db
+  nt_books: [3JN] # 1JN, 2JN, 3JN, JUD all in test set
+database:
+  aws_s3: s3://arti-input/17a_mms_adapter_test_data/17a_mms_adapter.db
 audio_data:
-  file: /Users/gary/FCBH2024/GaryNTest/17a_mms_adapter/*.mp3
+  aws_s3: s3://arti-input/17a_mms_adapter_test_data/*.mp3
 speech_to_text:
   adapter_asr: y
 compare:
@@ -42,6 +45,7 @@ compare:
 `
 
 func TestMMSAdapterASR(t *testing.T) {
+	courier.IsCourierTest = true
 	log.SetOutput("stderr")
 	var yaml = mmsAdapterASR
 	DirectSqlTest(yaml, []SqliteTest{}, t)
