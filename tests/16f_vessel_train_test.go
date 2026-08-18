@@ -3,21 +3,24 @@ package tests
 import (
 	"testing"
 
+	"github.com/artificial-polyglot/arti/courier"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const vesselTrainTest = `is_new: yes
 dataset_name: 16f_vessel_test
-username: GaryNTest
+username: Tests
 language_iso: eng
-notify_ok: [gary@shortsands.com]
-notify_err: [gary@shortsands.com]
+notify_err: [ntfy/arti2]
+output:
+  directory: ~/Downloads
+  csv: yes
 testament:
-  nt: yes
+  nt_books: [TIT]
 text_data:
-  file: /Users/gary/FCBH2024/GaryNTest/16e_vessel_test.xlsx
+  aws_s3: s3://arti-input/16e_vessel_asr_test_data/16e_vessel_test.xlsx
 audio_data:
-  file: /Users/gary/FCBH2024/GaryNTest/16e_vessel_test/*_VOX.wav
+  aws_s3: s3://arti-input/16e_vessel_asr_test_data/*_VOX.wav
 timestamps:
   mms_align: y
 speech_to_text:
@@ -40,6 +43,7 @@ compare:
 `
 
 func TestVesselTrain(t *testing.T) {
+	courier.IsCourierTest = true
 	log.SetOutput("stderr")
 	var yaml = vesselTrainTest
 	DirectSqlTest(yaml, []SqliteTest{}, t)

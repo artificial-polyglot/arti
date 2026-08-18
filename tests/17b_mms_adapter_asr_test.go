@@ -7,13 +7,8 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
-// This is not a test that is expected to run to completion.
-// It exists so that one can debug the initial parts of training
-// Monitor the process on $FCBH_DATASET_DB/dataset.log
-// This template says nt_books: [PHM], but I don't think the training module has the ability
-
 const mmsAdapterASR = `is_new: no
-dataset_name: 17a_mms_adapter
+dataset_name: 17b_mms_adapter
 username: Tests
 language_iso: atg
 notify_err: [ntfy/arti2]
