@@ -11,6 +11,7 @@ import (
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
@@ -23,22 +24,24 @@ type FARequest struct {
 }
 
 type QAAlign struct {
-	ctx      context.Context
-	conn     db.DBAdapter
-	lang     string
-	sttLang  string
-	adapter  bool
-	s3Client s3_datastore.S3Client
-	mmsAsrPy *stdio_exec.StdioExec
+	ctx       context.Context
+	conn      db.DBAdapter
+	lang      string
+	sttLang   string
+	adapter   bool
+	testament request.Testament
+	s3Client  s3_datastore.S3Client
+	mmsAsrPy  *stdio_exec.StdioExec
 }
 
-func NewQAAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool) QAAlign {
+func NewQAAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool, testament request.Testament) QAAlign {
 	var a QAAlign
 	a.ctx = ctx
 	a.conn = conn
 	a.lang = lang
 	a.sttLang = sttLang
 	a.adapter = adapter
+	a.testament = testament
 	return a
 }
 
@@ -97,6 +100,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	if status != nil {
 		return status
 	}
+	files = a.pruneBooks(files)
 	for _, file := range files {
 		status = a.processFile(file, tempDir)
 		if status != nil {
@@ -104,6 +108,18 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 		}
 	}
 	return nil
+}
+
+// pruneBooks restricts files to those selected by a.testament, matching the
+// filtering done by precheck.pruneBooksByRequest for other request types.
+func (a *QAAlign) pruneBooks(files []generic.InputFile) []generic.InputFile {
+	var results []generic.InputFile
+	for _, f := range files {
+		if a.testament.Has(f.Testament, f.BookId) || f.BookId == "" {
+			results = append(results, f)
+		}
+	}
+	return results
 }
 
 func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Status {

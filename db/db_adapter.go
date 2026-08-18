@@ -1188,6 +1188,7 @@ func (d *DBAdapter) SelectRequest() (request.Request, *log.Status) {
 	if err != nil {
 		return request.Request{}, log.Error(d.Ctx, 500, err, "failed to unmarshal request JSON")
 	}
+	req.Testament.BuildBookMaps() // otMap/ntMap are unexported and do not survive the JSON round-trip
 	return req, nil
 }
 

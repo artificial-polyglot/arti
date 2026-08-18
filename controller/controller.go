@@ -184,10 +184,10 @@ func (c *Controller) processSteps() *log.Status {
 		if status != nil {
 			return status
 		}
-	}
-	status = db.InsertAudioFiles(c.database, audioFiles)
-	if status != nil {
-		return status
+		status = db.InsertAudioFiles(c.database, audioFiles)
+		if status != nil {
+			return status
+		}
 	}
 	// Update Ident Table
 	status = db.UpdateIdent(c.database, &c.ident, textFiles, audioFiles)

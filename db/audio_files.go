@@ -9,7 +9,12 @@ import (
 )
 
 func InsertAudioFiles(conn DBAdapter, files []generic.InputFile) *log.Status {
-	query := `INSERT INTO audio_files (
+	query := "DELETE FROM audio_files"
+	_, err := conn.DB.Exec(query)
+	if err != nil {
+		return log.Error(conn.Ctx, 500, err, "Failed to delete audio_files before insert")
+	}
+	query = `INSERT INTO audio_files (
         media_id, media_type, testament, book_id, book_seq, chapter,
         script_line, filename, file_ext, base_url)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

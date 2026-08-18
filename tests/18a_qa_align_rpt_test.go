@@ -3,31 +3,33 @@ package tests
 import (
 	"testing"
 
+	"github.com/artificial-polyglot/arti/courier"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
 // This is not a test that is expected to run to completion.
-// It exists so that one can debug the initial parts of training
-// Monitor the process on $FCBH_DATASET_DB/dataset.log
-// This template says nt_books: [PHM], but I don't think the training module has the ability
+// It exists so that one can debug the startup of inference
 
 const qaAlignRpt = `is_new: no
-dataset_name: 18a_qa_align_rpt_test.go
-username: GaryNTest
-language_iso: qae
-notify_ok: [ntfy/arti2]
+dataset_name: 18a_qa_align_rpt_test
+username: Tests
+language_iso: atg # qae works
 notify_err: [ntfy/arti2]
-#testament:
-#  nt_books: [MRK]
+output:
+  directory: ~/Downloads
+  csv: yes
+testament:
+  nt_books: [3JN]
 database:
-  aws_s3: s3://arti-output/GaryNTest/N2QAEBSP/arti/00001/database/N2QAEBSP.db
+  aws_s3: s3://arti-input/17a_mms_adapter_test_data/17a_mms_adapter.db
 audio_data:
-  aws_s3: s3://arti-input/N2QAEBSP/N2QAEBSP Chapter VOX/*.mp3
+  aws_s3: s3://arti-input/17a_mms_adapter_test_data/*.mp3
 audio_proof:
   html_report: yes
 `
 
 func TestQAAlignTest(t *testing.T) {
+	courier.IsCourierTest = true
 	log.SetOutput("stderr")
 	var yaml = qaAlignRpt
 	DirectSqlTest(yaml, []SqliteTest{}, t)

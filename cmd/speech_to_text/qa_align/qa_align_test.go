@@ -19,7 +19,9 @@ func TestQAAlign(t *testing.T) {
 	if status != nil {
 		t.Error(status)
 	}
-	asr := NewQAAlign(ctx, conn, "eng", "", false)
+	var testament request.Testament
+	testament.NT = true
+	asr := NewQAAlign(ctx, conn, "eng", "", false, testament)
 	var files []generic.InputFile
 	var file generic.InputFile
 	file.BookId = "MRK"

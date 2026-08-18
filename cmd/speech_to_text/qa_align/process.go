@@ -11,7 +11,7 @@ func Process(database db.DBAdapter) ([]db.Output, *log.Status) {
 	if status != nil {
 		return output, status
 	}
-	asr := NewQAAlign(database.Ctx, database, req.LanguageISO, req.AltLanguage, true)
+	asr := NewQAAlign(database.Ctx, database, req.LanguageISO, req.AltLanguage, true, req.Testament)
 	status = asr.ProcessFiles()
 	if status != nil {
 		return output, status
