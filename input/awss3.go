@@ -13,32 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
-// DownloadFile is used by Controller to download a database file
-func DownloadFile(ctx context.Context, s3Path string, filePath string) *log.Status {
-	err := os.MkdirAll(filepath.Dir(filePath), 0o755)
-	if err != nil {
-		return log.Error(ctx, 500, err, "Attempt to overwrite a file with a directory.")
-	}
-	client, status := s3_datastore.NewS3Client(ctx)
-	if status != nil {
-		return status
-	}
-	bucket, objectKey, _, status := parseGlob(ctx, s3Path)
-	if status != nil {
-		return status
-	}
-	log.Info(ctx, `Downloading file`, objectKey)
-	response, getErr := client.GetObject(bucket, objectKey)
-	if getErr != nil {
-		return log.Error(ctx, 400, getErr, `Failed to get S3 object`, objectKey)
-	}
-	filErr := os.WriteFile(filePath, response, 0644)
-	if filErr != nil {
-		return log.Error(ctx, 400, filErr, `Failed to create file of S3 object`, filePath)
-	}
-	return nil
-}
-
 // https://aws.github.io/aws-sdk-go-v2/docs/
 
 // AWSS3Input is given a path prefix, that it uses to identify files.

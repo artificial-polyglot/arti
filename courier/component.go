@@ -47,7 +47,7 @@ func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
 	if !c.req.IsNew {
 		dbPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), c.req.Username, c.req.DatasetName+".db")
 		if c.req.Database.AWSS3 != "" {
-			status = input.DownloadFile(c.ctx, c.req.Database.AWSS3, dbPath)
+			status = input.DownloadDatabaseFile(c.ctx, c.req.Database.AWSS3, dbPath)
 			if status != nil {
 				return c.database, status
 			}

@@ -132,7 +132,7 @@ func (c *Controller) processSteps() *log.Status {
 		}
 		c.database.Close()
 		// Import an existing database from S3.
-		status = input.DownloadFile(c.ctx, c.req.Database.AWSS3, c.database.DatabasePath)
+		status = input.DownloadDatabaseFile(c.ctx, c.req.Database.AWSS3, c.database.DatabasePath)
 		if status != nil {
 			return status
 		}
@@ -229,7 +229,6 @@ func (c *Controller) processSteps() *log.Status {
 	//if !c.req.TextData.NoText &&
 	if !c.req.SpeechToText.NoSpeechToText {
 		c.req.Compare.BaseDataset = c.database.Project
-		//c.req.AudioProof.BaseDataset = c.database.Project // ? should there be one BaseDataset ?
 		// This makes a copy of database, and closes it.  Names the new database *_audio, and returns new
 		c.database, status = c.database.CopyDatabase(`_audio`)
 		if status != nil {
@@ -568,13 +567,15 @@ func (c *Controller) matchText() (string, *log.Status) {
 	var fileMap map[string]string
 	var languageISO string
 	var status *log.Status
-	compare := diff.NewCompare(c.ctx, c.req.Username, c.req.Compare.BaseDataset, c.database, c.ident.LanguageISO, c.req.Testament, c.req.Compare.CompareSettings)
+	var baseDatasetName string
+	baseDatasetName, status = input.DownloadToDBLocation(c.ctx, c.req.Compare.BaseDataset, c.req.Username)
+	compare := diff.NewCompare(c.ctx, c.req.Username, baseDatasetName, c.database, c.ident.LanguageISO, c.req.Testament, c.req.Compare.CompareSettings)
 	records, fileMap, languageISO, status = compare.Process()
 	if status != nil {
 		return "", status
 	}
 	if c.req.Compare.GordonFilter > 0 {
-		records, status = diff.GordonFilter(c.ctx, records, c.req.Username, c.req.Compare.BaseDataset, c.req.Compare.GordonFilter)
+		records, status = diff.GordonFilter(c.ctx, records, c.req.Username, baseDatasetName, c.req.Compare.GordonFilter)
 		if status != nil {
 			return "", status
 		}
@@ -582,7 +583,7 @@ func (c *Controller) matchText() (string, *log.Status) {
 	tempFilePath := filepath.Join(os.TempDir(), c.database.Project+"_compare.json")
 	c.bucket.AddJson(records, tempFilePath)
 	writer := diff.NewHTMLWriter(c.ctx, c.database.Project)
-	filename, status := writer.WriteReport(c.req.Compare.BaseDataset, records, languageISO, fileMap,
+	filename, status := writer.WriteReport(baseDatasetName, records, languageISO, fileMap,
 		c.req.SpeechToText)
 	return filename, status
 }
