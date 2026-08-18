@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/courier"
-	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const mmsAdapter = `is_new: no
@@ -49,7 +48,6 @@ compare:
 
 func TestMMSAdapter(t *testing.T) {
 	courier.IsCourierTest = true
-	log.SetOutput("stderr")
 	var yaml = mmsAdapter
 	DirectSqlTest(yaml, []SqliteTest{}, t)
 }
@@ -77,8 +75,6 @@ timestamps:
 `
 
 func PrepTestPrepareMMSAdapterDB(t *testing.T) {
-	//courier.IsCourierTest = true
-	log.SetOutput("stderr")
 	var yaml = prepareDB
 	DirectSqlTest(yaml, []SqliteTest{}, t)
 }

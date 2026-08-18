@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/courier"
-	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const vesselTrainTest = `is_new: yes
@@ -44,7 +43,6 @@ compare:
 
 func TestVesselTrain(t *testing.T) {
 	courier.IsCourierTest = true
-	log.SetOutput("stderr")
 	var yaml = vesselTrainTest
 	DirectSqlTest(yaml, []SqliteTest{}, t)
 }

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/courier"
-	log "github.com/artificial-polyglot/arti/logger"
 )
 
 const mmsAdapterASR = `is_new: no
@@ -41,7 +40,6 @@ compare:
 
 func TestMMSAdapterASR(t *testing.T) {
 	courier.IsCourierTest = true
-	log.SetOutput("stderr")
 	var yaml = mmsAdapterASR
 	DirectSqlTest(yaml, []SqliteTest{}, t)
 }

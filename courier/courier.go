@@ -57,7 +57,7 @@ func NewCourier(ctx context.Context, yaml []byte) Courier {
 
 func (b *Courier) AddLogFile(logPath string) {
 	b.logFile = logPath
-	if !IsCourierTest {
+	if !testing.Testing() || IsCourierTest {
 		err := os.Truncate(logPath, 0)
 		if err != nil {
 			log.Warn(b.ctx, "Failed to truncate log file", err)

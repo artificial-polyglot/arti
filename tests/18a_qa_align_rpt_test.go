@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/courier"
-	log "github.com/artificial-polyglot/arti/logger"
 )
 
 // This is not a test that is expected to run to completion.
@@ -30,7 +29,6 @@ audio_proof:
 
 func TestQAAlignTest(t *testing.T) {
 	courier.IsCourierTest = true
-	log.SetOutput("stderr")
 	var yaml = qaAlignRpt
 	DirectSqlTest(yaml, []SqliteTest{}, t)
 }
