@@ -3,6 +3,11 @@ package diff
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/artificial-polyglot/arti/books"
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -10,9 +15,6 @@ import (
 	"github.com/artificial-polyglot/arti/utility/uroman"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"golang.org/x/text/unicode/norm"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 type Compare struct {
@@ -430,14 +432,29 @@ func (c *Compare) ensureClean(diffs []diffmatchpatch.Diff) {
 }
 
 func (c *Compare) generateBookChapterFilenameMap() (map[string]string, *log.Status) {
-	chapters, status := c.database.SelectBookChapterFilename()
+	files, status := db.SelectAudioFiles(c.database)
 	if status != nil {
 		return nil, status
 	}
-	result := make(map[string]string, len(chapters))
-	for _, ch := range chapters {
-		key := ch.BookId + strconv.Itoa(ch.ChapterNum)
-		result[key] = ch.AudioFile
+	var bucket, prefix, objectKey string
+	result := make(map[string]string, len(files))
+	for _, ch := range files {
+		key := ch.BookId + strconv.Itoa(ch.Chapter)
+		if strings.HasPrefix(ch.BaseURL, `s3://`) {
+			ch.BaseURL = ch.BaseURL[5:]
+		}
+		firstSlash := strings.Index(ch.BaseURL, `/`)
+		if firstSlash >= 0 {
+			bucket = ch.BaseURL[:firstSlash]
+			if bucket == "arti-input" {
+				bucket = "input"
+			}
+			prefix = ch.BaseURL[firstSlash+1:]
+			objectKey = filepath.Join(prefix, ch.Filename)
+		} else {
+			log.Warn(c.ctx, "Could not prepare "+ch.BaseURL)
+		}
+		result[key] = "/file?bucket=" + bucket + "&key=" + objectKey + "&mode=play"
 	}
 	return result, status
 }

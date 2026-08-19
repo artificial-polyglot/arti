@@ -19,10 +19,10 @@ text_data:
   bible_brain:
     text_usx_edit: yes
 audio_data:
-  bible_brain:
-    mp3_64: yes
+  aws_s3: s3://arti-input/15a_mms_asr_compare_test_data/*.mp3
 timestamps:
-  bible_brain: yes
+  mms_align: yes
+  bible_brain: no # bible_brain does not return filenames
 testament:
   nt_books: ['1JN']
 speech_to_text:
@@ -46,7 +46,7 @@ compare:
 func TestMMSASRCompare(t *testing.T) {
 	courier.IsCourierTest = true
 	var tests []CtlTest
-	tests = append(tests, CtlTest{BibleId: "ENGWEB", Expected: 29, TextNtId: "ENGWEBN_ET-usx",
+	tests = append(tests, CtlTest{BibleId: "ENGWEB", Expected: 18, TextNtId: "ENGWEBN_ET-usx",
 		TextType: request.TextUSXEdit, AudioNTId: "ENGWEBN2DA", Language: "eng"})
 	//tests = append(tests, CtlTest{BibleId: "APFCMU", Expected: 16, TextNtId: "APFCMUN_ET-usx",
 	//	AudioNTId: `APFCMUN1DA`, TextType: request.TextUSXEdit, Language: "apf"})

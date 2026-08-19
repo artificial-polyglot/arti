@@ -2,15 +2,16 @@ package diff
 
 import (
 	"context"
-	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
-	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/request"
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 type HTMLWriter struct {
@@ -93,11 +94,6 @@ func (h *HTMLWriter) WriteHeading(baseDataset string, languageISO string, model 
 	</div>
 `
 	_, _ = h.out.WriteString(checkbox)
-	directoryInput := `<div style="text-align: center; margin: 10px;">
-		<label for="directory">Directory of Audio Files: </label><input type="text" id="directory" size="100" value="./">
-	</div>`
-
-	_, _ = h.out.WriteString(directoryInput)
 	_, _ = h.out.WriteString("<audio id='validateAudio'></audio>\n")
 	table := `<table id="diffTable" class="display">
     <thead>

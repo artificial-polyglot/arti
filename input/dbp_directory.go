@@ -59,6 +59,7 @@ func Directory(ctx context.Context, bibleId string, fsType request.MediaType, fi
 	var files []generic.InputFile
 	files, status = Glob(ctx, search)
 	for i := range files {
+		files[i].BaseURL = "file://" + directory
 		files[i].MediaType = fsType
 	}
 	return files, status
