@@ -1,14 +1,16 @@
 package diff
 
 import (
-	"github.com/artificial-polyglot/arti/db"
-	log "github.com/artificial-polyglot/arti/logger"
 	"strings"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 // CompareChapters deprecated 3/6/2025. It was determined to not be necessary
-func (c *Compare) CompareChapters() ([]Pair, map[string]string, *log.Status) {
-	var fileMap map[string]string
+func (c *Compare) CompareChapters() ([]Pair, map[string]generic.AudioFile, *log.Status) {
+	var fileMap map[string]generic.AudioFile
 	var status *log.Status
 	var scripts []db.Script
 	scripts, status = c.database.SelectBookChapter()
@@ -34,7 +36,7 @@ func (c *Compare) CompareChapters() ([]Pair, map[string]string, *log.Status) {
 		pair.Comp.ScriptId = scp.ScriptId
 		c.diffPair(pair)
 	}
-	fileMap, status = c.generateBookChapterFilenameMap()
+	fileMap, status = db.CreateAudioFileMap(c.database)
 	c.baseDb.Close()
 	return c.results, fileMap, status
 }

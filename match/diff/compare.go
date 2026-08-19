@@ -3,13 +3,12 @@ package diff
 import (
 	"context"
 	"database/sql"
-	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/books"
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/uroman"
@@ -68,9 +67,9 @@ func NewCompare(ctx context.Context, user string, baseDSet string, db db.DBAdapt
 	return c
 }
 
-func (c *Compare) Process() ([]Pair, map[string]string, string, *log.Status) {
+func (c *Compare) Process() ([]Pair, map[string]generic.AudioFile, string, *log.Status) {
 	var records []Pair
-	var fileMap map[string]string
+	var fileMap map[string]generic.AudioFile
 	var languageISO string
 	var status *log.Status
 	var ident db.Ident
@@ -98,7 +97,7 @@ func (c *Compare) Process() ([]Pair, map[string]string, string, *log.Status) {
 	if status != nil {
 		return records, fileMap, languageISO, status
 	}
-	fileMap, status = c.generateBookChapterFilenameMap()
+	fileMap, status = db.CreateAudioFileMap(c.database)
 	c.baseDb.Close()
 	return records, fileMap, languageISO, status
 }
@@ -429,34 +428,6 @@ func (c *Compare) ensureClean(diffs []diffmatchpatch.Diff) {
 		}
 		prior = diff.Type
 	}
-}
-
-func (c *Compare) generateBookChapterFilenameMap() (map[string]string, *log.Status) {
-	files, status := db.SelectAudioFiles(c.database)
-	if status != nil {
-		return nil, status
-	}
-	var bucket, prefix, objectKey string
-	result := make(map[string]string, len(files))
-	for _, ch := range files {
-		key := ch.BookId + strconv.Itoa(ch.Chapter)
-		if strings.HasPrefix(ch.BaseURL, `s3://`) {
-			ch.BaseURL = ch.BaseURL[5:]
-		}
-		firstSlash := strings.Index(ch.BaseURL, `/`)
-		if firstSlash >= 0 {
-			bucket = ch.BaseURL[:firstSlash]
-			if bucket == "arti-input" {
-				bucket = "input"
-			}
-			prefix = ch.BaseURL[firstSlash+1:]
-			objectKey = filepath.Join(prefix, ch.Filename)
-		} else {
-			log.Warn(c.ctx, "Could not prepare "+ch.BaseURL)
-		}
-		result[key] = "/file?bucket=" + bucket + "&key=" + objectKey + "&mode=play"
-	}
-	return result, status
 }
 
 func (c *Compare) SetIsLatin(records []db.Script) {

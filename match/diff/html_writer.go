@@ -9,6 +9,7 @@ import (
 	"time"
 
 	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -19,7 +20,7 @@ type HTMLWriter struct {
 	datasetName string
 	diffMatch   *diffmatchpatch.DiffMatchPatch
 	out         *os.File
-	fileMap     map[string]string
+	fileMap     map[string]generic.AudioFile
 	diffCount   int
 	insertSum   int
 	deleteSum   int
@@ -33,7 +34,7 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO string, fileMap map[string]string,
+func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO string, fileMap map[string]generic.AudioFile,
 	asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
@@ -134,7 +135,7 @@ func (h *HTMLWriter) WriteLine(verse Pair) {
 		var params []string
 		params = append(params, "this")
 		audioFile := h.fileMap[verse.Ref.BookId+strconv.Itoa(verse.Ref.ChapterNum)]
-		params = append(params, "'"+audioFile+"'")
+		params = append(params, "'"+audioFile.UnsignedURL+"'")
 		params = append(params, strconv.FormatFloat(verse.BeginTS, 'f', 4, 64))
 		params = append(params, strconv.FormatFloat(verse.EndTS, 'f', 4, 64))
 		h.writeCell("<button title=\"" + h.minSecFormat(verse.BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")

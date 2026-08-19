@@ -2,15 +2,18 @@ package diff
 
 import (
 	"database/sql"
-	log "github.com/artificial-polyglot/arti/logger"
 	"strings"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
 )
 
 /*
 This code is in development as of Nov 12, 2025 GNG
 */
 
-func (a *Compare) CompareASR2() ([]Pair, map[string]string, string, *log.Status) {
+func (a *Compare) CompareASR2() ([]Pair, map[string]generic.AudioFile, string, *log.Status) {
 	pairs, status := a.selectASRPairs()
 	if status != nil {
 		return pairs, nil, "", status
@@ -22,7 +25,7 @@ func (a *Compare) CompareASR2() ([]Pair, map[string]string, string, *log.Status)
 		pairs[i].Comp.Uroman = a.cleanup(pairs[i].Comp.Uroman)
 	}
 	a.diffPairs(pairs)
-	fileMap, status := a.generateBookChapterFilenameMap()
+	fileMap, status := db.CreateAudioFileMap(a.database)
 	return pairs, fileMap, a.lang, status
 }
 

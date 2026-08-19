@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/generic"
@@ -106,6 +107,20 @@ func SelectBaseURL(conn DBAdapter) (string, *log.Status) {
 		return url, log.ErrorNoErr(conn.Ctx, 500, "Multiple file URLs", strings.Join(urls, ","))
 	}
 	return url, nil
+}
+
+func CreateAudioFileMap(database DBAdapter) (map[string]generic.AudioFile, *log.Status) {
+	var result = make(map[string]generic.AudioFile, 270)
+	files, status := SelectAudioFiles(database)
+	if status != nil {
+		return result, status
+	}
+	for _, f := range files {
+		key := f.BookId + strconv.Itoa(f.Chapter)
+		audioFile := generic.NewAudioFile(f.BookId, f.Chapter, f.BaseURL, f.Filename)
+		result[key] = audioFile
+	}
+	return result, nil
 }
 
 func UpdateIdent(conn DBAdapter, ident *Ident, textFiles []generic.InputFile, audioFiles []generic.InputFile) *log.Status {

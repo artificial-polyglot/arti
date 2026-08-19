@@ -564,7 +564,7 @@ func (c *Controller) audioProofing() (string, *log.Status) {
 
 func (c *Controller) matchText() (string, *log.Status) {
 	var records []diff.Pair
-	var fileMap map[string]string
+	var fileMap map[string]generic.AudioFile
 	var languageISO string
 	var status *log.Status
 	var baseDatasetName string
