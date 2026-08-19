@@ -17,12 +17,12 @@ output:
   directory: ~/Downloads
   csv: yes
 database:
-  aws_s3: s3://arti-input/15b_compare_only_audio_test_data/15b_compare_only_audio.db
+  aws_s3: s3://arti-output/Tests/15a_mms_asr/arti/00001/database/15a_mms_asr_audio.db
 testament:
-  nt_books: [MAT,MRK,LUK,JHN,ACT]
+  nt: yes
 compare:
   html_report: yes
-  base_dataset: s3://arti-input/15b_compare_only_audio_test_data/15b_compare_only.db
+  base_dataset: s3://arti-output/Tests/15a_mms_asr/arti/00001/database/15a_mms_asr.db
   compare_settings: 
     lower_case: y
     remove_prompt_chars: y
@@ -40,8 +40,8 @@ compare:
 func TestTwoCompareDirect(t *testing.T) {
 	courier.IsCourierTest = true
 	var tests []SqliteTest
-	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 5112})
-	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 4995})
+	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts", 110})
+	tests = append(tests, SqliteTest{"SELECT count(*) FROM scripts WHERE script_begin_ts != 0.0", 105})
 	DirectSqlTest(compareOnly, tests, t)
 }
 
