@@ -22,7 +22,7 @@ func NewAudioFile(bookId string, chapter int, baseURL string, filename string) A
 	var file AudioFile
 	file.BookId = bookId
 	file.Chapter = chapter
-	if strings.HasPrefix(baseURL, "file://") {
+	if strings.HasPrefix(baseURL, "file://") { // This will not work on cloudflare.
 		baseURL = baseURL[7:]
 		file.Bucket = ""
 		file.ObjectKey = filepath.Join(baseURL, filename)

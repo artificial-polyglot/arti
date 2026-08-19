@@ -54,28 +54,31 @@ func NewProofingRpt(ctx context.Context, conn db.DBAdapter, languageISO string, 
 	return p
 }
 
-func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, string, *log.Status) {
+func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, map[string]generic.AudioFile, *log.Status) {
 	var result [][]Word
 	var verses map[int64]Verse
-	var baseURL string
+	var audioURLs map[string]generic.AudioFile
 	words, status := p.SelectWords(FA_SCORE_CUTOFF)
 	if status != nil {
-		return result, verses, baseURL, status
+		return result, verses, audioURLs, status
 	}
 	start := time.Now()
 	words, status = p.UromanConversion(words, p.languageISO)
 	if status != nil {
-		return result, verses, baseURL, status
+		return result, verses, audioURLs, status
 	}
 	log.Info(p.ctx, "Uroman duration", time.Since(start))
 	result = words
 	p.computeOpacity(result, OPACITY_CUTOFF)
 	verses, status = p.findVerseReferences(result)
 	if status != nil {
-		return result, verses, baseURL, status
+		return result, verses, audioURLs, status
 	}
-	baseURL, status = db.SelectBaseURL(p.conn)
-	return result, verses, baseURL, status
+	audioURLs, status = db.CreateAudioFileMap(p.conn)
+	if status != nil {
+		return result, verses, audioURLs, status
+	}
+	return result, verses, audioURLs, status
 }
 
 func (p *ProofingRpt) SelectWords(cutoff float64) ([][]Word, *log.Status) {

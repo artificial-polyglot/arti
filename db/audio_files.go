@@ -2,7 +2,6 @@ package db
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -80,33 +79,6 @@ func SelectAudioFiles(conn DBAdapter) ([]generic.InputFile, *log.Status) {
 		return nil, log.Error(conn.Ctx, 500, err, "error iterating audio_files rows")
 	}
 	return files, nil
-}
-
-func SelectBaseURL(conn DBAdapter) (string, *log.Status) {
-	var url string
-	query := `SELECT distinct base_url FROM audio_files`
-	rows, err := conn.DB.QueryContext(conn.Ctx, query)
-	if err != nil {
-		return url, log.Error(conn.Ctx, 500, err, "failed to query distinct base_url")
-	}
-	defer rows.Close()
-	var urls []string
-	for rows.Next() {
-		err = rows.Scan(&url)
-		if err != nil {
-			return url, log.Error(conn.Ctx, 500, err, "failed to scan baseURL")
-		}
-		if url != "" {
-			urls = append(urls, url)
-		}
-	}
-	if err = rows.Err(); err != nil {
-		return url, log.Error(conn.Ctx, 500, err, "error iterating baseURL rows")
-	}
-	if len(urls) > 1 {
-		return url, log.ErrorNoErr(conn.Ctx, 500, "Multiple file URLs", strings.Join(urls, ","))
-	}
-	return url, nil
 }
 
 func CreateAudioFileMap(database DBAdapter) (map[string]generic.AudioFile, *log.Status) {

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
-	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
 
 // Versions used:
@@ -22,7 +22,6 @@ import (
 type HTMLWriter struct {
 	ctx         context.Context
 	datasetName string
-	s3Client    s3_datastore.S3Client
 	cutoff      float64
 	out         *os.File
 }
@@ -31,11 +30,10 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	var h HTMLWriter
 	h.ctx = ctx
 	h.datasetName = datasetName
-	h.s3Client, _ = s3_datastore.NewS3Client(ctx)
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, baseURL string,
+func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, audioURLs map[string]generic.AudioFile,
 	languageISO string, asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
@@ -56,7 +54,9 @@ func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, baseU
 	filename := h.WriteHeading(languageISO, model)
 	for _, words := range records {
 		verse := verses[words[0].ScriptId]
-		h.WriteLine(words, verse, baseURL)
+		key := verse.Ref.BookId + strconv.Itoa(verse.Ref.ChapterNum)
+		audioURL := audioURLs[key]
+		h.WriteLine(words, verse, audioURL)
 	}
 	h.WriteEnd()
 	return filename, nil
@@ -117,7 +117,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	return h.out.Name()
 }
 
-func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
+func (h *HTMLWriter) WriteLine(words []Word, verse Verse, audioURL generic.AudioFile) {
 	_, _ = h.out.WriteString("<tr data-fascores=" + getLowFaScores(words) + ">\n")
 	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
 	h.writeCell(strconv.FormatFloat(ComputeMinimum(words), 'f', 4, 64))
@@ -126,8 +126,7 @@ func (h *HTMLWriter) WriteLine(words []Word, verse Verse, baseURL string) {
 	h.writeCell(strconv.FormatFloat(duration(words), 'f', 2, 64))
 	var params []string
 	params = append(params, "this")
-	signedURL := h.s3Client.SignAudioURL(baseURL, verse.AudioFile)
-	params = append(params, "'"+signedURL+"'")
+	params = append(params, "'"+audioURL.UnsignedURL+"'")
 	params = append(params, strconv.FormatFloat(words[0].BeginTS, 'f', 4, 64))
 	params = append(params, strconv.FormatFloat(findEndTS(words), 'f', 4, 64))
 	h.writeCell("<button title=\"" + minSecFormat(words[0].BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
