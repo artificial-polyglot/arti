@@ -10,7 +10,7 @@ import (
 
 const compareOnly = `is_new: no
 dataset_name: 15b_compare_only_audio
-bible_id: JMDYPM
+bible_id: ENGWEB
 username: Tests
 notify_err: [ntfy/arti2]
 output:

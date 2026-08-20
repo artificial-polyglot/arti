@@ -35,10 +35,13 @@
 		button.textContent = 'Pause';
 
 		audio.pause();
-		audio.playbackRate = (typeof window.avPlaybackRate !== 'undefined') ? window.avPlaybackRate : 1;
 		audio.src = resolveSource(audioFile);
 
 		audio.onloadedmetadata = function () {
+			// Assigning .src runs the browser's media load algorithm, which resets
+			// playbackRate back to 1 - so it must be set after loadedmetadata fires,
+			// not before .src is assigned, or it gets silently clobbered.
+			audio.playbackRate = (typeof window.avPlaybackRate !== 'undefined') ? window.avPlaybackRate : 1;
 			audio.currentTime = beginTS;
 			audio.play().catch(function (err) { console.error('play failed', err); });
 		};
