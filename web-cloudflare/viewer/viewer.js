@@ -16,12 +16,22 @@
 //   GET  /api/output          - [{username, mediaId, module, highestRunNum}]
 //   GET  /api/output/details  - fixed-row (label, value, viewMode, viewKey, downloadKey)
 //   POST /api/output/notes    - {username, mediaId, module, runNum, text} - writes the run's notes object
-//   GET  /file                - streams/downloads/opens a single R2 object
+//   GET  /file                - streams/downloads/opens a single R2 object; accepts
+//                               an optional exp+sig pair (see signFileParams) that
+//                               authorizes the request on its own, regardless of mode
+//   GET  /api/sign-audio-urls - {bucket, key} of a report's audio_file_urls.json
+//                               manifest (see generic/audio_file.go) -> that manifest
+//                               with each entry's signed_url filled in with a 7-day
+//                               signed /file link, for swapping into a downloaded
+//                               report's audio buttons client-side
 //
 // No auth is applied here - the original spec didn't call for it. These
 // buckets contain internal pipeline input/output, so consider putting this
 // route behind Cloudflare Access the same way web-cloudflare/upload does,
-// before exposing it beyond localhost/VPN.
+// before exposing it beyond localhost/VPN. If Access is added later, /file
+// requests carrying a valid sig must stay exempt from it - that signature is
+// what lets a downloaded, forwarded report keep playing its audio for
+// someone with no Access identity at all; see AUDIO_SIGN_SECRET below.
 
 import { PAGE_HTML } from "./viewer_page.js";
 import {
@@ -83,6 +93,12 @@ export default {
       if (path === "/file") {
         return await serveFile(request, url, env);
       }
+      if (path === "/api/sign-audio-urls") {
+        const bucketParam = url.searchParams.get("bucket");
+        const key = url.searchParams.get("key");
+        if (!bucketParam || !key) return json({ error: "bucket and key are required" }, 400);
+        return await signAudioUrls(env, url, bucketParam, key);
+      }
       if (path === "/api/models/details") {
         const { modelType, langIso, runNum } = Object.fromEntries(url.searchParams);
         if (!modelType || !langIso || !runNum) {
@@ -130,6 +146,17 @@ async function serveFile(request, url, env) {
     return new Response("Invalid key", { status: 400 });
   }
 
+  // Plain relative /file links (no sig) are how the page itself always
+  // fetches - those are unaffected. A sig is only ever present on a signed
+  // link minted by signAudioUrls for a downloaded report, and once present
+  // it must check out: a present-but-bad/expired sig should not silently
+  // fall back to unauthenticated access.
+  const sig = url.searchParams.get("sig");
+  if (sig) {
+    const ok = await verifyFileParams(env, bucketParam, key, url.searchParams.get("exp"), sig);
+    if (!ok) return new Response("Invalid or expired signature", { status: 403 });
+  }
+
   if (mode === "play") return streamWithRange(request, bucket, key);
   if (mode === "show") return serveTextPreview(bucket, key, url.searchParams.get("tail") === "1");
 
@@ -155,6 +182,71 @@ async function serveFile(request, url, env) {
   const flatName = `${BUCKET_NAMES[bucketParam]}_${key.split("/").join("_")}`;
   headers.set("content-disposition", `attachment; filename="${flatName}"`);
   return new Response(object.body, { headers });
+}
+
+// Reads a report's audio_file_urls.json manifest (written by
+// generic.OutputAudioFiles, uploaded next to the report under the same
+// .../output/ run prefix) and returns it with every entry's signed_url
+// filled in - a 7-day signed /file link, matching the expiry the old
+// generation-time SignAudioURL used. The signature is a bearer credential
+// (see viewer.js's route comment): anyone holding the URL can use it until
+// exp, with no session or Access identity required, which is the whole
+// point - it's what lets a downloaded report keep playing audio wherever
+// it's forwarded.
+const SIGNED_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+async function signAudioUrls(env, url, bucketParam, manifestKey) {
+  if (!env.AUDIO_SIGN_SECRET) return json({ error: "AUDIO_SIGN_SECRET is not configured" }, 500);
+  const bucket = { input: env.ARTI_INPUT, models: env.ARTI_MODELS, output: env.ARTI_OUTPUT }[bucketParam];
+  if (!bucket) return json({ error: "Unknown bucket" }, 400);
+  const object = await bucket.get(manifestKey);
+  if (!object) return json({ error: "Manifest not found" }, 404);
+  const entries = await object.json();
+
+  const exp = Math.floor(Date.now() / 1000) + SIGNED_URL_TTL_SECONDS;
+  const results = [];
+  for (const entry of entries) {
+    if (!entry.unsigned_url) continue;
+    // unsigned_url (from generic.AudioFile) is a relative /file?bucket=...&key=...
+    // path - resolve it against this request's own origin so bucket/key can be
+    // read back out, and so the signed link we build is absolute (a downloaded
+    // report has no origin of its own to resolve a relative link against).
+    const fileUrl = new URL(entry.unsigned_url, url.origin);
+    const fileBucket = fileUrl.searchParams.get("bucket");
+    const fileKey = fileUrl.searchParams.get("key");
+    if (!fileBucket || !fileKey) continue;
+    const sig = await signFileParams(env, fileBucket, fileKey, exp);
+    fileUrl.searchParams.set("exp", String(exp));
+    fileUrl.searchParams.set("sig", sig);
+    results.push({ unsigned_url: entry.unsigned_url, signed_url: fileUrl.toString() });
+  }
+  return json(results);
+}
+
+async function signFileParams(env, bucket, key, exp) {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(env.AUDIO_SIGN_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBytes = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(`${bucket}\n${key}\n${exp}`));
+  return [...new Uint8Array(sigBytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyFileParams(env, bucket, key, exp, sig) {
+  if (!env.AUDIO_SIGN_SECRET || !exp || !sig) return false;
+  if (Date.now() / 1000 > Number(exp)) return false;
+  const expected = await signFileParams(env, bucket, key, exp);
+  return timingSafeEqual(expected, sig);
+}
+
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 // Bundles one model (modelType/langIso) into a zip whose single top-level

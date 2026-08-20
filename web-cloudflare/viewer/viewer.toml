@@ -27,3 +27,8 @@ bucket_name = "arti-models"
 [[r2_buckets]]
 binding = "ARTI_OUTPUT"
 bucket_name = "arti-output"
+
+# AUDIO_SIGN_SECRET is required for /api/sign-audio-urls and signed /file
+# links (report downloads) to work - it's a secret, not set here. Provision
+# it once with:
+#   wrangler secret put AUDIO_SIGN_SECRET -c viewer.toml

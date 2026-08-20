@@ -3,7 +3,9 @@ package generic
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
@@ -48,10 +50,29 @@ func (f *AudioFile) internalBucketName(bucket string) string {
 	}
 }
 
-func (f *AudioFile) ToJSON(ctx context.Context) (string, *log.Status) {
-	bytes, err := json.Marshal(f)
+func OutputAudioFiles(ctx context.Context, files map[string]AudioFile) (string, *log.Status) {
+	var slice = make([]AudioFile, 0, len(files))
+	for _, val := range files {
+		slice = append(slice, val)
+	}
+	sort.Slice(slice, func(i, j int) bool {
+		if slice[i].BookId != slice[j].BookId {
+			return slice[i].BookId < slice[j].BookId
+		}
+		return slice[i].Chapter < slice[j].Chapter
+	})
+	bytes, err := json.Marshal(slice)
 	if err != nil {
 		return "", log.Error(ctx, 500, err, "Could not Marshal AudioFile object")
 	}
-	return string(bytes), nil
+	dir, err := os.MkdirTemp("", "output_audio_files")
+	if err != nil {
+		return "", log.Error(ctx, 500, err, "Could not create temp directory in OutputAudioFiles")
+	}
+	filePath := filepath.Join(dir, "audio_file_urls.json")
+	err = os.WriteFile(filePath, bytes, 0644)
+	if err != nil {
+		return filePath, log.Error(ctx, 500, err, "Could not write to file in OutputAudioFiles")
+	}
+	return filePath, nil
 }

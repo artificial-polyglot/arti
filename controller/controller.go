@@ -556,10 +556,18 @@ func (c *Controller) audioProofing() (string, *log.Status) {
 	if status != nil {
 		return "", status
 	}
-	if len(outputs) != 1 {
+	var filename string
+	for _, out := range outputs {
+		if out.Report == "proofing" {
+			filename = out.FilePath
+		} else {
+			c.bucket.AddOutput(out.FilePath)
+		}
+	}
+	if filename == "" {
 		return "", log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
 	}
-	return outputs[0].FilePath, nil
+	return filename, nil
 }
 
 func (c *Controller) matchText() (string, *log.Status) {
@@ -574,6 +582,11 @@ func (c *Controller) matchText() (string, *log.Status) {
 	if status != nil {
 		return "", status
 	}
+	fileMapFilename, status1 := generic.OutputAudioFiles(c.ctx, fileMap)
+	if status1 != nil {
+		return "", status1
+	}
+	c.bucket.AddOutput(fileMapFilename)
 	if c.req.Compare.GordonFilter > 0 {
 		records, status = diff.GordonFilter(c.ctx, records, c.req.Username, baseDatasetName, c.req.Compare.GordonFilter)
 		if status != nil {

@@ -94,9 +94,13 @@ export const PAGE_HTML = `<!doctype html>
     dlg.showModal();
   }
 
-  async function runAction(action, bucket, key, filename, tail) {
+  async function runAction(action, bucket, key, filename, tail, viewMode) {
     if (action === "download") {
-      window.location = fileUrl(bucket, key, "download");
+      if (viewMode === "open") {
+        await downloadSignedReport(bucket, key);
+      } else {
+        window.location = fileUrl(bucket, key, "download");
+      }
     } else if (action === "show") {
       const res = await fetch(fileUrl(bucket, key, "show", tail));
       showText(filename, await res.text());
@@ -107,6 +111,38 @@ export const PAGE_HTML = `<!doctype html>
     } else if (action === "play") {
       showAudio(filename, fileUrl(bucket, key, "play"));
     }
+  }
+
+  // A real .html/.htm report (viewMode "open") embeds audio links that are
+  // either relative or already-expired signed URLs from generation time -
+  // fine when viewed live through this Worker, dead once the file leaves it.
+  // audio_file_urls.json (generic.OutputAudioFiles) sits right next to the
+  // report under the same run prefix, one filename swap away from the
+  // report's own key, so fetch it, ask /api/sign-audio-urls to fill in fresh
+  // signed URLs, and swap them into a copy of the report text before handing
+  // it to the browser as a download. Reports with no manifest (older runs,
+  // or ones with no audio) just download unchanged.
+  async function downloadSignedReport(bucket, key) {
+    const htmlRes = await fetch(fileUrl(bucket, key, "open"));
+    let html = await htmlRes.text();
+    const manifestKey = key.slice(0, key.lastIndexOf("/") + 1) + "audio_file_urls.json";
+    const signRes = await fetch(
+      "/api/sign-audio-urls?bucket=" + encodeURIComponent(bucket) + "&key=" + encodeURIComponent(manifestKey),
+    );
+    if (signRes.ok) {
+      const entries = await signRes.json();
+      for (const entry of entries) {
+        if (entry.unsigned_url && entry.signed_url) html = html.replaceAll(entry.unsigned_url, entry.signed_url);
+      }
+    }
+    const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = key.split("/").pop();
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
   }
 
   // --- generic sortable table -------------------------------------------
@@ -354,7 +390,7 @@ export const PAGE_HTML = `<!doctype html>
       }
       const downloadTd = document.createElement("td");
       if (row.downloadKey) {
-        downloadTd.append(actionButton("Download", () => runAction("download", "output", row.downloadKey, row.label)));
+        downloadTd.append(actionButton("Download", () => runAction("download", "output", row.downloadKey, row.label, false, row.viewMode)));
       } else {
         downloadTd.textContent = row.label;
       }
