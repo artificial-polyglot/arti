@@ -23,11 +23,19 @@ const artiInputBucket = "s3://arti-input/"
 
 // ValidateFilesWASM takes the relative file paths found in a dropped
 // directory (root directory name included as the prefix, matching what
-// gets uploaded to the arti-input bucket), NUL-joined rather than
-// JSON-encoded - NUL can never appear in a real filename, so a plain split
-// is all the parsing this needs. isSFM selects which text format to look
-// for (.sfm files when true, .usx when false), mirroring the form's
-// text_format_sfm/text_format_usx radio choice.
+// gets uploaded to the arti-input bucket), JSON-encoded as an array of
+// strings (parsed by parseJSONStringArray below rather than
+// encoding/json+reflect, to keep the WASM build's binary size down - see
+// json_map.go in request/validate for the same pattern). An earlier
+// version NUL-joined the paths instead; that was dropped after confirming
+// (via a real browser session vs. an identical wasm binary run under
+// Node) that an embedded NUL byte in the JS string does not reliably
+// survive the syscall/js crossing in at least one real browser, even
+// though it round-trips fine through pure JS join/split on the JS side.
+// JSON's \uXXXX-style escaping avoids embedding any raw control byte in
+// the string that crosses the boundary. isSFM selects which text format
+// to look for (.sfm files when true, .usx when false), mirroring the
+// form's text_format_sfm/text_format_usx radio choice.
 //
 // It checks that each filename is recognized - setMediaType identifies
 // the media type from its name/extension, and parseFilenames confirms the
@@ -46,7 +54,7 @@ func ValidateFilesWASM(req *request.Request, paths string, isSFM bool) []string 
 	if paths == "" {
 		return nil
 	}
-	filePaths := strings.Split(paths, "\x00")
+	filePaths := parseJSONStringArray(paths)
 	ctx := context.Background()
 	var errs []string
 	var usx, sfm, mp3, wav []generic.InputFile
@@ -68,7 +76,9 @@ func ValidateFilesWASM(req *request.Request, paths string, isSFM bool) []string 
 	}
 
 	textData := usx
-	if isSFM {
+	if len(sfm) > len(usx) {
+		textData = sfm
+	} else if len(sfm) == len(usx) && isSFM {
 		textData = sfm
 	}
 	textData, status := ValidateFiles(ctx, req.Testament, textData)
@@ -78,9 +88,9 @@ func ValidateFilesWASM(req *request.Request, paths string, isSFM bool) []string 
 		req.TextData.AWSS3 = globFor(textData)
 	}
 
-	audioData := wav
-	if len(mp3) > 0 {
-		audioData = mp3
+	audioData := mp3
+	if len(wav) > len(mp3) {
+		audioData = wav
 	}
 	audioData, status = ValidateFiles(ctx, req.Testament, audioData)
 	if status != nil {
@@ -99,6 +109,70 @@ func globFor(files []generic.InputFile) string {
 	dir := files[0].Directory
 	ext := filepath.Ext(files[0].Filename)
 	return artiInputBucket + dir + "/*" + ext
+}
+
+// parseJSONStringArray parses a minimal JSON array of strings (e.g.
+// ["a","b\"c"]), handling the standard escapes JSON.stringify produces
+// (\", \\, \/, \n, \t, \r, \uXXXX). It exists to avoid pulling
+// encoding/json + reflect into the WASM build, mirroring jsonToMap in
+// request/validate/json_map.go.
+func parseJSONStringArray(s string) []string {
+	var result []string
+	i, n := 0, len(s)
+	for i < n && s[i] != '[' {
+		i++
+	}
+	i++ // skip '['
+	for i < n {
+		for i < n && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == ',') {
+			i++
+		}
+		if i >= n || s[i] != '"' {
+			break
+		}
+		i++ // skip opening quote
+		var sb strings.Builder
+		start := i
+		for i < n && s[i] != '"' {
+			if s[i] == '\\' && i+1 < n {
+				sb.WriteString(s[start:i])
+				i++
+				switch s[i] {
+				case 'n':
+					sb.WriteByte('\n')
+				case 't':
+					sb.WriteByte('\t')
+				case 'r':
+					sb.WriteByte('\r')
+				case '"':
+					sb.WriteByte('"')
+				case '\\':
+					sb.WriteByte('\\')
+				case '/':
+					sb.WriteByte('/')
+				case 'u':
+					if i+4 < n {
+						if r, err := strconv.ParseUint(s[i+1:i+5], 16, 32); err == nil {
+							sb.WriteRune(rune(r))
+							i += 4
+						}
+					}
+				default:
+					sb.WriteByte(s[i])
+				}
+				i++
+				start = i
+				continue
+			}
+			i++
+		}
+		sb.WriteString(s[start:i])
+		if i < n {
+			i++ // skip closing quote
+		}
+		result = append(result, sb.String())
+	}
+	return result
 }
 
 func ValidateFiles(ctx context.Context, testament request.Testament, files []generic.InputFile) ([]generic.InputFile, *log.Status) {

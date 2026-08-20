@@ -15,23 +15,21 @@ type RequestValidator struct {
 
 // ValidateAllWASM is the single entry point the WASM build exposes to
 // runner_page.js's Save JSON button: it builds the Request from the form's
-// JSON dict, validates it, then hands the same *Request to file
-// validation so it can read Testament/text_format and populate
-// AudioData/TextData.AWSS3 from the dropped directory - all within one Go
-// call, so the two validation steps share state as plain pointer passing
-// instead of needing any cross-WASM-call mechanism. Only marshals to YAML
-// once both steps have had their say.
+// JSON dict, hands it to file validation so it can read Testament/text_format
+// and populate AudioData/TextData.AWSS3 from the dropped directory, then
+// validates the result - all within one Go call, so the two validation
+// steps share state as plain pointer passing instead of needing any
+// cross-WASM-call mechanism. Always marshals to YAML, even when there are
+// errors, so the caller can save the file for debugging either way.
 func ValidateAllWASM(htmlValues string, filePaths string) ([]byte, []string) {
+	ctx := context.Background()
 	reqMap := jsonToMap(htmlValues)
 	req := createRequestFromMap(reqMap)
 
-	errors := ValidateRequest(context.Background(), &req)
-	fileErrors := precheck.ValidateFilesWASM(&req, filePaths, reqMap["text_format_sfm"] == "true")
-	errors = append(errors, fileErrors...)
+	errors := precheck.ValidateFilesWASM(&req, filePaths, reqMap["text_format_sfm"] == "true")
+	reqErrors := ValidateRequest(ctx, &req)
+	errors = append(errors, reqErrors...)
 
-	if len(errors) > 0 {
-		return nil, errors
-	}
 	byts, err := Marshal(req)
 	if err != nil {
 		errors = append(errors, err.Error())

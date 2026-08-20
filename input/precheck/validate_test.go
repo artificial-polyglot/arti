@@ -2,6 +2,7 @@ package precheck
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -309,7 +310,11 @@ func TestValidateFilesWASM(t *testing.T) {
 	var req request.Request
 	req.Testament.OT = true
 	req.Testament.NT = true
-	errs := ValidateFilesWASM(&req, strings.Join(input, "\x00"), true)
+	inputJSON, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	errs := ValidateFilesWASM(&req, string(inputJSON), true)
 	if len(errs) > 0 {
 		t.Fatal(strings.Join(errs, "\n"))
 	}

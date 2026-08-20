@@ -11,17 +11,18 @@
 //     (all dead weight without arti-main.js/arti-upload.js/arti-validation.js)
 // The folder dropzone is wired to a drop handler that walks a dropped
 // directory into a flat list of relative paths (see setupDropzone below),
-// but validation of those files doesn't happen until Save JSON is clicked.
+// but validation of those files doesn't happen until Save Yaml is clicked.
 //
 // Everything under the <script> tags is new: it reads the form fields into
 // one flat dict, JSON.stringifies it, and hands that JSON plus the dropped
-// file list (NUL-joined) to the request/validate WASM module's ValidateAll
-// (validate.wasm, built from web-cloudflare/validate_wasm) for the same
-// validation the server does - which also populates AudioData/TextData
-// from the dropped files. On failure, the returned errors are listed at
-// the top of the page; on success, the "Save JSON" button downloads the
-// resulting YAML. "Save JSON" stands in for a future "Submit Job" button -
-// for now all operations (validate, then save) are tied to it.
+// file list (also JSON-encoded) to the request/validate WASM module's
+// ValidateAll (validate.wasm, built from web-cloudflare/validate_wasm) for
+// the same validation the server does - which also populates
+// AudioData/TextData from the dropped files. On failure, the returned
+// errors are listed at the top of the page; on success, the "Save Yaml"
+// button downloads the resulting YAML. "Save Yaml" stands in for a future
+// "Submit Job" button - for now all operations (validate, then save) are
+// tied to it.
 
 export const PAGE_HTML = `<!doctype html>
 <html lang="en">
@@ -443,7 +444,7 @@ export const PAGE_HTML = `<!doctype html>
 
         <div class="button-group">
             <button onclick="clearForm()">Clear</button>
-            <button onclick="saveJSON()">Save JSON</button>
+            <button onclick="saveJSON()">Save Yaml</button>
             <div class="folder-dropzone" id="folderDropzone">
                 <div>&#128193; Drag a media folder or YAML file here, or press to select</div>
                 <div class="folder-status" id="folderStatus">No folder or file selected</div>
@@ -631,7 +632,7 @@ export const PAGE_HTML = `<!doctype html>
         // Relative paths of the files found in the last dropped directory,
         // root directory name included as the prefix (matching what will
         // later be uploaded to the arti-input bucket). Populated by the
-        // dropzone's drop handler; validated only when Save JSON is
+        // dropzone's drop handler; validated only when Save Yaml is
         // clicked, alongside the form itself - see saveJSON().
         var droppedFilePaths = [];
         /* ---- old defaulting/validation/nested-settings logic: this is now
@@ -937,7 +938,7 @@ export const PAGE_HTML = `<!doctype html>
                 Promise.all(entries.map(function (entry) { return walkEntry(entry, paths); }))
                     .then(function () {
                         droppedFilePaths = paths;
-                        statusEl.textContent = paths.length + ' file' + (paths.length === 1 ? '' : 's') + ' ready (validated on Save JSON)';
+                        statusEl.textContent = paths.length + ' file' + (paths.length === 1 ? '' : 's') + ' ready (validated on Save Yaml)';
                         statusEl.className = 'folder-status success';
                         dropzone.classList.remove('error', 'processing');
                         dropzone.classList.add('success');
@@ -958,19 +959,18 @@ export const PAGE_HTML = `<!doctype html>
             wasmReady.then(function () {
                 // ValidateAll (registered by validate.wasm's main.go, which
                 // calls validate.ValidateAllWASM) builds the Request from
-                // jsonData, validates it, then hands that same Request to
-                // file validation so it can populate AudioData/TextData
-                // from the dropped directory (NUL-joined rather than
-                // JSON - NUL can never appear in a real filename, so a
-                // plain split is all the Go side needs). Only once both
-                // steps succeed does it marshal to YAML, returned here as
+                // jsonData, hands it to file validation so it can populate
+                // AudioData/TextData from the dropped directory (JSON-encoded
+                // as an array of strings, not NUL-joined - an embedded NUL
+                // byte in the JS string does not reliably survive the
+                // syscall/js crossing in at least one real browser, even
+                // though it round-trips fine through pure JS join/split),
+                // then validates the result and always marshals to YAML -
+                // even with errors - so there's always a file to download
+                // for debugging. Returned here as
                 // { request: string, errors: string[] }.
-                var result = ValidateAll(jsonData, droppedFilePaths.join('\\0'));
-                if (result.errors.length > 0) {
-                    showErrors(result.errors);
-                    return;
-                }
-                showErrors([]);
+                var result = ValidateAll(jsonData, JSON.stringify(droppedFilePaths));
+                showErrors(result.errors);
 
                 var datasetName = document.getElementById('datasetName').value.trim();
                 var filename = (datasetName ? datasetName : 'request') + '.yaml';
