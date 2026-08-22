@@ -18,7 +18,7 @@ pip install torchcodec --index-url=https://download.pytorch.org/whl/cu126
 
 conda install -y pysoundfile -c conda-forge
 
-conda install -y ffmpeg-python -c conda-forge
+conda install -y "ffmpeg<9" ffmpeg-python -c conda-forge
 
 conda install -y sox -c conda-forge
 pip install sox

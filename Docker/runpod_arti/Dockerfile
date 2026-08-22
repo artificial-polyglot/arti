@@ -29,7 +29,7 @@ RUN curl -L -o /tmp/miniforge.sh \
 RUN ${BASE}/miniforge3/bin/pip install --no-cache-dir runpod "huggingface_hub[cli]"
 
 # Install base executables into the base environment (no activation needed)
-RUN ${BASE}/miniforge3/bin/conda install -y -n base -c conda-forge ffmpeg sox sqlite && \
+RUN ${BASE}/miniforge3/bin/conda install -y -n base -c conda-forge "ffmpeg<9" sox sqlite && \
     ${BASE}/miniforge3/bin/conda clean -afy
 ENV PATH=${BASE}/miniforge3/bin/:$PATH
 
@@ -51,7 +51,7 @@ RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchau
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile ffmpeg-python sox && \
+RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox && \
     ${MMS_FA}/pip install sox && \
     ${MMS_FA}/pip install uroman && \
     cp ${MMS_FA}/uroman ${MMS_FA}/uroman.pl && \
@@ -63,7 +63,7 @@ ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/
 # Create and populate the mms_adapter environment
 ARG MMS_ADAPTER=${BASE}/miniforge3/envs/mms_adapter/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_adapter python=3.11
-RUN ${BASE}/miniforge3/bin/conda install -y -n mms_adapter -c conda-forge pysoundfile ffmpeg-python sox
+RUN ${BASE}/miniforge3/bin/conda install -y -n mms_adapter -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox
 RUN ${MMS_ADAPTER}/pip install numpy
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
@@ -80,7 +80,7 @@ ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-pack
 # Create and populated the mms_asr environment
 ARG MMS_ASR=${BASE}/miniforge3/envs/mms_asr/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_asr python=3.11
-RUN ${BASE}/miniforge3/bin/conda install -y -n mms_asr -c conda-forge pysoundfile ffmpeg-python sox
+RUN ${BASE}/miniforge3/bin/conda install -y -n mms_asr -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox
 RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
