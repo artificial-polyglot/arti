@@ -3,13 +3,14 @@ package align
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"gonum.org/v1/gonum/stat"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -61,10 +62,10 @@ func (a *AlignSilence) Process(audioDirectory string) ([]generic.AlignLine, stri
 		return faLines, "", status
 	}
 	for i := 0; i < len(faChars)-1; i++ {
-		faChars[i].Duration = faChars[i].EndTS - faChars[i].BeginTS
 		var curr = faChars[i]
 		var next = faChars[i+1]
-		faChars[i].Silence = faChars[i+1].BeginTS - faChars[i].EndTS
+		faChars[i].Duration = curr.EndTS - curr.BeginTS
+		faChars[i].Silence = next.BeginTS - curr.EndTS
 		if curr.WordId == next.WordId {
 			faChars[i].SilencePos = int(betweenChars)
 		} else if curr.LineId == next.LineId {
@@ -178,6 +179,13 @@ func (a *AlignSilence) groupByLine(chars []generic.AlignChar) []generic.AlignLin
 		var line generic.AlignLine
 		line.Chars = lastLine
 		result = append(result, line)
+	}
+	count := 0
+	for _, l := range result {
+		count += len(l.Chars)
+	}
+	if count != len(chars) {
+		log.Warn(a.ctx, "Original chars", len(chars), "final chars", count)
 	}
 	return result
 }

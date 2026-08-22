@@ -1,11 +1,12 @@
 package align
 
 import (
+	"strings"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"strings"
 )
 
 func (a *AlignSilence) compareLines2ASR(lines []generic.AlignLine, asrConn db.DBAdapter) ([]generic.AlignLine, *log.Status) {
@@ -18,7 +19,6 @@ func (a *AlignSilence) compareLines2ASR(lines []generic.AlignLine, asrConn db.DB
 			result = append(result, line)
 		} else {
 			//result = append(result, line) // Duplicate line for debugging
-			var newLine generic.AlignLine
 			lineId := line.Chars[0].LineId
 			lineRef := line.Chars[0].LineRef
 			var asrText string
@@ -26,40 +26,9 @@ func (a *AlignSilence) compareLines2ASR(lines []generic.AlignLine, asrConn db.DB
 			if status != nil {
 				return result, status
 			}
-			alignedText := a.GetOriginalText(line.Chars)
+			alignedText := a.GetOriginalText(line.Chars) // This could be done by selecting line
 			//fmt.Println(len(alignUroman))
-			cDiffs := a.DiffMatchPatch(lineRef, alignedText, asrText)
-			var silStart = 0
-			for _, silPos := range silencePos {
-				for i := silStart; i <= silPos; i++ {
-					newLine.Chars = append(newLine.Chars, line.Chars[i])
-					silStart = i + 1
-				}
-				curr := line.Chars[silPos]
-				diffPos := a.FindPositionInDiff(cDiffs, silPos)
-				//fmt.Println(silPos, string(alignNorm[silPos]), string(cDiffs[diffPos].Char))
-				for i := diffPos + 1; i < len(cDiffs); i++ {
-					if cDiffs[i].Type == diffmatchpatch.DiffInsert {
-						//fmt.Println("add char ASR char", string(cDiffs[i].Char))
-						var newChar generic.AlignChar
-						newChar.AudioFile = curr.AudioFile
-						newChar.LineId = curr.LineId
-						newChar.LineRef = curr.LineRef
-						newChar.Uroman = cDiffs[i].Char
-						newChar.BeginTS = curr.EndTS
-						newChar.EndTS = curr.EndTS + curr.Silence
-						newChar.FAScore = 1.0
-						newChar.IsASR = true
-						newLine.Chars = append(newLine.Chars, newChar)
-					} else {
-						break
-					}
-				}
-				//result = append(result, newLine)
-			}
-			for i := silencePos[len(silencePos)-1] + 1; i < len(line.Chars); i++ {
-				newLine.Chars = append(newLine.Chars, line.Chars[i])
-			}
+			newLine := a.insertASRSilenceChars(lineRef, line, alignedText, asrText, silencePos)
 			result = append(result, newLine)
 		}
 	}
@@ -100,6 +69,50 @@ func (a *AlignSilence) GetOriginalText(chars []generic.AlignChar) string {
 		alUroman = append(alUroman, char.Uroman)
 	}
 	return string(alUroman)
+}
+
+func (a *AlignSilence) insertASRSilenceChars(
+	lineRef string,
+	line generic.AlignLine,
+	alignedText, asrText string,
+	silencePos []int,
+) generic.AlignLine {
+
+	cDiffs := a.DiffMatchPatch(lineRef, alignedText, asrText)
+
+	var newLine generic.AlignLine
+	silStart := 0
+
+	for _, silPos := range silencePos {
+		// 1. carry over original chars through the silence anchor
+		for i := silStart; i <= silPos; i++ {
+			newLine.Chars = append(newLine.Chars, line.Chars[i])
+		}
+		silStart = silPos + 1
+
+		// 2. splice in the ASR inserts that fill the gap after curr
+		curr := line.Chars[silPos]
+		diffPos := a.FindPositionInDiff(cDiffs, silPos)
+		for i := diffPos + 1; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
+			newLine.Chars = append(newLine.Chars, generic.AlignChar{
+				AudioFile: curr.AudioFile,
+				LineId:    curr.LineId,
+				LineRef:   curr.LineRef,
+				Uroman:    cDiffs[i].Char,
+				BeginTS:   curr.EndTS,
+				EndTS:     curr.EndTS + curr.Silence,
+				FAScore:   1.0,
+				IsASR:     true,
+			})
+		}
+	}
+
+	// 3. copy the tail: everything after the last silence
+	for i := silStart; i < len(line.Chars); i++ {
+		newLine.Chars = append(newLine.Chars, line.Chars[i])
+	}
+
+	return newLine
 }
 
 type CDiff struct {
