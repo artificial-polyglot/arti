@@ -47,13 +47,13 @@ func TestS3Client(t *testing.T) {
 }
 
 func TestPutDirectory(t *testing.T) {
-	const BUCKET = "arti-input"
 	ctx := context.Background()
 	s3, err := NewS3Client(ctx)
 	if err != nil {
 		t.Error(err)
 	}
-	err = s3.PutDirectory("arti-input", "17a_mms_adapter_test_data", "/Users/gary/Documents/go2/arti/tests/17a_mms_adapter_test_data")
+	//err = s3.PutDirectory("arti-input", "Kolibugan N1SKNSEC", "/Users/gary/arti2/fcbh_data/Kolibugan N1SKNSEC")
+	err = s3.PutDirectory("arti-input", "Shan N2SHNOMF", "/Users/gary/arti2/fcbh_data/Shan N2SHNOMF")
 	if err != nil {
 		t.Error(err)
 	}
