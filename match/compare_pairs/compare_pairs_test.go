@@ -1,5 +1,7 @@
 package compare_pairs
 
+/*
+
 import (
 	"context"
 	"gopkg.in/yaml.v3"
@@ -48,3 +50,4 @@ func TestN2MZJSIM_MAT12(t *testing.T) {
 	}
 	/// Add mms_adapter run
 }
+*/

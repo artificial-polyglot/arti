@@ -1,16 +1,18 @@
 package compare_pairs
 
+/*
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/match/diff"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/xuri/excelize/v2"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 type PairList struct {
@@ -62,7 +64,7 @@ func preparePairsMap(ctx context.Context, bookId string, chapterNum int, onePair
 		return log.ErrorNoErr(ctx, 500, "Path to Pairs data is required.")
 	}
 	outputPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), "pairs.json")
-	status = input.DownloadFile(ctx, onePair.Path, outputPath)
+	status = input.DownloadDatabaseFile(ctx, onePair.Path, outputPath)
 	if status != nil {
 		return status
 	}
@@ -252,37 +254,4 @@ func (r *ExcelReport) writeFile() *log.Status {
 	return nil
 }
 
-/*
-
-
-import "github.com/xuri/excelize/v2"
-
-func main() {
-	f := excelize.NewFile()
-
-	// Example: A string where only certain parts are highlighted
-	// Like marking "PASS" in green and "FAIL" in red within a longer text
-	runs := []excelize.RichTextRun{
-		{Text: "Test results: Module A ", Font: &excelize.Font{Color: "000000"}},
-		{Text: "PASS", Font: &excelize.Font{Color: "008000", Bold: true}},  // Green + Bold
-		{Text: ", Module B ", Font: &excelize.Font{Color: "000000"}},
-		{Text: "FAIL", Font: &excelize.Font{Color: "FF0000", Bold: true}},  // Red + Bold
-		{Text: ", Module C ", Font: &excelize.Font{Color: "000000"}},
-		{Text: "PASS", Font: &excelize.Font{Color: "008000", Bold: true}},  // Green + Bold
-		{Text: " - Review needed", Font: &excelize.Font{Color: "000000"}},
-	}
-
-	f.SetCellRichText("Sheet1", "A1", runs)
-
-	// Another example - highlighting specific values in a log entry
-	runs2 := []excelize.RichTextRun{
-		{Text: "Connection from 192.168.1.100 status: ", Font: &excelize.Font{Color: "000000"}},
-		{Text: "SUCCESS", Font: &excelize.Font{Color: "008000", Bold: true}},  // Green + Bold
-		{Text: " at 10:34:22", Font: &excelize.Font{Color: "000000"}},
-	}
-
-	f.SetCellRichText("Sheet1", "A2", runs2)
-
-	f.SaveAs("highlighted_text.xlsx")
-}
 */
