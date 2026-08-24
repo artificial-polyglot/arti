@@ -8,6 +8,7 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 	req "github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"os"
 	"path/filepath"
@@ -36,17 +37,19 @@ func NewTrainAdapter(ctx context.Context, conn db.DBAdapter, langISO string, tra
 }
 
 func (t *TrainAdapter) HasModel() bool {
-	filename := "adapter." + t.langISO + ".safetensors"
-	model := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "mms_adapters", t.langISO, filename)
-	fileInfo, err := os.Stat(model)
-	if os.IsNotExist(err) {
+	client, status := s3_datastore.NewS3Client(t.ctx)
+	if status != nil {
+		log.Warn(t.ctx, status, "Failed to create S3 client checking for existing model")
 		return false
 	}
-	if err != nil {
-		log.Warn(t.ctx, err, "Failed to read model file")
+	bucket := os.Getenv("FCBH_MODELS_BUCKET")
+	prefix := "mms_adapters/" + t.langISO
+	has, status := client.HasModel(bucket, prefix)
+	if status != nil {
+		log.Warn(t.ctx, status, "Failed to check R2 for existing model", prefix)
 		return false
 	}
-	return fileInfo.Size() > 1000000 // must be GT 1Meg
+	return has
 }
 
 func (t *TrainAdapter) Train(files []generic.InputFile) *log.Status {

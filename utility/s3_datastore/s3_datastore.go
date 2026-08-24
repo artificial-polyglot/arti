@@ -94,6 +94,27 @@ func (t S3Client) ListObjects(bucket, prefix string) ([]types.Object, *log.Statu
 	return results, nil
 }
 
+// HasModel reports whether a model file over 1Meg exists in the bucket under
+// prefix, e.g. to check whether a trained model (such as mms_adapters/<lang>)
+// has already been uploaded, regardless of whether it sits directly under
+// the prefix or under a run-numbered subdirectory (see DownloadLatestFileTree).
+func (t S3Client) HasModel(bucket string, prefix string) (bool, *log.Status) {
+	trimmedPrefix := strings.TrimSuffix(prefix, "/") + "/"
+	list, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(trimmedPrefix),
+	})
+	if err != nil {
+		return false, log.Error(t.ctx, 500, err, "Error checking for existing model", prefix)
+	}
+	for _, obj := range list.Contents {
+		if obj.Size != nil && *obj.Size > 1000000 { // must be GT 1Meg
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (t S3Client) ListPrefixes(bucket, prefix string) ([]string, *log.Status) {
 	var results []string
 	list, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{

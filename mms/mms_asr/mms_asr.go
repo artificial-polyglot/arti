@@ -75,6 +75,14 @@ func (a *MMSASR) ProcessFiles(files []generic.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
+		var has bool
+		has, status = s3Client.HasModel(bucket, prefix)
+		if status != nil {
+			return status
+		}
+		if !has {
+			return log.Error(a.ctx, 500, fmt.Errorf("no trained adapter"), "No trained MMS adapter found in R2 for language", lang)
+		}
 		status = s3Client.DownloadLatestFileTree(bucket, prefix, localDir)
 		if status != nil {
 			return status
