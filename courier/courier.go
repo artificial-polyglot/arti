@@ -147,19 +147,19 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 			allStatus = append(allStatus, status2)
 			b.outputKeys = append(b.outputKeys, outputKey)
 		}
-		if runStatus == nil {
-			bucket := os.Getenv("FCBH_MODELS_BUCKET")
-			for _, modl := range b.models {
-				prefix := filepath.Join(modl.modelType, modl.languageISO)
-				localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
-				lastModelRun, status3 := b.findLastModelRun(client, bucket, prefix)
-				allStatus = append(allStatus, status3)
-				modelRunStr := fmt.Sprintf("%05d", lastModelRun+1)
-				remotePrefix := filepath.Join(prefix, modelRunStr)
-				status3 = client.PutDirectory(bucket, remotePrefix, localDir)
-				allStatus = append(allStatus, status3)
-			}
+		//if runStatus == nil {
+		bucket := os.Getenv("FCBH_MODELS_BUCKET")
+		for _, modl := range b.models {
+			prefix := filepath.Join(modl.modelType, modl.languageISO)
+			localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+			lastModelRun, status3 := b.findLastModelRun(client, bucket, prefix)
+			allStatus = append(allStatus, status3)
+			modelRunStr := fmt.Sprintf("%05d", lastModelRun+1)
+			remotePrefix := filepath.Join(prefix, modelRunStr)
+			status3 = client.PutDirectory(bucket, remotePrefix, localDir)
+			allStatus = append(allStatus, status3)
 		}
+		//}
 		if runStatus != nil {
 			_, status = b.uploadString(client, run, "status", "Error", runStatus.String())
 		}
