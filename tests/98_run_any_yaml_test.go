@@ -14,6 +14,7 @@ func TestRunAnyYaml(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	yaml := string(bytes)
 	log.SetOutput("stderr")
-	DirectSqlTest(string(bytes), []SqliteTest{}, t)
+	DirectSqlTest(yaml, []SqliteTest{}, t)
 }
