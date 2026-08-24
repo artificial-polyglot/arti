@@ -154,3 +154,82 @@ func (a *AlignSilence) FindPositionInDiff(cDiffs []CDiff, charPos int) int {
 	}
 	return len(cDiffs)
 }
+
+/*
+type Verse struct {
+	ScriptId int64
+	LineRef  generic.VerseRef //LineRef in alignline is string
+	BeginTS  float64
+	EndTS    float64
+	Duration float64
+	Words    []Word
+}
+type Word struct {
+	WordId  int64
+	Text    string
+	Uroman  string
+	BeginTS float64
+	EndTS   float64
+	FAScore float64
+}
+
+word_id INTEGER PRIMARY KEY AUTOINCREMENT,
+script_id INTEGER NOT NULL,
+word_seq INTEGER NOT NULL,
+verse_num INTEGER NOT NULL,
+ttype TEXT NOT NULL DEFAULT 'W',
+word TEXT NOT NULL,
+uroman TEXT NOT NULL DEFAULT '',
+word_begin_ts REAL NOT NULL DEFAULT 0.0,
+word_end_ts REAL NOT NULL DEFAULT 0.0,
+fa_score REAL NOT NULL DEFAULT 0.0,
+
+type Word struct {
+	VerseStr    string
+	WordId      int
+	ScriptId    int
+	WordSeq     int
+	VerseNum    int
+	TType       string
+	Word        string
+	WordBeginTS float64
+	WordEndTS   float64
+	FAScore     float64
+	WordEncoded []float64
+
+func (a *AlignSilence) PrepareDataForWriter(lines []generic.AlignLine) []Verse {
+	var verses = make([]Verse, 0, len(lines))
+	var lastWordId = int64(-1)
+	var sumFAScore, cntFAScore float64
+	var word Word
+	for _, line := range lines {
+		var verse Verse
+		verse.ScriptId = line.Chars[0].LineId
+		verse.LineRef = generic.NewVerseRef(line.Chars[0].LineRef)
+		verse.BeginTS = line.Chars[0].BeginTS
+		for _, char := range line.Chars {
+			var words = make([]Word, 0, 32)
+			if char.WordId != lastWordId {
+				words = append(words, word)
+				verse.Words = words
+				word = Word{}
+				word.WordId = char.WordId
+				word.Text = append(word.Text, char.Uroman)
+				word.Uroman = ''
+				word.BeginTS = char.BeginTS
+				word.FAScore = sumFAScore / cntFAScore
+				sumFAScore = 0.0
+				cntFAScore = 0.0
+			}
+			verse.EndTS = char.EndTS
+			word.EndTS = char.EndTS
+			sumFAScore += char.FAScore
+			cntFAScore += 1
+
+		}
+	}
+}
+	With QAAlign, the text data coming out of the ASR process is NOT uroman, but it is original text.
+		This is a major difference with the align_compare code.  Uroman should only be provided on a while verse basis
+	The inserted character data is not in the
+*/

@@ -92,6 +92,9 @@ RUN ${MMS_ASR}/pip install soundfile
 RUN ${MMS_ASR}/pip install librosa
 RUN ${MMS_ASR}/pip install uroman
 RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
+# These two needed by decoder
+RUN ${MMS_ASR}/pip install nltk
+RUN ${MMS_ASR}/pip install pyctcdecode
 
 # Pre-download the MMS_FA model weights so the container never fetches them
 # over the network at runtime.
