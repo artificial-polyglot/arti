@@ -12,6 +12,7 @@ import (
 	"github.com/artificial-polyglot/arti/mms"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"github.com/artificial-polyglot/arti/utility/uroman"
 )
@@ -63,11 +64,23 @@ func (a *MMSASR) ProcessFiles(files []generic.InputFile) *log.Status {
 	if status != nil {
 		return status
 	}
-	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/mms_asr/mms_asr.py")
 	var useAdapter string
 	if a.adapter {
 		useAdapter = "adapter"
+		bucket := os.Getenv("FCBH_MODELS_BUCKET")
+		prefix := "mms_adapters/" + lang
+		localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+		var s3Client s3_datastore.S3Client
+		s3Client, status = s3_datastore.NewS3Client(a.ctx)
+		if status != nil {
+			return status
+		}
+		status = s3Client.DownloadLatestFileTree(bucket, prefix, localDir)
+		if status != nil {
+			return status
+		}
 	}
+	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/mms_asr/mms_asr.py")
 	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang,
 		a.dbPath, a.decoderType.String(), useAdapter)
 	if status != nil {
