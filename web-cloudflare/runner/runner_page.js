@@ -574,7 +574,7 @@ export const PAGE_HTML = `<!doctype html>
                             <label for="compare">compare: report comparing audio transcript to correct text</label>
                         </div>
                         <div class="checkbox-option">
-                            <input type="checkbox" id="proofing">
+                            <input type="checkbox" id="proofing" checked>
                             <label for="proofing">proofing: report highlighting probable incorrect words</label>
                         </div>
                     </div>
