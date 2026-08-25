@@ -227,6 +227,23 @@ export const PAGE_HTML = `<!doctype html>
     return isNaN(d) ? String(iso) : d.toLocaleString();
   }
 
+  // A run-number picker built only from run numbers that actually exist -
+  // runs get deleted individually, so a plain min/max number spinner would
+  // let its up/down arrows land on gaps. Sorted descending (most recent
+  // first), defaulting to the highest.
+  function runNumSelect(runNums, defaultRunNum) {
+    const select = document.createElement("select");
+    const sorted = [...runNums].sort((a, b) => b - a);
+    for (const runNum of sorted) {
+      const option = document.createElement("option");
+      option.value = String(runNum);
+      option.textContent = String(runNum);
+      if (runNum === defaultRunNum) option.selected = true;
+      select.append(option);
+    }
+    return select;
+  }
+
   // --- views ---------------------------------------------------------------
   async function showTopLevel(view) {
     setActive(view);
@@ -259,14 +276,13 @@ export const PAGE_HTML = `<!doctype html>
       },
       {
         key: "highestRunNum", label: "Model#", render: (r) => {
-          const input = document.createElement("input");
-          input.type = "number"; input.min = 1; input.max = r.highestRunNum; input.value = r.highestRunNum;
-          input.addEventListener("input", () => {
-            const uploaded = r.runs[input.value];
+          const select = runNumSelect(Object.keys(r.runs).map(Number), r.highestRunNum);
+          select.addEventListener("change", () => {
+            const uploaded = r.runs[select.value];
             if (uploaded && r._updatedSpan) r._updatedSpan.textContent = fmtDate(uploaded);
           });
-          r._modelRunInput = input;
-          return input;
+          r._modelRunInput = select;
+          return select;
         },
       },
       { key: "langIso", label: "Lang ISO" },
@@ -354,10 +370,9 @@ export const PAGE_HTML = `<!doctype html>
       },
       {
         key: "highestRunNum", label: "Run #", render: (r) => {
-          const input = document.createElement("input");
-          input.type = "number"; input.min = 1; input.max = r.highestRunNum; input.value = r.highestRunNum;
-          r._runNumInput = input;
-          return input;
+          const select = runNumSelect(r.runs, r.highestRunNum);
+          r._runNumInput = select;
+          return select;
         },
       },
       { key: "username", label: "Username" },

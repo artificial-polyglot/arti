@@ -138,7 +138,10 @@ export async function getInputDetailRows(bucket, mediaId) {
 }
 
 // arti-output top level: {username}/{media_id}/{module}/{run_num}/{file_type}/{file_content}
-// One row per distinct (username, media_id, module), plus the largest run_num seen.
+// One row per distinct (username, media_id, module), tracking every run_num
+// seen (runs: [runNum, ...], ascending) so the UI can offer only run numbers
+// that actually still exist - runs get deleted individually, so the range
+// from 1 to highestRunNum can have gaps.
 export async function getOutputRows(bucket) {
   const objects = await listAllObjects(bucket, "");
   const groups = new Map();
@@ -149,14 +152,18 @@ export async function getOutputRows(bucket) {
     const runNum = parseInt(runNumStr, 10);
     if (Number.isNaN(runNum)) continue;
     const groupKey = `${username} ${mediaId} ${module}`;
-    const existing = groups.get(groupKey);
-    if (!existing) {
-      groups.set(groupKey, { username, mediaId, module, highestRunNum: runNum });
-    } else if (runNum > existing.highestRunNum) {
-      existing.highestRunNum = runNum;
+    let group = groups.get(groupKey);
+    if (!group) {
+      group = { username, mediaId, module, highestRunNum: runNum, runs: new Set() };
+      groups.set(groupKey, group);
     }
+    group.runs.add(runNum);
+    if (runNum > group.highestRunNum) group.highestRunNum = runNum;
   }
-  const rows = Array.from(groups.values());
+  const rows = Array.from(groups.values()).map((g) => ({
+    ...g,
+    runs: Array.from(g.runs).sort((a, b) => a - b),
+  }));
   rows.sort(
     (a, b) =>
       a.username.localeCompare(b.username) ||

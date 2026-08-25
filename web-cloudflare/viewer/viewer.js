@@ -13,7 +13,7 @@
 //   GET  /api/models/download - zip of one model run: <langIso>/<tensor file>, <langIso>/processor_<langIso>/...
 //   GET  /api/input           - [{mediaId, uploaded}]
 //   GET  /api/input/:id       - [{prefix, filename, uploaded, action, key}]
-//   GET  /api/output          - [{username, mediaId, module, highestRunNum}]
+//   GET  /api/output          - [{username, mediaId, module, highestRunNum, runs: [runNum, ...]}]
 //   GET  /api/output/details  - fixed-row (label, value, viewMode, viewKey, downloadKey)
 //   POST /api/output/notes    - {username, mediaId, module, runNum, text} - writes the run's notes object
 //   GET  /file                - streams/downloads/opens a single R2 object; accepts
