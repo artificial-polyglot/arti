@@ -74,22 +74,24 @@ func (a *ASRAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 		bucket := os.Getenv("FCBH_MODELS_BUCKET")
 		prefix := "mms_adapters/" + lang
 		localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
-		var s3Client s3_datastore.S3Client
-		s3Client, status = s3_datastore.NewS3Client(a.ctx)
-		if status != nil {
-			return status
-		}
-		var has bool
-		has, status = s3Client.HasModel(bucket, prefix)
-		if status != nil {
-			return status
-		}
-		if !has {
-			return log.Error(a.ctx, 500, fmt.Errorf("no trained adapter"), "No trained MMS adapter found in R2 for language", lang)
-		}
-		status = s3Client.DownloadLatestFileTree(bucket, prefix, localDir)
-		if status != nil {
-			return status
+		if !mms.HasLocalAdapter(localDir, lang) {
+			var s3Client s3_datastore.S3Client
+			s3Client, status = s3_datastore.NewS3Client(a.ctx)
+			if status != nil {
+				return status
+			}
+			var has bool
+			has, status = s3Client.HasModel(bucket, prefix)
+			if status != nil {
+				return status
+			}
+			if !has {
+				return log.Error(a.ctx, 500, fmt.Errorf("no trained adapter"), "No trained MMS adapter found in R2 for language", lang)
+			}
+			status = s3Client.DownloadLatestFileTree(bucket, prefix, localDir)
+			if status != nil {
+				return status
+			}
 		}
 	}
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/asr_align/asr_align.py")
