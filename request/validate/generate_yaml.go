@@ -119,7 +119,7 @@ func appendTimestamps(w *yamlBuilder, depth int, t request.Timestamps) {
 }
 
 func appendTraining(w *yamlBuilder, depth int, t request.Training) {
-	w.boolean(depth, "redo_training", t.RedoTraining, true)
+	w.boolean(depth, "redo_training", t.RedoTraining, false)
 	w.nested(depth, "mms_adapter", func(sub *yamlBuilder, d int) { appendMMSAdapter(sub, d, t.MMSAdapter) })
 	w.nested(depth, "wav2vec2_word", func(sub *yamlBuilder, d int) { appendWav2Vec2(sub, d, t.Wav2Vec2Word) })
 	w.boolean(depth, "no_training", t.NoTraining, true)
