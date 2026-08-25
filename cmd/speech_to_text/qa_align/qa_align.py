@@ -91,6 +91,18 @@ for line in sys.stdin:
     # Convert reference text to token indices using your adapter vocab
     normalized = reference_text.replace(' ', '|').lower()
     tokens = [vocab[c] for c in normalized if c in vocab]
+    if len(tokens) == 0:
+        # Empty (or entirely out-of-vocab) reference text - forced_align chokes
+        # on a zero-length target tensor, so skip alignment for this verse
+        # rather than crashing the whole run.
+        result = {
+            "transcript": transcript,
+            "alignment": [],
+        }
+        sys.stdout.write(json.dumps(result))
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        continue
     tokens_tensor = torch.tensor([tokens]).to(device)
     # forced_align returns frame-level token alignments
     frame_alignment, scores = torchaudio.functional.forced_align(
