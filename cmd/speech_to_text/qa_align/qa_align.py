@@ -73,7 +73,6 @@ model = model.to(device)
 vocab = processor.tokenizer.get_vocab()
 id2char = {v: k for k, v in vocab.items()}
 for line in sys.stdin:
-    torch.cuda.empty_cache()
     data = json.loads(line)
     audioFile = data['audio']
     reference_text = data['text']
@@ -86,6 +85,9 @@ for line in sys.stdin:
     with torch.no_grad():
         logits = model(**inputs).logits # [1, T, V]
     log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
+    # Create transcript
+    pred_ids = torch.argmax(logits, dim=-1)          # [1, T]
+    transcript = processor.batch_decode(pred_ids)[0] # collapses repeats, drops blank, '|' -> space
     # Convert reference text to token indices using your adapter vocab
     normalized = reference_text.replace(' ', '|').lower()
     tokens = [vocab[c] for c in normalized if c in vocab]
@@ -97,7 +99,8 @@ for line in sys.stdin:
         blank=processor.tokenizer.pad_token_id  # CTC blank index
     )
     # Each frame is typically 20ms (model-dependent)
-    frame_duration = 0.02  # seconds
+    # frame_duration = 0.02  # seconds
+    frame_duration = (len(sample) / 16000) / log_probs.shape[1] # recent change Claude 8/24/26
     token_boundaries = torchaudio.functional.merge_tokens(
         frame_alignment[0], scores[0]
     )
@@ -113,7 +116,11 @@ for line in sys.stdin:
             'end': end,
             'score': token.score
         })
-    sys.stdout.write(json.dumps(char_timestamps))
+    result = {
+        "transcript": transcript,
+        "alignment": char_timestamps,
+    }
+    sys.stdout.write(json.dumps(result))
     sys.stdout.write("\n")
     sys.stdout.flush()
 

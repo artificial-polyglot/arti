@@ -2,11 +2,11 @@ package qa_align
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/input"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -14,25 +14,23 @@ import (
 func TestQAAlign(t *testing.T) {
 	ctx := context.Background()
 	log.SetOutput("stderr")
-	user := request.GetTestUser()
-	conn, status := db.NewerDBAdapter(ctx, false, user, "PlainTextEditScript_ENGWEB")
+	database, status := input.AWSS3Input(ctx, "s3://arti-output/GaryNTest/N1SKNSEC/arti/00010/database/*.db")
 	if status != nil {
-		t.Error(status)
+		t.Fatal(status)
 	}
+	conn := db.NewDBAdapter(ctx, database[0].FilePath())
+	fmt.Println("Database Path", database[0].FilePath())
 	var testament request.Testament
+	testament.BuildBookMaps()
 	testament.NT = true
-	asr := NewQAAlign(ctx, conn, "eng", "", false, testament)
-	var files []generic.InputFile
-	var file generic.InputFile
-	file.BookId = "MRK"
-	file.Chapter = 1
-	file.MediaId = "ENGWEBN2DA"
-	file.Directory = os.Getenv("FCBH_DATASET_FILES") + "/ENGWEB/ENGWEBN2DA-mp3-64/"
-	file.Filename = "B02___01_Mark________ENGWEBN2DA.mp3"
-	//file.MediaId = "ENGESVN1DA"
-	//file.Directory = os.Getenv("FCBH_DATASET_FILES") + "/ENGESV/ENGESVN1DA/"
-	//file.Filename = "B02___01_Mark________ENGESVN1DA.mp3"
-	files = append(files, file)
+	testament.OT = true
+	asr := NewQAAlign(ctx, conn, "skn", "", true, testament)
+	files, status := input.AWSS3Input(ctx, "s3://arti-input/Kolibugan N1SKNSEC/N1SKNSEC Chapter mp3/*MRK_001_VOX.mp3")
+	if status != nil {
+		t.Fatal(status)
+	}
+	files[0].BookId = "MRK"
+	files[0].Chapter = 1
 	status = db.InsertAudioFiles(conn, files)
 	if status != nil {
 		t.Error(status)

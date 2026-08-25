@@ -11,6 +11,10 @@ import (
 )
 
 // CharResult holds the per-character forced alignment output from Python.
+type QAAlignResult struct {
+	Transcript string       `json:"Transcript"`
+	Alignment  []CharResult `json:"Alignment"`
+}
 type CharResult struct {
 	Char  string  `json:"char"`
 	Start float64 `json:"start"`
@@ -28,8 +32,8 @@ type wordRecord struct {
 // aligns it to the reference words via sequence alignment, inserts rows into
 // charsV2, and updates the words and scripts tables.
 func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *log.Status {
-	var asrChars []CharResult
-	if err := json.Unmarshal([]byte(jsonData), &asrChars); err != nil {
+	var alignResult QAAlignResult
+	if err := json.Unmarshal([]byte(jsonData), &alignResult); err != nil {
 		return log.Error(conn.Ctx, 500, err, "ProcessFAResults: unmarshal error")
 	}
 	words, status := selectWords(conn, request.ScriptId)
@@ -37,7 +41,7 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 		return status
 	}
 
-	wordCharSlices := alignToWords(asrChars, words)
+	wordCharSlices := alignToWords(alignResult.Alignment, words)
 
 	var scriptText []string
 	var scriptBegin float64
