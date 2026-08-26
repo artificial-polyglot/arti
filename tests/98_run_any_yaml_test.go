@@ -9,7 +9,7 @@ import (
 )
 
 func TestRunAnyYaml(t *testing.T) {
-	yamlPath := filepath.Join(os.Getenv("HOME"), "arti2", "N1SKNSEC.yaml")
+	yamlPath := filepath.Join(os.Getenv("HOME"), "arti2", "N1SKNSEC_rpt.yaml")
 	bytes, err := os.ReadFile(yamlPath)
 	if err != nil {
 		t.Fatal(err)

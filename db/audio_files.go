@@ -44,7 +44,7 @@ func InsertAudioFiles(conn DBAdapter, files []generic.InputFile) *log.Status {
 }
 
 func SelectAudioFiles(conn DBAdapter) ([]generic.InputFile, *log.Status) {
-	query := `SELECT media_id, media_type, testament, book_id, book_seq, chapter,
+	query := `SELECT media_type, media_id, testament, book_id, book_seq, chapter,
         script_line, filename, file_ext, base_url
         FROM audio_files
         ORDER BY file_id`

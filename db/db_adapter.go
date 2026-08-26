@@ -835,11 +835,11 @@ func (d *DBAdapter) SelectFAScriptTimestamps(bookId string, chapter int) ([]Audi
 func (d *DBAdapter) SelectFACharTimestamps() ([]generic.AlignChar, *log.Status) {
 	var chars []generic.AlignChar
 	var query = `SELECT s.audio_file, s.script_id, s.book_id, s.chapter_num, s.verse_str,
-				w.word_id, w.word, c.char_id, c.seq, c.uroman, c.start_ts, c.end_ts, c.fa_score
+				w.word_id, w.word, c.seq, c.char, c.start_ts, c.end_ts, c.fa_score
 				FROM scripts s JOIN words w ON s.script_id = w.script_id
-				JOIN chars c ON w.word_id = c.word_id
+				JOIN qa_align_char c ON w.word_id = c.word_id
 				WHERE w.ttype = 'W'
-				ORDER BY c.char_id`
+				ORDER BY c.word_id, c.seq`
 	rows, err := d.DB.Query(query)
 	if err != nil {
 		return chars, log.Error(d.Ctx, 500, err, "Error during SelectFACharTimestamps.")
@@ -849,12 +849,10 @@ func (d *DBAdapter) SelectFACharTimestamps() ([]generic.AlignChar, *log.Status) 
 	for rows.Next() {
 		var ch generic.AlignChar
 		err = rows.Scan(&ch.AudioFile, &ch.LineId, &ref.BookId, &ref.ChapterNum, &ref.VerseStr,
-			&ch.WordId, &ch.Word, &ch.CharId, &ch.CharSeq, &ch.Uroman, &ch.BeginTS, &ch.EndTS,
-			&ch.FAScore)
+			&ch.WordId, &ch.Word, &ch.CharSeq, &ch.Char, &ch.BeginTS, &ch.EndTS, &ch.FAScore)
 		if err != nil {
 			return chars, log.Error(d.Ctx, 500, err, "Error in SelectFACharTimestamps.")
 		}
-		ch.LineRef = ref.UniqueKey()
 		chars = append(chars, ch)
 	}
 	return chars, nil
