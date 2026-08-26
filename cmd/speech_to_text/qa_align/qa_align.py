@@ -91,43 +91,44 @@ for line in sys.stdin:
     # Convert reference text to token indices using your adapter vocab
     normalized = reference_text.replace(' ', '|').lower()
     tokens = [vocab[c] for c in normalized if c in vocab]
+    char_timestamps = []
     if len(tokens) == 0:
         # Empty (or entirely out-of-vocab) reference text - forced_align chokes
         # on a zero-length target tensor, so skip alignment for this verse
         # rather than crashing the whole run.
-        result = {
-            "transcript": transcript,
-            "alignment": [],
-        }
-        sys.stdout.write(json.dumps(result))
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        continue
-    tokens_tensor = torch.tensor([tokens]).to(device)
-    # forced_align returns frame-level token alignments
-    frame_alignment, scores = torchaudio.functional.forced_align(
-        log_probs,
-        tokens_tensor,
-        blank=processor.tokenizer.pad_token_id  # CTC blank index
-    )
-    # Each frame is typically 20ms (model-dependent)
-    # frame_duration = 0.02  # seconds
-    frame_duration = (len(sample) / 16000) / log_probs.shape[1] # recent change Claude 8/24/26
-    token_boundaries = torchaudio.functional.merge_tokens(
-        frame_alignment[0], scores[0]
-    )
-    # Collect timestamps and fa_score
-    char_timestamps = []
-    for token in token_boundaries:
-        char = id2char[token.token]
-        start = token.start * frame_duration
-        end = token.end * frame_duration
-        char_timestamps.append({
-            'char': char,
-            'start': start,
-            'end': end,
-            'score': token.score
-        })
+        pass
+    else:
+        tokens_tensor = torch.tensor([tokens]).to(device)
+        try:
+            # forced_align returns frame-level token alignments
+            frame_alignment, scores = torchaudio.functional.forced_align(
+                log_probs,
+                tokens_tensor,
+                blank=processor.tokenizer.pad_token_id  # CTC blank index
+            )
+            # Each frame is typically 20ms (model-dependent)
+            # frame_duration = 0.02  # seconds
+            frame_duration = (len(sample) / 16000) / log_probs.shape[1] # recent change Claude 8/24/26
+            token_boundaries = torchaudio.functional.merge_tokens(
+                frame_alignment[0], scores[0]
+            )
+            # Collect timestamps and fa_score
+            for token in token_boundaries:
+                char = id2char[token.token]
+                start = token.start * frame_duration
+                end = token.end * frame_duration
+                char_timestamps.append({
+                    'char': char,
+                    'start': start,
+                    'end': end,
+                    'score': token.score
+                })
+        except RuntimeError as e:
+            # CTC forced_align can't run when the reference text has more
+            # characters than the audio segment has frames (short verse,
+            # long text) - skip alignment for this verse rather than
+            # crashing the whole run.
+            print(f"forced_align failed, skipping verse: {e}", file=sys.stderr)
     result = {
         "transcript": transcript,
         "alignment": char_timestamps,
