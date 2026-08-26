@@ -85,7 +85,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
 	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 30px; width=90%">
-		<span><input type="number" id="scoreCutoff" min="0" step="0.001" style="width: 60px;" value="0.0001">
+		<span><input type="number" id="scoreCutoff" min="0" step="0.01" style="width: 60px;" value="0.01">
 		<label for="scoreCutoff"> Score Cutoff</label></span>
 		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
 		<span><input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label></span>

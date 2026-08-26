@@ -35,7 +35,7 @@ type Verse struct {
 	AudioFile string
 }
 
-const FA_SCORE_CUTOFF = 1.0
+const FA_SCORE_CUTOFF = 0.5
 const OPACITY_CUTOFF = 0.5
 
 type ProofingRpt struct {
