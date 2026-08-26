@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -192,11 +194,14 @@ func ParseYaml(yamlContent string, name string) string {
 }
 
 func (b *Courier) findLastRun(client s3_datastore.S3Client) (int, *log.Status) {
-	if testing.Testing() {
+	// Prior Test output is deleted, so that we only keep the last result
+	firstChar, _ := utf8.DecodeRuneInString(b.dataset)
+	if testing.Testing() && b.username == "Tests" && unicode.IsDigit(firstChar) {
 		prefix := b.username + "/" + b.dataset + "/"
 		status := client.ClearDirectory(b.bucket, prefix)
 		return 0, status
 	}
+	// For Non-Tests output, return the highest run # found.
 	var result int
 	var status *log.Status
 	prefix := b.username + "/" + b.dataset + "/" + b.Component + "/"

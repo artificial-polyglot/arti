@@ -58,6 +58,8 @@ def main():
             "Authorization": api_key,
         }
         response = requests.post(url, headers=headers, json=payload)
+        if not response.ok:
+            print(f"RunPod returned {response.status_code}: {response.text}", file=sys.stderr)
         response.raise_for_status()
         print(response.json())
         job = response.json()

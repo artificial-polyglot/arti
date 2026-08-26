@@ -1,6 +1,4 @@
 import subprocess
-import sys
-import threading
 import runpod
 
 DEFAULT_TIMEOUT = 60
@@ -23,7 +21,7 @@ def handler(job):
     except subprocess.TimeoutExpired:
         return {"error": f"process timed out after {timeout} seconds"}
 
-    stdout = result.stdout.strip()
+    stdout = (result.stdout or "").strip()
     if result.returncode != 0:
         return {
             "error": "process failed",
@@ -32,4 +30,7 @@ def handler(job):
         }
     return {"status": "complete", "output": stdout}
 
-runpod.serverless.start({"handler": handler})
+if __name__ == "__main__":
+    runpod.serverless.start({"handler": handler})
+
+
