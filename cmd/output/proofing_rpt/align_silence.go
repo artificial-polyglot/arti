@@ -70,7 +70,7 @@ func (a *AlignSilence) Process(audioDirectory string) ([]generic.AlignLine, stri
 			faChars[i].SilencePos = int(betweenChars)
 		} else if curr.LineId == next.LineId {
 			faChars[i].SilencePos = int(betweenWords)
-		} else if curr.AudioFile == next.AudioFile {
+		} else if curr.LineRef.BookId == next.LineRef.BookId && curr.LineRef.ChapterNum == next.LineRef.ChapterNum {
 			faChars[i].SilencePos = int(betweenVerses)
 		} else {
 			faChars[i].SilencePos = int(betweenChapters)

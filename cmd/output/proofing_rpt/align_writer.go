@@ -109,7 +109,7 @@ func (a *AlignWriter) WriteLine(chars []generic.AlignChar) {
 		} else if chars[i].FAScore <= questionThreshold {
 			chars[i].ScoreError = int(scoreQuestion)
 		}
-		if char.IsASR && !unicode.IsSpace(char.Uroman) {
+		if char.IsASR && !unicode.IsSpace(char.Char) {
 			asrChars++
 		}
 	}
@@ -127,17 +127,17 @@ func (a *AlignWriter) WriteLine(chars []generic.AlignChar) {
 	a.writeCell(strconv.FormatFloat(logTotal, 'f', 2, 64))
 	//a.writeCell(strconv.FormatInt(int64(asrChars), 10))
 	a.writeCell(a.minSecFormat(firstChar.BeginTS))
-	ref := generic.NewVerseRef(firstChar.LineRef)
+	ref := generic.NewVerseRef(firstChar.LineRef.Description())
 	var params []string
 	params = append(params, "'"+ref.BookId+"'")
 	params = append(params, strconv.Itoa(ref.ChapterNum))
 	params = append(params, strconv.FormatFloat(firstChar.BeginTS, 'f', 4, 64))
 	params = append(params, strconv.FormatFloat(lastChar.EndTS, 'f', 4, 64))
 	a.writeCell("<button onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
-	a.writeCell(firstChar.LineRef)
+	a.writeCell(firstChar.LineRef.Description())
 	var text []string
 	for _, ch := range chars {
-		char := string(ch.Uroman)
+		char := string(ch.Char)
 		if ch.ScoreError == int(scoreCritical) {
 			text = append(text, `<span class="red-box">`+char+`</span>`)
 		} else if ch.ScoreError == int(scoreQuestion) {
@@ -145,7 +145,7 @@ func (a *AlignWriter) WriteLine(chars []generic.AlignChar) {
 		} else if ch.SilenceLong > 0 {
 			//char += `<sub>` + strconv.Itoa(ch.SilencePos) + `</sub>`
 			text = append(text, `<span class="green-box">`+char+`</span>`)
-		} else if ch.IsASR && !unicode.IsSpace(ch.Uroman) {
+		} else if ch.IsASR && !unicode.IsSpace(ch.Char) {
 			text = append(text, `<span class="blue-box">`+char+`</span>`)
 		} else {
 			text = append(text, char)

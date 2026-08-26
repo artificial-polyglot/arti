@@ -43,7 +43,7 @@ func (a *AlignSilence) InsertSpaces(chars []generic.AlignChar) []generic.AlignCh
 			newChar.AudioFile = char.AudioFile
 			newChar.LineId = char.LineId
 			newChar.LineRef = char.LineRef
-			newChar.Uroman = ' '
+			newChar.Char = ' '
 			newChar.FAScore = 1.0
 			result = append(result, newChar)
 		}
@@ -64,15 +64,15 @@ func (a *AlignSilence) FindSilencePos(chars []generic.AlignChar) []int {
 }
 
 func (a *AlignSilence) GetOriginalText(chars []generic.AlignChar) string {
-	var alUroman []rune
+	var allChars []rune
 	for _, char := range chars {
-		alUroman = append(alUroman, char.Uroman)
+		allChars = append(allChars, char.Char)
 	}
-	return string(alUroman)
+	return string(allChars)
 }
 
 func (a *AlignSilence) insertASRSilenceChars(
-	lineRef string,
+	lineRef generic.VerseRef,
 	line generic.AlignLine,
 	alignedText, asrText string,
 	silencePos []int,
@@ -98,7 +98,7 @@ func (a *AlignSilence) insertASRSilenceChars(
 				AudioFile: curr.AudioFile,
 				LineId:    curr.LineId,
 				LineRef:   curr.LineRef,
-				Uroman:    cDiffs[i].Char,
+				Char:      cDiffs[i].Char,
 				BeginTS:   curr.EndTS,
 				EndTS:     curr.EndTS + curr.Silence,
 				FAScore:   1.0,
@@ -120,7 +120,7 @@ type CDiff struct {
 	Char rune
 }
 
-func (a *AlignSilence) DiffMatchPatch(lineRef string, text string, asrText string) []CDiff {
+func (a *AlignSilence) DiffMatchPatch(lineRef generic.VerseRef, text string, asrText string) []CDiff {
 	var result []CDiff
 	diffMatch := diffmatchpatch.New()
 	text = strings.TrimSpace(text)
