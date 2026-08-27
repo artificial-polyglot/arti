@@ -202,15 +202,6 @@ func (c *Controller) processSteps() *log.Status {
 			return status
 		}
 	}
-	// Audio Proofing
-	if c.req.AudioProof.HTMLReport {
-		log.Info(c.ctx, "Perform audio proof Report.")
-		filename, status = c.audioProofing()
-		if status != nil {
-			return status
-		}
-		c.bucket.AddOutput(filename)
-	}
 	// Train MMS Adapter
 	if !c.req.Training.NoTraining {
 		log.Info(c.ctx, "Train", c.ident.LanguageISO)
@@ -233,6 +224,15 @@ func (c *Controller) processSteps() *log.Status {
 				}
 			}
 		}
+	}
+	// Audio Proofing
+	if c.req.AudioProof.HTMLReport {
+		log.Info(c.ctx, "Perform audio proof Report.")
+		filename, status = c.audioProofing()
+		if status != nil {
+			return status
+		}
+		c.bucket.AddOutput(filename)
 	}
 	// Copy for STT
 	//if !c.req.TextData.NoText &&
