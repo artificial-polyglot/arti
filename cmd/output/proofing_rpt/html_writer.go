@@ -33,7 +33,7 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, audioURLs map[string]generic.AudioFile,
+func (h *HTMLWriter) WriteReport(verses []Verse2, audioURLs map[string]generic.AudioFile,
 	languageISO string, asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
@@ -52,11 +52,11 @@ func (h *HTMLWriter) WriteReport(records [][]Word, verses map[int64]Verse, audio
 		return "", log.Error(h.ctx, 500, err, `Error creating output file for proof`)
 	}
 	filename := h.WriteHeading(languageISO, model)
-	for _, words := range records {
-		verse := verses[words[0].ScriptId]
-		key := verse.Ref.BookId + strconv.Itoa(verse.Ref.ChapterNum)
+	for _, vs := range verses {
+		verse := vs.LineRef
+		key := verse.BookId + strconv.Itoa(verse.ChapterNum)
 		audioURL := audioURLs[key]
-		h.WriteLine(words, verse, audioURL)
+		h.WriteLine(vs, audioURL)
 	}
 	h.WriteEnd()
 	return filename, nil
@@ -117,37 +117,38 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	return h.out.Name()
 }
 
-func (h *HTMLWriter) WriteLine(words []Word, verse Verse, audioURL generic.AudioFile) {
-	_, _ = h.out.WriteString("<tr data-fascores=" + getLowFaScores(words) + ">\n")
-	h.writeCell(strconv.FormatInt(words[0].ScriptId, 10))
-	h.writeCell(strconv.FormatFloat(ComputeMinimum(words), 'f', 4, 64))
+func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
+	ComputeOpacity(verse, OPACITY_CUTOFF)
+	_, _ = h.out.WriteString("<tr data-fascores=" + getLowFaScores(verse.Words) + ">\n")
+	h.writeCell(strconv.FormatInt(verse.ScriptId, 10))
+	h.writeCell(strconv.FormatFloat(ComputeMinimum(verse.Words), 'f', 4, 64))
 	_, _ = h.out.WriteString(`<td class="lowScoreCount"></td>`)
-	h.writeCell(strconv.FormatFloat(startTime(words), 'f', 2, 64))
-	h.writeCell(strconv.FormatFloat(duration(words), 'f', 2, 64))
+	h.writeCell(strconv.FormatFloat(startTime(verse.Words), 'f', 2, 64))
+	h.writeCell(strconv.FormatFloat(verse.Duration, 'f', 2, 64))
 	var params []string
 	params = append(params, "this")
 	params = append(params, "'"+audioURL.UnsignedURL+"'")
-	params = append(params, strconv.FormatFloat(words[0].BeginTS, 'f', 4, 64))
-	params = append(params, strconv.FormatFloat(findEndTS(words), 'f', 4, 64))
-	h.writeCell("<button title=\"" + minSecFormat(words[0].BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
-	h.writeCell(verse.Ref.Description())
+	params = append(params, strconv.FormatFloat(verse.BeginTS, 'f', 4, 64))
+	params = append(params, strconv.FormatFloat(verse.EndTS, 'f', 4, 64))
+	h.writeCell("<button title=\"" + minSecFormat(verse.BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
+	h.writeCell(verse.LineRef.Description())
 	_, _ = h.out.WriteString(`<td>`)
 	var span string
-	for _, wd := range words {
+	for _, wd := range verse.Words {
 		if wd.Ttype != "W" {
-			span = wd.Word
-		} else if wd.Word == wd.URoman && wd.Opacity == 0 {
+			span = wd.Text
+		} else if wd.Text == wd.Uroman && wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f>%s</span>`,
-				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word)
-		} else if wd.Word == wd.URoman {
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text)
+		} else if wd.Text == wd.Uroman {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Word)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Text)
 		} else if wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s">%s</span>`,
-				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Word)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Text)
 		} else {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.FaScore, wd.BeginTS, wd.EndTS, wd.Word, wd.URoman, wd.Opacity, wd.Word)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Opacity, wd.Text)
 		}
 		_, _ = h.out.WriteString(span)
 	}
@@ -313,40 +314,31 @@ func minSecFormat(duration float64) string {
 	return minStr + delim + secStr
 }
 
-func findEndTS(words []Word) float64 {
-	for i := len(words) - 1; i >= 0; i-- {
-		if words[i].Ttype == "W" {
-			return words[i].EndTS
-		}
-	}
-	return words[0].EndTS
-}
-
-func ComputeMinimum(words []Word) float64 {
+func ComputeMinimum(words []Word2) float64 {
 	var minimum = 1.0
 	for _, w := range words {
 		if w.Ttype == "W" {
-			if w.FaScore < minimum {
-				minimum = w.FaScore
+			if w.FAScore < minimum {
+				minimum = w.FAScore
 			}
 		}
 	}
 	return minimum
 }
 
-func getLowFaScores(words []Word) string {
+func getLowFaScores(words []Word2) string {
 	var scores []string
 	for _, w := range words {
 		if w.Ttype == "W" {
-			if w.FaScore < 0.2 {
-				scores = append(scores, strconv.FormatFloat(w.FaScore, 'f', 4, 64))
+			if w.FAScore < 0.2 {
+				scores = append(scores, strconv.FormatFloat(w.FAScore, 'f', 4, 64))
 			}
 		}
 	}
 	return strings.Join(scores, ",")
 }
 
-func startTime(words []Word) float64 {
+func startTime(words []Word2) float64 {
 	for _, w := range words {
 		if w.Ttype == "W" {
 			return w.BeginTS
@@ -354,10 +346,11 @@ func startTime(words []Word) float64 {
 	}
 	return 0.0
 }
-func duration(words []Word) float64 {
-	if len(words) > 0 {
-		return findEndTS(words) - startTime(words)
-	} else {
-		return 0.0
+
+func ComputeOpacity(verse Verse2, opacityCutoff float64) {
+	for j := range verse.Words {
+		if verse.Words[j].FAScore < opacityCutoff {
+			verse.Words[j].Opacity = 1.0 - verse.Words[j].FAScore/opacityCutoff
+		}
 	}
 }

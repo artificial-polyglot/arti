@@ -81,8 +81,7 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 		scriptScore = scriptErrorSum / float64(scriptCharCount)
 	}
 
-	transcript := strings.Join(scriptText, " ")
-	status = insertScript(conn, request.ScriptId, transcript, scriptBegin, scriptEnd, scriptScore)
+	status = insertScript(conn, request.ScriptId, alignResult.Transcript, scriptBegin, scriptEnd, scriptScore)
 	if status != nil {
 		return status
 	}

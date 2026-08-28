@@ -13,24 +13,25 @@ func Process(database db.DBAdapter) ([]db.Output, *log.Status) {
 		return output, status
 	}
 
-	// get uroman from request?, or make it a report option
-	rpt := NewProofingRpt(database.Ctx, database, req.LanguageISO, false)
-	records, verses, audioURLs, status := rpt.Process()
+	calc := NewAlignSilence(database)
+	faLines, audioURLs, status := calc.Process()
 	if status != nil {
 		return output, status
 	}
+
+	writer := NewHTMLWriter(database.Ctx, database.Project)
+	filename, status := writer.WriteReport(faLines, audioURLs, req.LanguageISO, req.SpeechToText)
+	if status != nil {
+		return output, status
+	}
+	out := db.Output{Component: "proofing_rpt", Report: "proofing", FilePath: filename}
+	output = append(output, out)
+
 	jsonName, status1 := generic.OutputAudioFiles(database.Ctx, audioURLs)
 	if status1 != nil {
 		return output, status
 	}
-	out := db.Output{Component: "proofing_rpt", Report: "audio_urls", FilePath: jsonName}
-	output = append(output, out)
-	writer := NewHTMLWriter(database.Ctx, req.DatasetName)
-	filename, status := writer.WriteReport(records, verses, audioURLs, req.LanguageISO, req.SpeechToText)
-	if status != nil {
-		return output, status
-	}
-	out = db.Output{Component: "proofing_rpt", Report: "proofing", FilePath: filename}
+	out = db.Output{Component: "proofing_rpt", Report: "audio_urls", FilePath: jsonName}
 	output = append(output, out)
 	status = database.InsertOutput(output)
 	if status != nil {

@@ -1,18 +1,16 @@
-package proofing_rpt
+package deprecated
 
 import (
 	"context"
-	"math"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
-	"unicode"
 
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/generic"
-	log "github.com/artificial-polyglot/arti/logger"
+)
+
+const (
+	criticalThreshold = 0.0001 // 0.001
+	questionThreshold = 0.001  // 0.001
+	//silenceStdevs     = 4.0    // intended to make it rare
 )
 
 type AlignWriter struct {
@@ -27,6 +25,7 @@ type AlignWriter struct {
 	questGaps   int
 }
 
+/*
 func NewAlignWriter(ctx context.Context, conn db.DBAdapter) AlignWriter {
 	var a AlignWriter
 	a.ctx = ctx
@@ -103,11 +102,11 @@ func (a *AlignWriter) WriteLine(chars []generic.AlignChar) {
 	var countMap = a.countCharsInWords(chars)
 	for i, char := range chars {
 		if chars[i].FAScore <= criticalThreshold {
-			chars[i].ScoreError = int(scoreCritical)
+			chars[i].ScoreError = int(proofing_rpt.scoreCritical)
 			logScore := -math.Log10(chars[i].FAScore)
 			logMap[char.WordId] = append(logMap[char.WordId], logScore)
 		} else if chars[i].FAScore <= questionThreshold {
-			chars[i].ScoreError = int(scoreQuestion)
+			chars[i].ScoreError = int(proofing_rpt.scoreQuestion)
 		}
 		if char.IsASR && !unicode.IsSpace(char.Char) {
 			asrChars++
@@ -138,9 +137,9 @@ func (a *AlignWriter) WriteLine(chars []generic.AlignChar) {
 	var text []string
 	for _, ch := range chars {
 		char := string(ch.Char)
-		if ch.ScoreError == int(scoreCritical) {
+		if ch.ScoreError == int(proofing_rpt.scoreCritical) {
 			text = append(text, `<span class="red-box">`+char+`</span>`)
-		} else if ch.ScoreError == int(scoreQuestion) {
+		} else if ch.ScoreError == int(proofing_rpt.scoreQuestion) {
 			text = append(text, `<span class="yellow-box">`+char+`</span>`)
 		} else if ch.SilenceLong > 0 {
 			//char += `<sub>` + strconv.Itoa(ch.SilencePos) + `</sub>`
@@ -247,11 +246,11 @@ func (a *AlignWriter) WriteEnd(filenameMap string) {
 	.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter {
 		margin-bottom: 20px;
 	}
-	.red-box { 
+	.red-box {
 		background-color: rgba(255, 0, 0, 0.4);
 		padding: 1px 0;
-	} 
-	.yellow-box { 
+	}
+	.yellow-box {
 		background-color: rgba(255, 255, 0, 0.8);
 		padding: 1px 0;
 	}
@@ -265,11 +264,11 @@ func (a *AlignWriter) WriteEnd(filenameMap string) {
 	}
 	/*.blank-box {
 		display: inline-block;
-		height: 1em; 
+		height: 1em;
 		background-color: rgba(0, 0, 255, 0.4);
 		padding: 2px 0;
 		vertical-align: -4px;
-	}*/
+	}
 	</style>
 `
 	_, _ = a.out.WriteString(style)
@@ -278,7 +277,7 @@ func (a *AlignWriter) WriteEnd(filenameMap string) {
         var table = $('#diffTable').DataTable({
             "columnDefs": [
                 { "orderable": false, "targets": [2,3,4,5] }
-				// { "visible": false, "targets": [8] }  
+				// { "visible": false, "targets": [8] }
             ],
             "pageLength": 50,
             "lengthMenu": [[50, 500, -1], [50, 500, "All"]],
@@ -287,12 +286,12 @@ func (a *AlignWriter) WriteEnd(filenameMap string) {
     	$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         	var hideZeros = $('#hideVerse0').prop('checked');
         	if (!hideZeros) return true;
-        	return !data[4].endsWith(":0"); 
+        	return !data[4].endsWith(":0");
     	});
     	$('#hideVerse0').prop('checked', true);
     	table.draw();
     	$('#hideVerse0').on('change', function() {
-        	table.draw(); 
+        	table.draw();
     	});
     });
 	function playVerse(book, chapter, startTime, endTime) {
@@ -343,3 +342,5 @@ func (a *AlignWriter) minSecFormat(duration float64) string {
 	secStr := strconv.FormatFloat(secs, 'f', 0, 64)
 	return minStr + delim + secStr
 }
+
+*/

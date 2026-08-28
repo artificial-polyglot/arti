@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -832,27 +833,31 @@ func (d *DBAdapter) SelectFAScriptTimestamps(bookId string, chapter int) ([]Audi
 	return results, nil
 }
 
-func (d *DBAdapter) SelectFACharTimestamps() ([]generic.AlignChar, *log.Status) {
+func (d *DBAdapter) SelectFACharTimestamps(cutoff float64) ([]generic.AlignChar, *log.Status) {
 	var chars []generic.AlignChar
 	var query = `SELECT s.audio_file, s.script_id, s.book_id, s.chapter_num, s.verse_str,
-				w.word_id, w.word, c.seq, c.char, c.start_ts, c.end_ts, c.fa_score
+				w.word_id, w.word, c.seq, c.char, c.begin_ts, c.end_ts, c.fa_score
 				FROM scripts s JOIN words w ON s.script_id = w.script_id
-				JOIN qa_align_char c ON w.word_id = c.word_id
-				WHERE w.ttype = 'W'
+				JOIN chars_qa_align c ON w.word_id = c.word_id
+				WHERE w.ttype = 'W' AND w.script_id IN (
+       				SELECT DISTINCT w2.script_id
+       				FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
+       				WHERE q2.fa_score <= ?)
 				ORDER BY c.word_id, c.seq`
-	rows, err := d.DB.Query(query)
+	rows, err := d.DB.Query(query, cutoff)
 	if err != nil {
 		return chars, log.Error(d.Ctx, 500, err, "Error during SelectFACharTimestamps.")
 	}
 	defer d.closeDef(rows, "SelectFACharTimestamps stmt")
-	var ref generic.VerseRef
 	for rows.Next() {
 		var ch generic.AlignChar
-		err = rows.Scan(&ch.AudioFile, &ch.LineId, &ref.BookId, &ref.ChapterNum, &ref.VerseStr,
-			&ch.WordId, &ch.Word, &ch.CharSeq, &ch.Char, &ch.BeginTS, &ch.EndTS, &ch.FAScore)
+		var chr string
+		err = rows.Scan(&ch.AudioFile, &ch.LineId, &ch.LineRef.BookId, &ch.LineRef.ChapterNum, &ch.LineRef.VerseStr,
+			&ch.WordId, &ch.Word, &ch.CharSeq, &chr, &ch.BeginTS, &ch.EndTS, &ch.FAScore)
 		if err != nil {
 			return chars, log.Error(d.Ctx, 500, err, "Error in SelectFACharTimestamps.")
 		}
+		ch.Char, _ = utf8.DecodeRuneInString(chr)
 		chars = append(chars, ch)
 	}
 	return chars, nil

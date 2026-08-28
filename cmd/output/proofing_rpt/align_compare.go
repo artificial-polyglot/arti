@@ -1,118 +1,99 @@
 package proofing_rpt
 
 import (
+	"database/sql"
 	"strings"
 
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-func (a *AlignSilence) compareLines2ASR(lines []generic.AlignLine, asrConn db.DBAdapter) ([]generic.AlignLine, *log.Status) {
-	var result []generic.AlignLine
+func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status) {
+	var result []Verse2
 	var status *log.Status
-	for _, line := range lines {
-		line.Chars = a.InsertSpaces(line.Chars)
-		var silencePos = a.FindSilencePos(line.Chars)
-		if len(silencePos) == 0 {
-			result = append(result, line)
+	for _, verse := range verses {
+		verse = a.InsertSpaces(verse)
+		if !a.HasSilence(verse) {
+			result = append(result, verse)
 		} else {
-			//result = append(result, line) // Duplicate line for debugging
-			lineId := line.Chars[0].LineId
-			lineRef := line.Chars[0].LineRef
 			var asrText string
-			asrText, status = asrConn.SelectUromanLine(lineId)
+			asrText, status = a.SelectTranscript(verse.ScriptId)
 			if status != nil {
 				return result, status
 			}
-			alignedText := a.GetOriginalText(line.Chars) // This could be done by selecting line
-			//fmt.Println(len(alignUroman))
-			newLine := a.insertASRSilenceChars(lineRef, line, alignedText, asrText, silencePos)
+			alignedText := a.GetOriginalText(verse) // This could be done by selecting line
+			newLine := a.insertASRSilenceChars(verse, alignedText, asrText)
 			result = append(result, newLine)
 		}
 	}
 	return result, status
 }
 
-func (a *AlignSilence) InsertSpaces(chars []generic.AlignChar) []generic.AlignChar {
-	var result []generic.AlignChar
-	for i, char := range chars {
-		if i > 0 && char.CharSeq == 0 {
-			var newChar generic.AlignChar
-			newChar.AudioFile = char.AudioFile
-			newChar.LineId = char.LineId
-			newChar.LineRef = char.LineRef
+func (a *AlignSilence) InsertSpaces(verse Verse2) Verse2 {
+	var result Verse2
+	result.ScriptId = verse.ScriptId
+	result.LineRef = verse.LineRef
+	result.BeginTS = verse.BeginTS
+	result.EndTS = verse.EndTS
+	result.Duration = verse.Duration
+
+	lastWord := len(verse.Words) - 1
+	for i := 0; i < len(verse.Words); i++ {
+		word := verse.Words[i]
+		if i < lastWord {
+			var newChar Char2
 			newChar.Char = ' '
 			newChar.FAScore = 1.0
-			result = append(result, newChar)
+			word.Chars = append(word.Chars, newChar)
 		}
-		result = append(result, char)
-
+		result.Words = append(result.Words, word)
 	}
 	return result
 }
 
-func (a *AlignSilence) FindSilencePos(chars []generic.AlignChar) []int {
-	var silencePos []int
-	for i, char := range chars {
-		if char.SilenceLong > 0 {
-			silencePos = append(silencePos, i)
+func (a *AlignSilence) HasSilence(verse Verse2) bool {
+	for _, wd := range verse.Words {
+		for _, char := range wd.Chars {
+			if char.SilenceLong > 0 {
+				return true
+			}
 		}
 	}
-	return silencePos
+	return false
 }
 
-func (a *AlignSilence) GetOriginalText(chars []generic.AlignChar) string {
+func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 	var allChars []rune
-	for _, char := range chars {
-		allChars = append(allChars, char.Char)
+	for _, wd := range verse.Words {
+		for _, ch := range wd.Chars {
+			allChars = append(allChars, ch.Char)
+		}
 	}
 	return string(allChars)
 }
 
-func (a *AlignSilence) insertASRSilenceChars(
-	lineRef generic.VerseRef,
-	line generic.AlignLine,
-	alignedText, asrText string,
-	silencePos []int,
-) generic.AlignLine {
-
-	cDiffs := a.DiffMatchPatch(lineRef, alignedText, asrText)
-
-	var newLine generic.AlignLine
-	silStart := 0
-
-	for _, silPos := range silencePos {
-		// 1. carry over original chars through the silence anchor
-		for i := silStart; i <= silPos; i++ {
-			newLine.Chars = append(newLine.Chars, line.Chars[i])
+func (a *AlignSilence) insertASRSilenceChars(verse Verse2, alignedText, asrText string) Verse2 {
+	cDiffs := a.DiffMatchPatch(alignedText, asrText)
+	var position int
+	for i, wd := range verse.Words {
+		for _, ch := range wd.Chars {
+			if ch.SilenceLong > 0 {
+				diffPos := a.FindPositionInDiff(cDiffs, position)
+				for i := diffPos + 1; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
+					var newChar Char2
+					newChar.Char = cDiffs[i].Char
+					newChar.BeginTS = -1
+					newChar.EndTS = -1
+					newChar.FAScore = 1.0
+					newChar.IsASR = true
+					wd.Chars = append(wd.Chars, newChar)
+				}
+			}
+			position += 1
 		}
-		silStart = silPos + 1
-
-		// 2. splice in the ASR inserts that fill the gap after curr
-		curr := line.Chars[silPos]
-		diffPos := a.FindPositionInDiff(cDiffs, silPos)
-		for i := diffPos + 1; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
-			newLine.Chars = append(newLine.Chars, generic.AlignChar{
-				AudioFile: curr.AudioFile,
-				LineId:    curr.LineId,
-				LineRef:   curr.LineRef,
-				Char:      cDiffs[i].Char,
-				BeginTS:   curr.EndTS,
-				EndTS:     curr.EndTS + curr.Silence,
-				FAScore:   1.0,
-				IsASR:     true,
-			})
-		}
+		verse.Words[i] = wd
 	}
-
-	// 3. copy the tail: everything after the last silence
-	for i := silStart; i < len(line.Chars); i++ {
-		newLine.Chars = append(newLine.Chars, line.Chars[i])
-	}
-
-	return newLine
+	return verse
 }
 
 type CDiff struct {
@@ -120,7 +101,7 @@ type CDiff struct {
 	Char rune
 }
 
-func (a *AlignSilence) DiffMatchPatch(lineRef generic.VerseRef, text string, asrText string) []CDiff {
+func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
 	var result []CDiff
 	diffMatch := diffmatchpatch.New()
 	text = strings.TrimSpace(text)
@@ -155,81 +136,16 @@ func (a *AlignSilence) FindPositionInDiff(cDiffs []CDiff, charPos int) int {
 	return len(cDiffs)
 }
 
-/*
-type Verse struct {
-	ScriptId int64
-	LineRef  generic.VerseRef //LineRef in alignline is string
-	BeginTS  float64
-	EndTS    float64
-	Duration float64
-	Words    []Word
-}
-type Word struct {
-	WordId  int64
-	Text    string
-	Uroman  string
-	BeginTS float64
-	EndTS   float64
-	FAScore float64
-}
-
-word_id INTEGER PRIMARY KEY AUTOINCREMENT,
-script_id INTEGER NOT NULL,
-word_seq INTEGER NOT NULL,
-verse_num INTEGER NOT NULL,
-ttype TEXT NOT NULL DEFAULT 'W',
-word TEXT NOT NULL,
-uroman TEXT NOT NULL DEFAULT '',
-word_begin_ts REAL NOT NULL DEFAULT 0.0,
-word_end_ts REAL NOT NULL DEFAULT 0.0,
-fa_score REAL NOT NULL DEFAULT 0.0,
-
-type Word struct {
-	VerseStr    string
-	WordId      int
-	ScriptId    int
-	WordSeq     int
-	VerseNum    int
-	TType       string
-	Word        string
-	WordBeginTS float64
-	WordEndTS   float64
-	FAScore     float64
-	WordEncoded []float64
-
-func (a *AlignSilence) PrepareDataForWriter(lines []generic.AlignLine) []Verse {
-	var verses = make([]Verse, 0, len(lines))
-	var lastWordId = int64(-1)
-	var sumFAScore, cntFAScore float64
-	var word Word
-	for _, line := range lines {
-		var verse Verse
-		verse.ScriptId = line.Chars[0].LineId
-		verse.LineRef = generic.NewVerseRef(line.Chars[0].LineRef)
-		verse.BeginTS = line.Chars[0].BeginTS
-		for _, char := range line.Chars {
-			var words = make([]Word, 0, 32)
-			if char.WordId != lastWordId {
-				words = append(words, word)
-				verse.Words = words
-				word = Word{}
-				word.WordId = char.WordId
-				word.Text = append(word.Text, char.Uroman)
-				word.Uroman = ''
-				word.BeginTS = char.BeginTS
-				word.FAScore = sumFAScore / cntFAScore
-				sumFAScore = 0.0
-				cntFAScore = 0.0
-			}
-			verse.EndTS = char.EndTS
-			word.EndTS = char.EndTS
-			sumFAScore += char.FAScore
-			cntFAScore += 1
-
-		}
+func (a *AlignSilence) SelectTranscript(scriptId int64) (string, *log.Status) {
+	query := `SELECT transcript FROM scripts_qa_align WHERE script_id = ?`
+	row := a.conn.DB.QueryRow(query, scriptId)
+	var transcript string
+	err := row.Scan(&transcript)
+	if err == sql.ErrNoRows {
+		return "", nil
+	} else if err != nil {
+		return "", log.Error(a.ctx, 500, err, "Failed to select from qa_align_scripts")
+	} else {
+		return transcript, nil
 	}
 }
-	With QAAlign, the text data coming out of the ASR process is NOT uroman, but it is original text.
-		This is a major difference with the align_compare code.  Uroman should only be provided on a while verse basis
-	The inserted character data is not in the
-*/

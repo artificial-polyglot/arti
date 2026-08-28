@@ -228,11 +228,10 @@ func (c *Controller) processSteps() *log.Status {
 	// Audio Proofing
 	if c.req.AudioProof.HTMLReport {
 		log.Info(c.ctx, "Perform audio proof Report.")
-		filename, status = c.audioProofing()
+		status = c.audioProofing()
 		if status != nil {
 			return status
 		}
-		c.bucket.AddOutput(filename)
 	}
 	// Copy for STT
 	//if !c.req.TextData.NoText &&
@@ -547,27 +546,22 @@ func (c *Controller) encodeText() *log.Status {
 	return status
 }
 
-func (c *Controller) audioProofing() (string, *log.Status) {
+func (c *Controller) audioProofing() *log.Status {
 	_, status := qa_align.Process(c.database)
 	if status != nil {
-		return "", status
+		return status
 	}
 	outputs, status := proofing_rpt.Process(c.database)
 	if status != nil {
-		return "", status
+		return status
 	}
-	var filename string
 	for _, out := range outputs {
-		if out.Report == "proofing" {
-			filename = out.FilePath
-		} else {
-			c.bucket.AddOutput(out.FilePath)
-		}
+		c.bucket.AddOutput(out.FilePath)
 	}
-	if filename == "" {
-		return "", log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
+	if len(outputs) == 0 {
+		return log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
 	}
-	return filename, nil
+	return nil
 }
 
 func (c *Controller) matchText() (string, *log.Status) {

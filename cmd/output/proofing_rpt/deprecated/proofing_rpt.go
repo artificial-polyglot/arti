@@ -1,4 +1,4 @@
-package proofing_rpt
+package deprecated
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -35,8 +36,8 @@ type Verse struct {
 	AudioFile string
 }
 
-const FA_SCORE_CUTOFF = 0.5
-const OPACITY_CUTOFF = 0.5
+//const FA_SCORE_CUTOFF = 0.5
+//const OPACITY_CUTOFF = 0.5
 
 type ProofingRpt struct {
 	ctx         context.Context
@@ -58,7 +59,7 @@ func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, map[string]generic.A
 	var result [][]Word
 	var verses map[int64]Verse
 	var audioURLs map[string]generic.AudioFile
-	words, status := p.SelectWords(FA_SCORE_CUTOFF)
+	words, status := p.SelectWords(proofing_rpt.FA_SCORE_CUTOFF)
 	if status != nil {
 		return result, verses, audioURLs, status
 	}
@@ -69,7 +70,7 @@ func (p *ProofingRpt) Process() ([][]Word, map[int64]Verse, map[string]generic.A
 	}
 	log.Info(p.ctx, "Uroman duration", time.Since(start))
 	result = words
-	p.computeOpacity(result, OPACITY_CUTOFF)
+	p.computeOpacity(result, proofing_rpt.OPACITY_CUTOFF)
 	verses, status = p.findVerseReferences(result)
 	if status != nil {
 		return result, verses, audioURLs, status

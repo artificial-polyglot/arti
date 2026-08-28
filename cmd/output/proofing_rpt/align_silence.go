@@ -2,21 +2,13 @@ package proofing_rpt
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"gonum.org/v1/gonum/stat"
-)
-
-const (
-	criticalThreshold = 0.0001 // 0.001
-	questionThreshold = 0.001  // 0.001
-	//silenceStdevs     = 4.0    // intended to make it rare
 )
 
 type ErrorType int
@@ -40,26 +32,27 @@ const (
 	betweenChapters
 )
 
+const FA_SCORE_CUTOFF = 0.5
+const OPACITY_CUTOFF = 0.5
+
 type AlignSilence struct {
-	ctx     context.Context
-	conn    db.DBAdapter
-	asrConn db.DBAdapter
+	ctx  context.Context
+	conn db.DBAdapter
 }
 
-func NewAlignSilence(ctx context.Context, conn db.DBAdapter, asrConn db.DBAdapter) AlignSilence {
+func NewAlignSilence(conn db.DBAdapter) AlignSilence {
 	var a AlignSilence
-	a.ctx = ctx
+	a.ctx = conn.Ctx
 	a.conn = conn
-	a.asrConn = asrConn
 	return a
 }
 
-func (a *AlignSilence) Process(audioDirectory string) ([]generic.AlignLine, string, *log.Status) {
-	var faLines []generic.AlignLine
-	var status *log.Status
-	faChars, status := a.conn.SelectFACharTimestamps()
+func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.Status) {
+	var verses []Verse2
+	var audioURLs map[string]generic.AudioFile
+	faChars, status := a.conn.SelectFACharTimestamps(FA_SCORE_CUTOFF)
 	if status != nil {
-		return faLines, "", status
+		return verses, audioURLs, status
 	}
 	for i := 0; i < len(faChars)-1; i++ {
 		var curr = faChars[i]
@@ -75,8 +68,15 @@ func (a *AlignSilence) Process(audioDirectory string) ([]generic.AlignLine, stri
 		} else {
 			faChars[i].SilencePos = int(betweenChapters)
 			var duration float64
-			duration, status = ffmpeg.GetAudioDuration(a.ctx, audioDirectory, faChars[i].AudioFile)
-			faChars[i].Silence = duration - curr.EndTS
+			duration, status = a.SelectDuration(faChars[i].LineId)
+			if status != nil {
+				return verses, audioURLs, status
+			}
+			if duration > curr.EndTS {
+				faChars[i].Silence = duration - curr.EndTS
+			} else {
+				faChars[i].Silence = 0.0
+			}
 		}
 	}
 	mean, stddev := a.analyzeData(a.getDurations(faChars))
@@ -94,14 +94,14 @@ func (a *AlignSilence) Process(audioDirectory string) ([]generic.AlignLine, stri
 	//fmt.Println("Between Chapters:", mean, stddev, mini, maxi)
 	var chapLimit = mean + (3.0 * stddev)
 	a.markSilenceOutliers(faChars, charLimit, wordLimit, verseLimit, chapLimit)
-	faLines = a.groupByLine(faChars)
-	faLines, status = a.compareLines2ASR(faLines, a.asrConn)
+	verses = a.PrepareDataForWriter(faChars)
+	verses, status = a.CompareLines2ASR(verses)
 	if status != nil {
-		return faLines, "", status
+		return verses, audioURLs, status
 	}
-	filenameMap, status := a.generateBookChapterFilenameMap()
-	//a.countErrors(faLines)
-	return faLines, filenameMap, status
+	audioURLs, status = db.CreateAudioFileMap(a.conn)
+	a.ComputeOpacity(verses, OPACITY_CUTOFF)
+	return verses, audioURLs, status
 }
 
 func (a *AlignSilence) getDurations(chars []generic.AlignChar) []float64 {
@@ -190,25 +190,6 @@ func (a *AlignSilence) groupByLine(chars []generic.AlignChar) []generic.AlignLin
 	return result
 }
 
-func (a *AlignSilence) generateBookChapterFilenameMap() (string, *log.Status) {
-	chapters, status := a.conn.SelectBookChapterFilename()
-	if status != nil {
-		return "", status
-	}
-	var result []string
-	result = append(result, "let fileMap = {\n")
-	for i, ch := range chapters {
-		key := ch.BookId + strconv.Itoa(ch.ChapterNum)
-		result = append(result, "\t'"+key+"': '"+ch.AudioFile+"'")
-		if i < len(chapters)-1 {
-			result = append(result, ",\n")
-		} else {
-			result = append(result, "};\n")
-		}
-	}
-	return strings.Join(result, ""), status
-}
-
 func (a *AlignSilence) countErrors(lines []generic.AlignLine) {
 	var total int
 	var critScoreError int
@@ -233,4 +214,27 @@ func (a *AlignSilence) countErrors(lines []generic.AlignLine) {
 	fmt.Println("BetweenVersesLong", count[betweenVersesLong])
 	fmt.Println("BetweenChaptersLong", count[betweenChaptersLong])
 	fmt.Println("Total\t", total)
+}
+
+func (a *AlignSilence) SelectDuration(scriptId int64) (float64, *log.Status) {
+	query := `SELECT script_end_ts FROM scripts WHERE script_id = ?`
+	row := a.conn.DB.QueryRow(query, scriptId)
+	var timestamp float64
+	err := row.Scan(&timestamp)
+	if err == sql.ErrNoRows {
+		return 0.0, nil
+	} else if err != nil {
+		return 0.0, log.Error(a.ctx, 500, err, "Failed to select from qa_align_scripts")
+	}
+	return timestamp, nil
+}
+
+func (p *AlignSilence) ComputeOpacity(verses []Verse2, opacityCutoff float64) {
+	for i := range verses {
+		for j := range verses[i].Words {
+			if verses[i].Words[j].FAScore < opacityCutoff {
+				verses[i].Words[j].Opacity = 1.0 - verses[i].Words[j].FAScore/opacityCutoff
+			}
+		}
+	}
 }
