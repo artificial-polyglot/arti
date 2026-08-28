@@ -52,8 +52,8 @@ RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchau
 RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox && \
-    ${MMS_FA}/pip install sox && \
-    ${MMS_FA}/pip install uroman && \
+    ${MMS_FA}/pip install --no-cache-dir sox && \
+    ${MMS_FA}/pip install --no-cache-dir uroman && \
     cp ${MMS_FA}/uroman ${MMS_FA}/uroman.pl && \
     ${MMS_FA}/pip cache purge && \
     ${BASE}/miniforge3/bin/conda clean -afy
@@ -64,16 +64,16 @@ ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/
 ARG MMS_ADAPTER=${BASE}/miniforge3/envs/mms_adapter/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_adapter python=3.11
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_adapter -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox
-RUN ${MMS_ADAPTER}/pip install numpy
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir numpy
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ADAPTER}/pip install soundfile
-RUN ${MMS_ADAPTER}/pip install adapters
-RUN ${MMS_ADAPTER}/pip install peft
-RUN ${MMS_ADAPTER}/pip install jiwer
-RUN ${MMS_ADAPTER}/pip install evaluate
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir soundfile
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir adapters
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir peft
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir jiwer
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir evaluate
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir nvidia-npp-cu12
 ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
 
@@ -85,16 +85,16 @@ RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torch torcha
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ASR}/pip install accelerate
-RUN ${MMS_ASR}/pip install datasets
-RUN ${MMS_ASR}/pip install transformers
-RUN ${MMS_ASR}/pip install soundfile
-RUN ${MMS_ASR}/pip install librosa
-RUN ${MMS_ASR}/pip install uroman
+RUN ${MMS_ASR}/pip install --no-cache-dir accelerate
+RUN ${MMS_ASR}/pip install --no-cache-dir datasets
+RUN ${MMS_ASR}/pip install --no-cache-dir transformers
+RUN ${MMS_ASR}/pip install --no-cache-dir soundfile
+RUN ${MMS_ASR}/pip install --no-cache-dir librosa
+RUN ${MMS_ASR}/pip install --no-cache-dir uroman
 RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
 # These two needed by decoder
-RUN ${MMS_ASR}/pip install nltk
-RUN ${MMS_ASR}/pip install pyctcdecode
+RUN ${MMS_ASR}/pip install --no-cache-dir nltk
+RUN ${MMS_ASR}/pip install --no-cache-dir pyctcdecode
 
 # Pre-download the MMS_FA model weights so the container never fetches them
 # over the network at runtime.
