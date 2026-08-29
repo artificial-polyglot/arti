@@ -137,6 +137,12 @@ func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
 	for _, wd := range verse.Words {
 		if wd.Ttype != "W" {
 			span = wd.Text
+		} else if wd.Ttype == "ASR" && wd.Text == wd.Uroman {
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgb(255, 193, 84);">%s</span>`,
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text)
+		} else if wd.Ttype == "ASR" {
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgb(255, 193, 84);">%s</span>`,
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Text)
 		} else if wd.Text == wd.Uroman && wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f>%s</span>`,
 				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text)
@@ -151,6 +157,7 @@ func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
 				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Opacity, wd.Text)
 		}
 		_, _ = h.out.WriteString(span)
+		_, _ = h.out.WriteString(" ")
 	}
 	_, _ = h.out.WriteString("</td></tr>\n")
 }
@@ -239,7 +246,7 @@ func (h *HTMLWriter) WriteEnd() {
 			var scores = String($(this.node()).data('fascores'))
 						   .split(',')
 						   .map(Number);
-			var n = scores.filter(function (s) { return s < cutoff; }).length;
+			var n = scores.filter(function (s) { return s <= cutoff; }).length;
 			this.cell(this.index(), 2).data(n);   // sets cell + keeps sort correct
 		  });
 		  table.draw(false);          // false = stay on current page

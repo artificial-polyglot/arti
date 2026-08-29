@@ -12,7 +12,6 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 	var result []Verse2
 	var status *log.Status
 	for _, verse := range verses {
-		verse = a.InsertSpaces(verse)
 		if !a.HasSilence(verse) {
 			result = append(result, verse)
 		} else {
@@ -21,34 +20,12 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 			if status != nil {
 				return result, status
 			}
-			alignedText := a.GetOriginalText(verse) // This could be done by selecting line
-			newLine := a.insertASRSilenceChars(verse, alignedText, asrText)
+			refText := a.GetOriginalText(verse) // This could be done by selecting line
+			newLine := a.InsertASRSilenceChars(verse, refText, asrText)
 			result = append(result, newLine)
 		}
 	}
 	return result, status
-}
-
-func (a *AlignSilence) InsertSpaces(verse Verse2) Verse2 {
-	var result Verse2
-	result.ScriptId = verse.ScriptId
-	result.LineRef = verse.LineRef
-	result.BeginTS = verse.BeginTS
-	result.EndTS = verse.EndTS
-	result.Duration = verse.Duration
-
-	lastWord := len(verse.Words) - 1
-	for i := 0; i < len(verse.Words); i++ {
-		word := verse.Words[i]
-		if i < lastWord {
-			var newChar Char2
-			newChar.Char = ' '
-			newChar.FAScore = 1.0
-			word.Chars = append(word.Chars, newChar)
-		}
-		result.Words = append(result.Words, word)
-	}
-	return result
 }
 
 func (a *AlignSilence) HasSilence(verse Verse2) bool {
@@ -63,36 +40,75 @@ func (a *AlignSilence) HasSilence(verse Verse2) bool {
 }
 
 func (a *AlignSilence) GetOriginalText(verse Verse2) string {
-	var allChars []rune
-	for _, wd := range verse.Words {
-		for _, ch := range wd.Chars {
-			allChars = append(allChars, ch.Char)
+	var text []string
+	for i, wd := range verse.Words {
+		if i > 0 {
+			text = append(text, " ")
 		}
+		text = append(text, wd.Text)
 	}
-	return string(allChars)
+	return strings.ToLower(strings.Join(text, ""))
 }
 
-func (a *AlignSilence) insertASRSilenceChars(verse Verse2, alignedText, asrText string) Verse2 {
-	cDiffs := a.DiffMatchPatch(alignedText, asrText)
-	var position int
-	for i, wd := range verse.Words {
+func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText string) Verse2 {
+	cDiffs := a.DiffMatchPatch(refText, asrText)
+	newWords := make([]Word2, 0, len(verse.Words)+10)
+	position := 0
+	for _, wd := range verse.Words {
+		var pendingASR []Word2
 		for _, ch := range wd.Chars {
 			if ch.SilenceLong > 0 {
 				diffPos := a.FindPositionInDiff(cDiffs, position)
-				for i := diffPos + 1; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
-					var newChar Char2
-					newChar.Char = cDiffs[i].Char
-					newChar.BeginTS = -1
-					newChar.EndTS = -1
-					newChar.FAScore = 1.0
-					newChar.IsASR = true
-					wd.Chars = append(wd.Chars, newChar)
+				if diffPos >= 0 {
+					var newWord Word2
+					var text []rune
+					for i := diffPos + 1; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
+						newChar := Char2{
+							Char:    cDiffs[i].Char,
+							BeginTS: -1,
+							EndTS:   -1,
+							FAScore: 0.0,
+							IsASR:   true,
+						}
+						text = append(text, newChar.Char)
+						newWord.Chars = append(newWord.Chars, newChar)
+					}
+					if len(newWord.Chars) > 0 {
+						n := len(newWord.Chars)
+						start := ch.EndTS
+						span := ch.Silence // duration of the silence gap
+
+						if span > 0 {
+							slice := span / float64(n)
+							for j := range newWord.Chars {
+								newWord.Chars[j].BeginTS = start + float64(j)*slice
+								newWord.Chars[j].EndTS = start + float64(j+1)*slice
+							}
+							newWord.BeginTS = newWord.Chars[0].BeginTS
+							newWord.EndTS = newWord.Chars[n-1].EndTS
+						} else {
+							// no usable duration — fall back to the -1 "unknown" sentinel
+							for j := range newWord.Chars {
+								newWord.Chars[j].BeginTS = -1
+								newWord.Chars[j].EndTS = -1
+							}
+							newWord.BeginTS = -1
+							newWord.EndTS = -1
+						}
+
+						newWord.Ttype = "ASR"
+						newWord.Text = string(text)
+						newWord.FAScore = 0.0
+						pendingASR = append(pendingASR, newWord)
+					}
 				}
 			}
-			position += 1
+			position++
 		}
-		verse.Words[i] = wd
+		newWords = append(newWords, wd)
+		newWords = append(newWords, pendingASR...) // ASR words follow their word
 	}
+	verse.Words = newWords
 	return verse
 }
 
@@ -108,10 +124,7 @@ func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
 	asrText = strings.TrimSpace(asrText)
 	diffs := diffMatch.DiffMain(text, asrText, false)
 	diffs = diffMatch.DiffCleanupSemantic(diffs)
-	//fmt.Println(lineRef, asrText)
-	//fmt.Println(lineRef, text)
-	//fmt.Println(lineRef, diffMatch.DiffPrettyText(diffs))
-	//fmt.Println(diffs)
+
 	for _, df := range diffs {
 		for _, ch := range df.Text {
 			var cDiff CDiff
@@ -124,12 +137,12 @@ func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
 }
 
 func (a *AlignSilence) FindPositionInDiff(cDiffs []CDiff, charPos int) int {
-	var diffPos = -1
+	refCount := -1
 	for i, ch := range cDiffs {
 		if ch.Type != diffmatchpatch.DiffInsert {
-			diffPos++
-			if diffPos >= charPos {
-				return i
+			refCount++
+			if refCount >= charPos {
+				return i // array index of the charPos-th reference char
 			}
 		}
 	}

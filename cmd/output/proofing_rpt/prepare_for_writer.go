@@ -51,11 +51,6 @@ func (a *AlignSilence) PrepareDataForWriter(chars []generic.AlignChar) []Verse2 
 		if !haveWord {
 			return
 		}
-		text := []rune{}
-		for _, ch := range word.Chars {
-			text = append(text, ch.Char)
-		}
-		word.Text = string(text)
 		if cntFAScore > 0 {
 			word.FAScore = sumFAScore / cntFAScore
 		}
@@ -85,7 +80,7 @@ func (a *AlignSilence) PrepareDataForWriter(chars []generic.AlignChar) []Verse2 
 		}
 		if !haveWord || char.WordId != word.WordId {
 			flushWord()
-			word = Word2{WordId: char.WordId, Ttype: "W", BeginTS: char.BeginTS}
+			word = Word2{WordId: char.WordId, Ttype: "W", Text: char.Word, BeginTS: char.BeginTS}
 			sumFAScore, cntFAScore = 0, 0
 			haveWord = true
 		}

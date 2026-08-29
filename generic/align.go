@@ -5,7 +5,6 @@ type AlignLine struct {
 }
 
 type AlignChar struct {
-	AudioFile   string // Deprecated DELETE SOON
 	LineId      int64
 	LineRef     VerseRef // e.g. GEN 1:3-5a or GEN 1 or GEN 1:49-2:1
 	WordId      int64    // WordSeq, Word could be added

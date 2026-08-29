@@ -11,10 +11,9 @@ import (
 
 func TestAlignWriter(t *testing.T) {
 	ctx := context.Background()
-	lang := "skn"
-	fmt.Println("lang", lang)
 
-	database, status := input.AWSS3Input(ctx, "s3://arti-output/GaryNTest/N2QAEBSP/arti/00001/database/*.db")
+	//database, status := input.AWSS3Input(ctx, "s3://arti-output/GaryNTest/N2QAEBSP/arti/00001/database/*.db")
+	database, status := input.AWSS3Input(ctx, "s3://arti-output/GaryNTest/N2MGUPNG/arti/00003/database/*.db")
 	if status != nil {
 		t.Fatal(status)
 	}
