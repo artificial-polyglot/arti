@@ -81,6 +81,7 @@ func (w *WordParser) Parse() *log.Status {
 			}
 		}
 	}
+	GenerateWordPunct(w.records)
 	w.conn.DeleteWords()
 	status = w.conn.InsertWords(w.records)
 	w.records = nil
@@ -360,4 +361,32 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 		return nil, log.ErrorNoErr(ctx, 500, "tokenizeScriptText: text ended inside an unterminated verse number", text)
 	}
 	return tokens, nil
+}
+
+func GenerateWordPunct(words []db.Word) {
+	var leading string
+	curIdx := -1
+	lastScript := -1 // match ScriptId's type
+	for i := range words {
+		r := &words[i] // pointer → writes land in the slice, not a copy
+		if r.ScriptId != lastScript {
+			leading = ""
+			curIdx = -1 // also close the trailing window at a script boundary
+			lastScript = r.ScriptId
+		}
+		switch r.TType {
+		case "W":
+			r.WordPunct = leading + r.Word
+			leading = ""
+			curIdx = i
+		case "P":
+			if curIdx >= 0 {
+				words[curIdx].WordPunct += r.Word // trailing → preceding word
+			} else {
+				leading += r.Word // leading → next word
+			}
+		case "S":
+			curIdx = -1 // whitespace closes the trailing-attachment window
+		}
+	}
 }

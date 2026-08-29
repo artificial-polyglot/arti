@@ -52,10 +52,11 @@ type Word struct {
 	VerseNum    int
 	TType       string
 	Word        string
+	WordPunct   string
 	WordBeginTS float64
 	WordEndTS   float64
 	FAScore     float64
-	WordEncoded []float64
+	WordEncoded []float64 // Used by FASTTEXT
 }
 
 type Timestamp struct {

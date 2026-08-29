@@ -175,14 +175,12 @@ func createDatabase(db *sql.DB) {
 		verse_num INTEGER NOT NULL,
 		ttype TEXT NOT NULL DEFAULT 'W',
 		word TEXT NOT NULL,
+		word_punct TEXT NOT NULL DEFAULT '',
 		uroman TEXT NOT NULL DEFAULT '',
 		word_begin_ts REAL NOT NULL DEFAULT 0.0,
 		word_end_ts REAL NOT NULL DEFAULT 0.0,
 		fa_score REAL NOT NULL DEFAULT 0.0,
 		word_enc TEXT NOT NULL DEFAULT '',
-		src_word_enc TEXT NOT NULL DEFAULT '', -- planned
-		word_multi_enc TEXT NOT NULL DEFAULT '', -- planned
-		src_word_multi_enc TEXT NOT NULL DEFAULT '', -- planned
 		FOREIGN KEY(script_id) REFERENCES scripts(script_id)) STRICT`
 	execDDL(db, query)
 	query = `CREATE UNIQUE INDEX IF NOT EXISTS words_idx
@@ -534,11 +532,11 @@ func (d *DBAdapter) InsertWordMFCCS(mfccs []MFCC) *log.Status {
 }
 
 func (d *DBAdapter) InsertWords(records []Word) *log.Status {
-	sql1 := `INSERT INTO words(script_id, word_seq, verse_num, ttype, word) VALUES (?,?,?,?,?)`
+	sql1 := `INSERT INTO words(script_id, word_seq, verse_num, ttype, word, word_punct) VALUES (?,?,?,?,?,?)`
 	tx, stmt := d.prepareDML(sql1)
 	defer d.closeDef(stmt, "InsertWords stmt")
 	for _, rec := range records {
-		_, err := stmt.Exec(rec.ScriptId, rec.WordSeq, rec.VerseNum, rec.TType, rec.Word)
+		_, err := stmt.Exec(rec.ScriptId, rec.WordSeq, rec.VerseNum, rec.TType, rec.Word, rec.WordPunct)
 		if err != nil {
 			return log.Error(d.Ctx, 500, err, "Error while inserting Words.")
 		}
@@ -836,9 +834,9 @@ func (d *DBAdapter) SelectFAScriptTimestamps(bookId string, chapter int) ([]Audi
 func (d *DBAdapter) SelectFACharTimestamps(cutoff float64) ([]generic.AlignChar, *log.Status) {
 	var chars []generic.AlignChar
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str,
-				w.word_id, w.word, c.seq, c.char, c.begin_ts, c.end_ts, c.fa_score
+				w.word_id, w.word_punct, c.seq, c.char, c.begin_ts, c.end_ts, c.fa_score
 				FROM scripts s JOIN words w ON s.script_id = w.script_id
-				JOIN chars_qa_align c ON w.word_id = c.word_id
+				LEFT OUTER JOIN chars_qa_align c ON w.word_id = c.word_id
 				WHERE w.ttype = 'W' AND w.script_id IN (
        				SELECT DISTINCT w2.script_id
        				FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
