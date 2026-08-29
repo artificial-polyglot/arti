@@ -1,18 +1,6 @@
 package research
 
-import (
-	"context"
-	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"testing"
-
-	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
-	"github.com/artificial-polyglot/arti/db"
-)
-
+/*
 type Error struct {
 	ref      string
 	words    int
@@ -88,7 +76,7 @@ func selectReferences(conn db.DBAdapter) map[string]int64 {
 	return result
 }
 
-func testByAccuracy(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool {
+func testByAccuracy(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
 	var scriptIds = make(map[int64]bool)
 	for _, verse := range words {
 		fmt.Println(verse)
@@ -100,26 +88,26 @@ func testByAccuracy(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool 
 	return scriptIds
 }
 
-func testVersesByMinimum(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool {
+func testVersesByMinimum(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
 	var scriptIds = make(map[int64]bool)
 	for _, verse := range words {
 		for _, word := range verse {
-			if word.Ttype == "W" && word.FaScore < cutoff {
-				scriptIds[word.ScriptId] = true
+			if word.Ttype == "W" && word.FAScore < cutoff {
+				scriptIds[word.ScriptID] = true
 			}
 		}
 	}
 	return scriptIds
 }
 
-func testVersesByAverage(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool {
+func testVersesByAverage(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
 	var scriptIds = make(map[int64]bool)
 	for _, verse := range words {
 		var sum float64
-		var word proofing_rpt.Word
+		var word proofing_rpt.Word2
 		for _, word = range verse {
 			if word.Ttype == "W" {
-				sum += word.FaScore
+				sum += word.FAScore
 			}
 		}
 		avg := sum / float64(len(verse))
@@ -130,14 +118,14 @@ func testVersesByAverage(words [][]proofing_rpt.Word, cutoff float64) map[int64]
 	return scriptIds
 }
 
-func testVerseByProduct(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool {
+func testVerseByProduct(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
 	var scriptIds = make(map[int64]bool)
 	for _, verse := range words {
 		var product = 1.0
-		var word proofing_rpt.Word
+		var word proofing_rpt.Word2
 		for _, word = range verse {
-			if word.Ttype == "W" && word.FaScore < cutoff {
-				product *= word.FaScore
+			if word.Ttype == "W" && word.FAScore < cutoff {
+				product *= word.FAScore
 			}
 		}
 		if product < cutoff {
@@ -147,14 +135,14 @@ func testVerseByProduct(words [][]proofing_rpt.Word, cutoff float64) map[int64]b
 	return scriptIds
 }
 
-func testVerseByProductAll(words [][]proofing_rpt.Word, cutoff float64) map[int64]bool {
+func testVerseByProductAll(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
 	var scriptIds = make(map[int64]bool)
 	for _, verse := range words {
 		var product = 1.0
-		var word proofing_rpt.Word
+		var word proofing_rpt.Word2
 		for _, word = range verse {
 			if word.Ttype == "W" {
-				product *= word.FaScore
+				product *= word.FAScore
 			}
 		}
 		if product < cutoff {
@@ -176,3 +164,5 @@ func checkCorrectness(knownErrors []Error, found map[int64]bool) float64 {
 	}
 	return float64(hits) / float64(len(knownErrors))
 }
+
+*/

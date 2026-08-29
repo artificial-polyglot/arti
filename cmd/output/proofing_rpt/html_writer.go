@@ -118,7 +118,6 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 }
 
 func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
-	ComputeOpacity(verse, OPACITY_CUTOFF)
 	_, _ = h.out.WriteString("<tr data-fascores=" + getLowFaScores(verse.Words) + ">\n")
 	h.writeCell(strconv.FormatInt(verse.ScriptId, 10))
 	h.writeCell(strconv.FormatFloat(ComputeMinimum(verse.Words), 'f', 4, 64))
@@ -352,12 +351,4 @@ func startTime(words []Word2) float64 {
 		}
 	}
 	return 0.0
-}
-
-func ComputeOpacity(verse Verse2, opacityCutoff float64) {
-	for j := range verse.Words {
-		if verse.Words[j].FAScore < opacityCutoff {
-			verse.Words[j].Opacity = 1.0 - verse.Words[j].FAScore/opacityCutoff
-		}
-	}
 }

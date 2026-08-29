@@ -99,6 +99,15 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 	if status != nil {
 		return verses, audioURLs, status
 	}
+	for _, v := range verses {
+		for _, w := range v.Words {
+			for _, c := range w.Chars {
+				if c.IsASR {
+					fmt.Println(v.LineRef, "ISASR", c, string(c.Char))
+				}
+			}
+		}
+	}
 	audioURLs, status = db.CreateAudioFileMap(a.conn)
 	a.ComputeOpacity(verses, OPACITY_CUTOFF)
 	return verses, audioURLs, status
@@ -153,41 +162,6 @@ func (a *AlignSilence) markSilenceOutliers(chars []generic.AlignChar, charLimit,
 			}
 		}
 	}
-}
-
-func (a *AlignSilence) groupByLine(chars []generic.AlignChar) []generic.AlignLine {
-	var result []generic.AlignLine
-	if len(chars) == 0 {
-		return result
-	}
-	currRef := chars[0].LineRef
-	start := 0
-	for i, ch := range chars {
-		if ch.LineRef != currRef { // compare on lineRef makes verse a unique key
-			currRef = ch.LineRef
-			oneLine := make([]generic.AlignChar, i-start)
-			copy(oneLine, chars[start:i])
-			start = i
-			var line generic.AlignLine
-			line.Chars = oneLine
-			result = append(result, line)
-		}
-	}
-	if start < len(chars) {
-		lastLine := make([]generic.AlignChar, len(chars)-start)
-		copy(lastLine, chars[start:])
-		var line generic.AlignLine
-		line.Chars = lastLine
-		result = append(result, line)
-	}
-	count := 0
-	for _, l := range result {
-		count += len(l.Chars)
-	}
-	if count != len(chars) {
-		log.Warn(a.ctx, "Original chars", len(chars), "final chars", count)
-	}
-	return result
 }
 
 func (a *AlignSilence) countErrors(lines []generic.AlignLine) {
