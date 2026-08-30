@@ -8,7 +8,7 @@ MAT 11:25	7	37
 MAT 13:23	6	32
 MAT 15:10	6	6
 MAT 15:19	14	23
-#MAT 17:3	1	16
+#MAT 17:3	1	16 Em agrees it is not an error
 MAT 17:20	8	53
 MAT 17:23	3	13
 MAT 17:24	6	19

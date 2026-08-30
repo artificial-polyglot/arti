@@ -7,8 +7,6 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -o /app/runpod_arti ./Docker/runpod_arti
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -o /app/qa_align ./cmd/speech_to_text/qa_align/main
 
 # ---- Stage 2: runtime with Python for the RunPod handler ----
 FROM python:3.11-slim
@@ -131,6 +129,5 @@ COPY --from=build /src ${GOPROJ}
 RUN find ${GOPROJ} -name "*.go" -delete
 
 COPY --from=build /app/runpod_arti /app/runpod_arti
-COPY --from=build /app/qa_align /app/qa_align
 COPY Docker/runpod_arti/handler.py /app/handler.py
 CMD ["python", "-u", "/app/handler.py"]
