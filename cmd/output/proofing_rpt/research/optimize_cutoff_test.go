@@ -1,168 +1,230 @@
 package research
 
-/*
-type Error struct {
-	ref      string
-	words    int
-	total    int
-	scriptId int64
+import (
+	"cmp"
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/match/diff"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
+)
+
+//type Error struct {
+//	ref      generic.VerseRef
+//	position int
+//}
+
+type test struct {
+	mediaId     string
+	diffDB      string
+	proofDB     string
+	proofCutoff float64
 }
 
-// This program finds the maxium cutoff that finds all verses
-func TestOptimizeCutoff(t *testing.T) {
-	ctx := context.Background()
-	errors := readErrorFile("N2XNRPMS.txt", t)
-	//dbPath := filepath.Join(os.Getenv("HOME"), "Downloads", "arti_output_GaryNTest_N2XNRPMS_qa_align_00002_database_N2XNRPMS.db")
-	dbPath := filepath.Join(os.Getenv("HOME"), "Downloads", "arti-output_GaryNTest_N2QAEBSP_qa_align_00004_database_N2QAEBSP.db")
-	conn := db.NewDBAdapter(ctx, dbPath)
-	scriptIdMap := selectReferences(conn)
-	for i := range errors {
-		var ok bool
-		errors[i].scriptId, ok = scriptIdMap[errors[i].ref]
+func TestErrorReports(t *testing.T) {
+	var dbs []test
+	var N1SKNSEC test
+	N1SKNSEC.mediaId = "N1SKNSEC"
+	N1SKNSEC.diffDB = "00004"
+	N1SKNSEC.proofDB = "00003"
+	N1SKNSEC.proofCutoff = 0.01
+	dbs = append(dbs, N1SKNSEC)
+
+	for _, tst := range dbs {
+		actualErrors := readErrorFile(tst.mediaId)
+		// do proof
+		proofDB := loadDatabase(tst.mediaId, tst.proofDB)
+		proofErrors := analyzeProofRpt(proofDB, tst.proofCutoff)
+		proofStats := locateErrors(actualErrors, proofErrors)
+		displayStats(tst, "align", proofStats)
+		// do compare
+		diffDB := loadPairs(tst.mediaId, tst.diffDB)
+		diffErrors := analyzeDiffRpt(diffDB)
+		diffStats := locateErrors(actualErrors, diffErrors)
+		displayStats(tst, "diff", diffStats)
+	}
+}
+
+func readErrorFile(mediaId string) []generic.VerseRef {
+	var results []generic.VerseRef
+	bytes, err := os.ReadFile(mediaId + ".txt")
+	if err != nil {
+		exit(err)
+	}
+	lines := strings.Split(string(bytes), "\n")
+	for _, lin := range lines {
+		parts := strings.Split(lin, "\t")
+		ref := generic.NewVerseRef(parts[0])
+		results = append(results, ref)
+	}
+	return results
+}
+
+func loadDatabase(mediaId string, runNum string) string {
+	objectKey := filepath.Join("GaryNTest", mediaId, "arti", runNum, "database", mediaId+".db")
+	localPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "GaryNTest", mediaId+".db")
+	client, err := s3_datastore.NewS3Client(context.Background())
+	if err != nil {
+		exit(err)
+	}
+	err = client.DownloadFile("arti-output", objectKey, localPath)
+	if err != nil {
+		exit(err)
+	}
+	//return strings.TrimSuffix(localPath, ".db")
+	return localPath
+}
+
+func loadPairs(mediaId string, runNum string) string {
+	objectKey := filepath.Join("GaryNTest", mediaId, "arti", runNum, "output", mediaId+"_audio_compare.json")
+	localPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "GaryNTest", mediaId+"_audio_compare.json")
+	client, err := s3_datastore.NewS3Client(context.Background())
+	if err != nil {
+		exit(err)
+	}
+	err = client.DownloadFile("arti-output", objectKey, localPath)
+	if err != nil {
+		exit(err)
+	}
+	return localPath
+}
+
+type proofData struct {
+	//scriptId int
+	ref     generic.VerseRef
+	word    string
+	faScore float64
+}
+
+func analyzeProofRpt(dbPath string, cutoff float64) map[generic.VerseRef]int {
+	var results []proofData
+	conn := db.NewDBAdapter(context.Background(), dbPath)
+	var query = `SELECT s.book_id, s.chapter_num, s.verse_str, 
+			q.word, q.fa_score
+			FROM words_qa_align q JOIN words w ON q.word_id = w.word_id
+			JOIN scripts s ON s.script_id = w.script_id
+			WHERE w.ttype = 'W' AND w.script_id IN (
+       				SELECT DISTINCT w2.script_id
+       				FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
+       				WHERE q2.fa_score <= ?)
+				ORDER BY w.word_id`
+	rows, err := conn.DB.Query(query, cutoff)
+	if err != nil {
+		exit(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ln proofData
+		err = rows.Scan(&ln.ref.BookId, &ln.ref.ChapterNum, &ln.ref.VerseStr,
+			&ln.word, &ln.faScore)
+		if err != nil {
+			exit(err)
+		}
+		results = append(results, ln)
+	}
+	err = rows.Err()
+	if err != nil {
+		exit(err)
+	}
+	conn.Close()
+
+	// count the number faScores below cutoff per verse
+	var summarize = make(map[generic.VerseRef]int)
+	for _, prf := range results {
+		if prf.faScore < cutoff {
+			count, _ := summarize[prf.ref]
+			summarize[prf.ref] = count + 1
+		}
+	}
+
+	// convert to sortable list
+	type sortable struct {
+		ref   generic.VerseRef
+		count int
+	}
+	var sortables []sortable
+	for ref, cnt := range summarize {
+		var srt = sortable{ref: ref, count: cnt}
+		sortables = append(sortables, srt)
+	}
+	slices.SortFunc(sortables, func(a, b sortable) int {
+		return cmp.Compare(b.count, a.count) // b, a = descending
+	})
+
+	// compute the position
+	var cntMap = make(map[generic.VerseRef]int)
+	for pos, srt := range sortables {
+		cntMap[srt.ref] = pos + 1
+	}
+	return cntMap
+}
+
+func analyzeDiffRpt(dbPath string) map[generic.VerseRef]int {
+	bytes, err := os.ReadFile(dbPath)
+	if err != nil {
+		exit(err)
+	}
+	var result []diff.Pair
+	err = json.Unmarshal(bytes, &result)
+	if err != nil {
+		exit(err)
+	}
+
+	/// Missing a step here, I need to sort by length, and the map position, not length
+	var lenMap = make(map[generic.VerseRef]int)
+	for _, pair := range result {
+		ref := generic.VerseRef{BookId: pair.Ref.BookId,
+			ChapterNum: pair.Ref.ChapterNum,
+			VerseStr:   pair.Ref.VerseStr}
+		lenMap[ref] = pair.LargestLength()
+	}
+	return lenMap
+}
+
+type statistic struct {
+	countFound int
+	notFound   int
+	minimum    int
+	maximum    int
+	mean       float64
+}
+
+func locateErrors(actualErrors []generic.VerseRef, reportErrors map[generic.VerseRef]int) statistic {
+	var stats statistic
+	var positions []int
+	var sum float64
+	for _, ref := range actualErrors {
+		pos, ok := reportErrors[ref]
 		if !ok {
-			t.Error("Did not find ", errors[i].ref)
-		}
-	}
-
-	rpt := proofing_rpt.NewProofingRpt(ctx, conn, "qae", false)
-	words, status := rpt.SelectWords(1) // 1.0 is no cutoff
-	if status != nil {
-		t.Fatal(status)
-	}
-	found := testByAccuracy(words, 1)
-	//found := testVersesByMinimum(words, 0.188)
-	//found := testVersesByAverage(words, 0.4)
-	//found := testVerseByProduct(words, 0.3)
-	//found := testVerseByProductAll(words, 0.293)
-	hitPct := checkCorrectness(errors, found)
-	fmt.Println("PCT", hitPct, " out of", len(found))
-
-}
-
-func readErrorFile(filePath string, t *testing.T) []Error {
-	content, _ := os.ReadFile(filePath)
-	var errors []Error
-	var err error
-	for line := range strings.SplitSeq(string(content), "\n") {
-		fmt.Println(line)
-		if !strings.HasPrefix(line, "#") {
-			parts := strings.Split(line, ",")
-			if len(parts) != 3 {
-				t.Fatal(line + " Did not parse into 3 parts")
-			}
-			var e Error
-			e.ref = parts[0]
-			e.words, err = strconv.Atoi(parts[1])
-			if err != nil {
-				t.Fatal(err)
-			}
-			e.total, err = strconv.Atoi(parts[2])
-			errors = append(errors, e)
-		}
-	}
-	return errors
-}
-
-func selectReferences(conn db.DBAdapter) map[string]int64 {
-	var result = make(map[string]int64)
-	scripts, status := conn.SelectScripts()
-	if status != nil {
-		fmt.Println(status)
-		os.Exit(1)
-	}
-	for _, scr := range scripts {
-		result[scr.BookId+" "+strconv.Itoa(scr.ChapterNum)+":"+scr.VerseStr] = int64(scr.ScriptId)
-	}
-	return result
-}
-
-func testByAccuracy(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
-	var scriptIds = make(map[int64]bool)
-	for _, verse := range words {
-		fmt.Println(verse)
-		//errCode := proofing_rpt.ComputeAccuracy(verse, cutoff)
-		//if errCode >= cutoff {
-		//	scriptIds[verse[0].ScriptId] = true
-		//}
-	}
-	return scriptIds
-}
-
-func testVersesByMinimum(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
-	var scriptIds = make(map[int64]bool)
-	for _, verse := range words {
-		for _, word := range verse {
-			if word.Ttype == "W" && word.FAScore < cutoff {
-				scriptIds[word.ScriptID] = true
-			}
-		}
-	}
-	return scriptIds
-}
-
-func testVersesByAverage(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
-	var scriptIds = make(map[int64]bool)
-	for _, verse := range words {
-		var sum float64
-		var word proofing_rpt.Word2
-		for _, word = range verse {
-			if word.Ttype == "W" {
-				sum += word.FAScore
-			}
-		}
-		avg := sum / float64(len(verse))
-		if avg < cutoff {
-			scriptIds[word.ScriptId] = true
-		}
-	}
-	return scriptIds
-}
-
-func testVerseByProduct(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
-	var scriptIds = make(map[int64]bool)
-	for _, verse := range words {
-		var product = 1.0
-		var word proofing_rpt.Word2
-		for _, word = range verse {
-			if word.Ttype == "W" && word.FAScore < cutoff {
-				product *= word.FAScore
-			}
-		}
-		if product < cutoff {
-			scriptIds[word.ScriptId] = true
-		}
-	}
-	return scriptIds
-}
-
-func testVerseByProductAll(words [][]proofing_rpt.Word2, cutoff float64) map[int64]bool {
-	var scriptIds = make(map[int64]bool)
-	for _, verse := range words {
-		var product = 1.0
-		var word proofing_rpt.Word2
-		for _, word = range verse {
-			if word.Ttype == "W" {
-				product *= word.FAScore
-			}
-		}
-		if product < cutoff {
-			scriptIds[word.ScriptId] = true
-		}
-	}
-	return scriptIds
-}
-
-func checkCorrectness(knownErrors []Error, found map[int64]bool) float64 {
-	var hits int
-	for _, kn := range knownErrors {
-		_, ok := found[kn.scriptId]
-		if ok {
-			hits += 1
+			stats.notFound++
+			println("NOT Found", ref.Description())
 		} else {
-			fmt.Println("Did not find", kn)
+			stats.countFound++
+			println("Found", ref.Description(), pos)
+			positions = append(positions, pos)
+			sum += float64(pos)
 		}
 	}
-	return float64(hits) / float64(len(knownErrors))
+	stats.minimum = slices.Min(positions)
+	stats.maximum = slices.Max(positions)
+	stats.mean = sum / float64(len(positions))
+	return stats
 }
 
-*/
+func displayStats(tst test, typ string, stats statistic) {
+	println("Test", tst.mediaId, " ", typ)
+	println("min:", stats.minimum, " max:", stats.maximum, " mean:", stats.mean)
+	println()
+}
+
+func exit(e error) {
+	println(e)
+	os.Exit(1)
+}
