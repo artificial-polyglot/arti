@@ -103,7 +103,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
     <tr>
         <th>Line</th>
 		<th>Score</th>
-		<th>Count</th>
+		<th>Chars</th>
 		<th>Start</th>
 		<th>Duration</th>
 		<th>Button</th>
@@ -118,10 +118,10 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 }
 
 func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
-	_, _ = h.out.WriteString("<tr data-fascores=" + getLowFaScores(verse.Words) + ">\n")
+	_, _ = h.out.WriteString("<tr>\n")
 	h.writeCell(strconv.FormatInt(verse.ScriptId, 10))
 	h.writeCell(strconv.FormatFloat(ComputeMinimum(verse.Words), 'f', 4, 64))
-	_, _ = h.out.WriteString(`<td class="lowScoreCount"></td>`)
+	_, _ = h.out.WriteString(`<td class="lowScoreChars"></td>`)
 	h.writeCell(strconv.FormatFloat(startTime(verse.Words), 'f', 2, 64))
 	h.writeCell(strconv.FormatFloat(verse.Duration, 'f', 2, 64))
 	var params []string
@@ -206,7 +206,7 @@ func (h *HTMLWriter) WriteEnd() {
         var table = $('#diffTable').DataTable({
             "columnDefs": [
                 { "orderable": false, "targets": [1,3,4,5,6,7] }
-				// { "visible": false, "targets": [8] }  
+				// { "visible": false, "targets": [8] }
             ],
             "pageLength": 50,
             "lengthMenu": [[50, 500, -1], [50, 500, "All"]],
@@ -242,11 +242,17 @@ func (h *HTMLWriter) WriteEnd() {
 		  var cutoff = parseFloat($('#scoreCutoff').val());
 		  if (isNaN(cutoff)) cutoff = 0;
 		  table.rows().every(function () {
-			var scores = String($(this.node()).data('fascores'))
-						   .split(',')
-						   .map(Number);
-			var n = scores.filter(function (s) { return s <= cutoff; }).length;
-			this.cell(this.index(), 2).data(n);   // sets cell + keeps sort correct
+			var minScore = parseFloat(this.data()[1]);   // column 1 = Minimum Score
+			var sum = 0;
+			if (!isNaN(minScore) && minScore <= cutoff) {
+			  this.node().querySelectorAll('td:last-child span[data-begin]').forEach(function (sp) {
+				var score = parseFloat(sp.title);
+				if (!isNaN(score) && score <= cutoff) {
+				  sum += (sp.dataset.word || sp.textContent).length;
+				}
+			  });
+			}
+			this.cell(this.index(), 2).data(sum);   // sets cell + keeps sort correct
 		  });
 		  table.draw(false);          // false = stay on current page
 		}
@@ -330,18 +336,6 @@ func ComputeMinimum(words []Word2) float64 {
 		}
 	}
 	return minimum
-}
-
-func getLowFaScores(words []Word2) string {
-	var scores []string
-	for _, w := range words {
-		if w.Ttype == "W" {
-			if w.FAScore < 0.2 {
-				scores = append(scores, strconv.FormatFloat(w.FAScore, 'f', 4, 64))
-			}
-		}
-	}
-	return strings.Join(scores, ",")
 }
 
 func startTime(words []Word2) float64 {

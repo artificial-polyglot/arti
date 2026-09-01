@@ -1,6 +1,3 @@
-# When MAT 17:3 is eliminated, because it is not an error,
-# JULY 21 cutoff that includes all errors is 0.3242, which finds 401 possibles
-# Using cutoff calc: return sum/float64(count*7) + minimum
 MAT 4:12	19	19
 MAT 5:11	13	20
 MAT 10:8	5	28

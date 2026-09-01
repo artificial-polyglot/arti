@@ -1,4 +1,3 @@
-GaryNTest/N2MGUPNG/arti/00001/database/N2MGUPNG.db
 MAT 2:23
 MAT 10:35
 MAT 25:41

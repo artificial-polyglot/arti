@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
@@ -36,8 +37,8 @@ type proofData struct {
 func analyzeProofRpt(dbPath string, cutoff float64) map[generic.VerseRef]int {
 	var results []proofData
 	conn := db.NewDBAdapter(context.Background(), dbPath)
-	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, 
-			q.word, q.fa_score
+	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str,
+			w.word_punct, q.fa_score
 			FROM words_qa_align q JOIN words w ON q.word_id = w.word_id
 			JOIN scripts s ON s.script_id = w.script_id
 			WHERE w.ttype = 'W' AND s.verse_str != '0' AND w.script_id IN (
@@ -72,10 +73,10 @@ func analyzeProofRpt(dbPath string, cutoff float64) map[generic.VerseRef]int {
 	}
 	var summarize = make(map[key]int)
 	for _, prf := range results {
-		if prf.faScore < cutoff {
+		if prf.faScore <= cutoff {
 			k := key{scriptId: prf.scriptId, verseRef: prf.ref}
 			count, _ := summarize[k]
-			summarize[k] = count + 1
+			summarize[k] = count + utf8.RuneCountInString(prf.word)
 		}
 	}
 

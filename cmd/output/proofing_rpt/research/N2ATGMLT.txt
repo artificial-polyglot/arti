@@ -1,4 +1,3 @@
-GaryNTest/N2ATGMLT/arti/00001/database/N2ATGMLT.db
 MRK 11:26
 LUK 8:9
 LUK 12:28

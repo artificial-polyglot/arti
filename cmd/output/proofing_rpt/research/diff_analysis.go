@@ -62,9 +62,9 @@ func analyzeDiffRpt(dbPath string) map[generic.VerseRef]int {
 		)
 	})
 	// print in sorted order
-	for _, v := range result2 {
-		println(v.ref.Description(), v.length)
-	}
+	//for _, v := range result2 {
+	//	println(v.ref.Description(), v.length)
+	//}
 	// Produce a map that contains the position for each verseRef
 	var lenMap = make(map[generic.VerseRef]int)
 	for i, p := range result2 {
