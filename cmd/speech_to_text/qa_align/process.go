@@ -3,16 +3,13 @@ package qa_align
 import (
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 )
 
-func Process(database db.DBAdapter) ([]db.Output, *log.Status) {
+func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
 	var output []db.Output
-	req, status := database.SelectRequest()
-	if status != nil {
-		return output, status
-	}
 	asr := NewQAAlign(database.Ctx, database, req.LanguageISO, req.AltLanguage, true, req.Testament)
-	status = asr.ProcessFiles()
+	status := asr.ProcessFiles()
 	if status != nil {
 		return output, status
 	}

@@ -20,26 +20,27 @@ import (
 /*
 This test moves the position of a word in each test sentence.
 The position the word is moved from should cause an ASR error, i.e. a word
-in audio that is in text.  The position the word is moved to should cause
-and fa_error because the words is in the text, but not the audio.
+in audio that is not in the text.  The position the word that is moved to
+should cause an fa_error because the words is in the text, but not the audio.
 
 This test should provide very accurate statistics about the accuracy
 of the qa_align and proofing_rpt
 */
 
 type wordSwitch struct {
-	first  int
-	second int
+	fromWord int
+	toWord   int
 }
 
 func TestAccuracy(t *testing.T) {
 	mediaId := "N1SKNSEC"
 	runNum := "00004"
-	//books := request.Testament{NTBooks: []string{"PHM"}}
 	var req request.Request
 	req.DatasetName = mediaId
 	req.Username = "GaryNTest"
+	req.LanguageISO = "skn"
 	req.Testament = request.Testament{NTBooks: []string{"PHM"}}
+	req.Testament.BuildBookMaps()
 	conn := downloadAndOpenDatabase(mediaId, runNum)
 	verses := selectVersesWithoutFAError(conn, req.Testament, 0.5)
 	var testCases = make(map[int64]wordSwitch)
@@ -48,6 +49,7 @@ func TestAccuracy(t *testing.T) {
 		testCases[vs.ScriptId] = testWords
 		moveFirstToSecond(vs.Words, testWords)
 	}
+	storeAlteredData(conn, verses)
 	_, status := qa_align.Process(conn, req)
 	if status != nil {
 		panic(status)
@@ -128,36 +130,40 @@ func computeTwoRandoms(wordCnt int) wordSwitch {
 	for first == second {
 		second = rand.IntN(wordCnt)
 	}
-	return wordSwitch{first: first, second: second}
+	return wordSwitch{fromWord: first, toWord: second}
 }
 
 func moveFirstToSecond(words []proofing_rpt.Word2, tWds wordSwitch) {
-	w := words[tWds.first]
-	if tWds.first < tWds.second {
+	w := words[tWds.fromWord]
+	if tWds.fromWord < tWds.toWord {
 		// shift the gap left, closing the hole at `first`
-		copy(words[tWds.first:tWds.second], words[tWds.first+1:tWds.second+1])
+		copy(words[tWds.fromWord:tWds.toWord], words[tWds.fromWord+1:tWds.toWord+1])
 	} else {
 		// shift the gap right
-		copy(words[tWds.second+1:tWds.first+1], words[tWds.second:tWds.first])
+		copy(words[tWds.toWord+1:tWds.fromWord+1], words[tWds.toWord:tWds.fromWord])
 	}
-	words[tWds.second] = w
+	words[tWds.toWord] = w
+}
+
+func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2) {
+	// This must update the words table
 }
 
 func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
-	var foundMissing, foundAdded, total int
+	var foundMissing, foundAdded, total float64
 	var errorMissing, errorAdded []generic.VerseRef
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
 			total++
-			firstWord := vs.Words[testWords.first]
-			if firstWord.Ttype == "ASR" {
+			fromWord := vs.Words[testWords.fromWord]
+			if fromWord.Ttype == "ASR" {
 				foundAdded++
 			} else {
 				errorAdded = append(errorAdded, vs.LineRef)
 			}
-			secondWord := vs.Words[testWords.second]
-			if secondWord.FAScore < 0.1 {
+			toWord := vs.Words[testWords.toWord]
+			if toWord.FAScore < 0.1 {
 				foundMissing++
 			} else {
 				errorMissing = append(errorMissing, vs.LineRef)
@@ -166,7 +172,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 	}
 	pctWasMissing := foundMissing / total * 100.0
 	pctWasAdded := foundAdded / total * 100.0
-	fmt.Printf("Total Processed: %d  Pct Was Missing %.1f Pct Was Added %.1f\n",
+	fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Was Added %.1f\n",
 		total, pctWasMissing, pctWasAdded)
 }
 

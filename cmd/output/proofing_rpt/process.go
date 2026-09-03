@@ -4,15 +4,11 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/request"
 )
 
-func Process(database db.DBAdapter) ([]db.Output, *log.Status) {
+func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
 	var output []db.Output
-	req, status := database.SelectRequest()
-	if status != nil {
-		return output, status
-	}
-
 	calc := NewAlignSilence(database)
 	faLines, audioURLs, status := calc.Process()
 	if status != nil {

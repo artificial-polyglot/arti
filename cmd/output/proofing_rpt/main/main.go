@@ -22,12 +22,12 @@ func run(args []string) *log.Status {
 	}
 	yamlContent := args[0]
 	component := courier.NewComponent(yamlContent, "proofing_rpt")
-	database, status := component.StartComponent()
+	database, request, status := component.StartComponent()
 	if status != nil {
 		return status
 	}
 	defer database.Close()
-	output, status := proofing_rpt.Process(database)
+	output, status := proofing_rpt.Process(database, request)
 	if status != nil {
 		return status
 	}

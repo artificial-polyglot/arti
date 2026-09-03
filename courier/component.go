@@ -32,42 +32,42 @@ func NewComponent(request string, name string) Component {
 	return c
 }
 
-func (c *Component) StartComponent() (db.DBAdapter, *log.Status) {
+func (c *Component) StartComponent() (db.DBAdapter, request.Request, *log.Status) {
 	var status *log.Status
 	c.ctx = context.WithValue(c.ctx, "runType", c.courier.Component)
 	c.ctx = context.WithValue(c.ctx, `request`, c.courier.yamlContent)
 	c.req, status = decode.Decode(c.ctx, []byte(c.courier.yamlContent))
 	if status != nil {
-		return c.database, status
+		return c.database, c.req, status
 	}
 	errors := validate.ValidateRequest(c.ctx, &c.req)
 	if len(errors) > 0 {
-		return c.database, log.ErrorNoErr(c.ctx, 400, strings.Join(errors, "\n"))
+		return c.database, c.req, log.ErrorNoErr(c.ctx, 400, strings.Join(errors, "\n"))
 	}
 	if !c.req.IsNew {
 		dbPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), c.req.Username, c.req.DatasetName+".db")
 		if c.req.Database.AWSS3 != "" {
 			status = input.DownloadDatabaseFile(c.ctx, c.req.Database.AWSS3, dbPath)
 			if status != nil {
-				return c.database, status
+				return c.database, c.req, status
 			}
 		} else if c.req.Database.File != "" {
 			err := os.Rename(c.req.Database.File, dbPath)
 			if err != nil {
-				return c.database, log.Error(c.ctx, 500, err, "Could not move the database file.")
+				return c.database, c.req, log.Error(c.ctx, 500, err, "Could not move the database file.")
 			}
 		}
 	}
 	c.database, status = db.NewerDBAdapter(c.ctx, c.req.IsNew, c.req.Username, c.req.DatasetName)
 	if status != nil {
-		return c.database, status
+		return c.database, c.req, status
 	}
 	status = c.database.InsertRequest(c.req)
 	if status != nil {
-		return c.database, status
+		return c.database, c.req, status
 	}
 	c.courier.AddDatabase(c.database)
-	return c.database, nil
+	return c.database, c.req, nil
 }
 
 func (c *Component) FinishComponent(outputs []db.Output, runStatus *log.Status) {

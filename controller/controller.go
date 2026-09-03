@@ -547,11 +547,11 @@ func (c *Controller) encodeText() *log.Status {
 }
 
 func (c *Controller) audioProofing() *log.Status {
-	_, status := qa_align.Process(c.database)
+	_, status := qa_align.Process(c.database, c.req)
 	if status != nil {
 		return status
 	}
-	outputs, status := proofing_rpt.Process(c.database)
+	outputs, status := proofing_rpt.Process(c.database, c.req)
 	if status != nil {
 		return status
 	}
