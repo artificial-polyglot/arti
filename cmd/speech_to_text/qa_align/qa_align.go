@@ -182,9 +182,13 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 
 func (a *QAAlign) selectScriptLine(scriptLine string) (db.Audio, *log.Status) {
 	var rec db.Audio
-	var query = `SELECT script_id, book_id, chapter_num, audio_file, script_begin_ts, script_end_ts FROM scripts WHERE script_num = ?`
+	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.audio_file, s.script_begin_ts, s.script_end_ts,
+			GROUP_CONCAT(w.word, ' ') AS text
+			FROM scripts s JOIN words w ON w.script_id = s.script_id
+			WHERE s.script_num = ? AND w.ttype = 'W'
+			GROUP BY s.script_id`
 	row := a.conn.DB.QueryRow(query, scriptLine)
-	err := row.Scan(&rec.ScriptId, &rec.BookId, &rec.ChapterNum, &rec.AudioFile, &rec.ScriptBeginTS, &rec.ScriptEndTS)
+	err := row.Scan(&rec.ScriptId, &rec.BookId, &rec.ChapterNum, &rec.AudioFile, &rec.ScriptBeginTS, &rec.ScriptEndTS, &rec.Text)
 	if err != nil {
 		return rec, log.Error(a.ctx, 500, err, "Error during SelectScriptLine.")
 	}

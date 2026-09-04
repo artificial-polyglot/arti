@@ -804,10 +804,12 @@ func (d *DBAdapter) SelectScriptIds() ([]Script, *log.Status) {
 
 func (d *DBAdapter) SelectFAScriptTimestamps(bookId string, chapter int) ([]Audio, *log.Status) {
 	var results []Audio
-	var query = `SELECT script_id, audio_file, verse_str, verse_end, verse_num, 
-			script_text, uroman, script_begin_ts, script_end_ts, fa_score 
-			FROM scripts WHERE book_id = ? AND chapter_num = ?
-			ORDER BY script_id`
+	var query = `SELECT s.script_id, s.audio_file, s.verse_str, s.verse_end, s.verse_num,
+			GROUP_CONCAT(w.word, ' ') AS text, s.uroman, s.script_begin_ts, s.script_end_ts, s.fa_score
+			FROM scripts s JOIN words w ON w.script_id = s.script_id
+			WHERE s.book_id = ? AND s.chapter_num = ? AND w.ttype = 'W'
+			GROUP BY s.script_id
+			ORDER BY s.script_id`
 	rows, err := d.DB.Query(query, bookId, chapter)
 	if err != nil {
 		return results, log.Error(d.Ctx, 500, err, "Error during SelectFAScriptTimestamps By Book Chapter.")
