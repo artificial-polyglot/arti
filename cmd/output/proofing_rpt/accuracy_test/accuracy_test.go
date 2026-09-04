@@ -13,6 +13,7 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
@@ -47,12 +48,15 @@ func TestAccuracy(t *testing.T) {
 	for _, vs := range verses {
 		testWords := computeTwoRandoms(len(vs.Words))
 		testCases[vs.ScriptId] = testWords
-		moveFirstToSecond(vs.Words, testWords)
+		moveFirstToSecond(vs, testWords)
 	}
-	storeAlteredData(conn, verses)
-	_, status := qa_align.Process(conn, req)
+	status := storeAlteredData(conn, verses)
 	if status != nil {
-		panic(status)
+		exit(status)
+	}
+	_, status = qa_align.Process(conn, req)
+	if status != nil {
+		exit(status)
 	}
 	_, status = proofing_rpt.Process(conn, req)
 	report := proofing_rpt.NewAlignSilence(conn)
@@ -66,13 +70,18 @@ func TestAccuracy(t *testing.T) {
 func downloadAndOpenDatabase(mediaId string, runNum string) db.DBAdapter {
 	objectKey := filepath.Join("GaryNTest", mediaId, "arti", runNum, "database", mediaId+".db")
 	localPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "GaryNTest", mediaId+".db")
-	client, err := s3_datastore.NewS3Client(context.Background())
+	client, status := s3_datastore.NewS3Client(context.Background())
+	if status != nil {
+		exit(status)
+	}
+	// Remove database because it was altered in prior test.
+	err := os.Remove(localPath)
 	if err != nil {
 		exit(err)
 	}
-	err = client.DownloadFile("arti-output", objectKey, localPath)
-	if err != nil {
-		exit(err)
+	status = client.DownloadFile("arti-output", objectKey, localPath)
+	if status != nil {
+		exit(status)
 	}
 	ctx := context.Background()
 	conn := db.NewDBAdapter(ctx, localPath)
@@ -133,20 +142,48 @@ func computeTwoRandoms(wordCnt int) wordSwitch {
 	return wordSwitch{fromWord: first, toWord: second}
 }
 
-func moveFirstToSecond(words []proofing_rpt.Word2, tWds wordSwitch) {
-	w := words[tWds.fromWord]
+func moveFirstToSecond(verse proofing_rpt.Verse2, tWds wordSwitch) {
+	w := verse.Words[tWds.fromWord]
 	if tWds.fromWord < tWds.toWord {
 		// shift the gap left, closing the hole at `first`
-		copy(words[tWds.fromWord:tWds.toWord], words[tWds.fromWord+1:tWds.toWord+1])
+		copy(verse.Words[tWds.fromWord:tWds.toWord], verse.Words[tWds.fromWord+1:tWds.toWord+1])
 	} else {
 		// shift the gap right
-		copy(words[tWds.toWord+1:tWds.fromWord+1], words[tWds.toWord:tWds.fromWord])
+		copy(verse.Words[tWds.toWord+1:tWds.fromWord+1], verse.Words[tWds.toWord:tWds.fromWord])
 	}
-	words[tWds.toWord] = w
+	verse.Words[tWds.toWord] = w
 }
 
-func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2) {
-	// This must update the words table
+func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2) *log.Status {
+	query := `UPDATE scripts set script_text = ? WHERE script_id = ?`
+	tx, err := conn.DB.Begin()
+	if err != nil {
+		return log.Error(conn.Ctx, 500, err, query)
+	}
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		return log.Error(conn.Ctx, 500, err, query)
+	}
+	defer stmt.Close()
+	for _, vs := range verses {
+		var scriptWords []string
+		for _, wd := range vs.Words {
+			scriptWords = append(scriptWords, wd.Text)
+			//if wd.Ttype != "W" {
+			//	panic("Type: " + wd.Ttype)
+			//}
+		}
+		scriptText := strings.Join(scriptWords, " ")
+		_, err = stmt.Exec(scriptText, vs.ScriptId)
+		if err != nil {
+			return log.Error(conn.Ctx, 500, err, `Error while updating script text.`)
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return log.Error(conn.Ctx, 500, err, "Error committing transaction for query:", query)
+	}
+	return nil
 }
 
 func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
@@ -155,6 +192,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
+			displayVerseDetail(vs, testWords)
 			total++
 			fromWord := vs.Words[testWords.fromWord]
 			if fromWord.Ttype == "ASR" {
@@ -174,6 +212,24 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 	pctWasAdded := foundAdded / total * 100.0
 	fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Was Added %.1f\n",
 		total, pctWasMissing, pctWasAdded)
+	fmt.Println("Not Found Missing:", errorMissing)
+	fmt.Println("Not Found Added:", errorAdded)
+}
+
+func displayVerseDetail(verse proofing_rpt.Verse2, testCase wordSwitch) {
+	fmt.Println(verse.ScriptId)
+	for i, wd := range verse.Words {
+		if i == testCase.fromWord {
+			fmt.Print("FROM: ")
+		} else if i == testCase.toWord {
+			fmt.Print("TOWD: ")
+		}
+		fmt.Printf("%d  %s  %.2f  [", wd.WordId, wd.Text, wd.FAScore)
+		for _, ch := range wd.Chars {
+			fmt.Printf(" %s (%.2f)", string(ch.Char), ch.FAScore)
+		}
+		fmt.Println()
+	}
 }
 
 func exit(err error) {
