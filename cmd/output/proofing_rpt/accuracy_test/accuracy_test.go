@@ -58,7 +58,6 @@ func TestAccuracy(t *testing.T) {
 	if status != nil {
 		exit(status)
 	}
-	_, status = proofing_rpt.Process(conn, req)
 	report := proofing_rpt.NewAlignSilence(conn)
 	results, _, status := report.Process()
 	if status != nil {
