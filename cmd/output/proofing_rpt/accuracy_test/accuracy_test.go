@@ -29,8 +29,9 @@ of the qa_align and proofing_rpt
 */
 
 type wordSwitch struct {
-	fromWord int
-	toWord   int
+	fromWord   int
+	toWord     int
+	fromWordId int64
 }
 
 func TestAccuracy(t *testing.T) {
@@ -46,9 +47,12 @@ func TestAccuracy(t *testing.T) {
 	verses := selectVersesWithoutFAError(conn, req.Testament, 0.5)
 	var testCases = make(map[int64]wordSwitch)
 	for _, vs := range verses {
-		testWords := computeTwoRandoms(len(vs.Words))
-		testCases[vs.ScriptId] = testWords
-		moveFirstToSecond(vs, testWords)
+		if len(vs.Words) > 1 {
+			testWords := computeTwoRandoms(len(vs.Words))
+			testWords.fromWordId = vs.Words[testWords.fromWord].WordId
+			testCases[vs.ScriptId] = testWords
+			moveFirstToSecond(vs, testWords)
+		}
 	}
 	status := storeAlteredData(conn, verses)
 	if status != nil {
@@ -75,7 +79,7 @@ func downloadAndOpenDatabase(mediaId string, runNum string) db.DBAdapter {
 	}
 	// Remove database because it was altered in prior test.
 	err := os.Remove(localPath)
-	if err != nil {
+	if err != nil && os.IsNotExist(err) {
 		exit(err)
 	}
 	status = client.DownloadFile("arti-output", objectKey, localPath)
@@ -185,6 +189,20 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2) *log.Stat
 	return nil
 }
 
+// checkResults verifies two independent signals per verse:
+//   - "added": qa_align/proofing_rpt spliced in a synthetic ASR word somewhere
+//     in the verse, meaning it detected audio content unaccounted for by the
+//     text. That synthetic word has no WordId of its own (see
+//     align_compare.go InsertASRSilenceChars), so its presence anywhere in the
+//     verse is the only thing that can be checked - not its position, since
+//     that position shifts every later word's index in vs.Words and isn't
+//     something a fixed offset computed before processing can predict.
+//   - "missing": the word that was moved (identified by its original WordId,
+//     which travels with it through the move) should now score a low fa_score,
+//     since it no longer matches the audio at its new position. Looking it up
+//     by WordId - rather than by the pre-move index into vs.Words - keeps this
+//     check correct even when an ASR splice earlier in the verse has shifted
+//     every subsequent word's index.
 func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
 	var foundMissing, foundAdded, total float64
 	var errorMissing, errorAdded []generic.VerseRef
@@ -193,35 +211,56 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 		if ok {
 			displayVerseDetail(vs, testWords)
 			total++
-			fromWord := vs.Words[testWords.fromWord]
-			if fromWord.Ttype == "ASR" {
+			if hasASRWord(vs) {
 				foundAdded++
 			} else {
 				errorAdded = append(errorAdded, vs.LineRef)
 			}
-			toWord := vs.Words[testWords.toWord]
-			if toWord.FAScore < 0.1 {
+			movedWord, found := findWordById(vs, testWords.fromWordId)
+			if found && movedWord.FAScore < 0.1 {
 				foundMissing++
 			} else {
 				errorMissing = append(errorMissing, vs.LineRef)
 			}
 		}
 	}
-	pctWasMissing := foundMissing / total * 100.0
-	pctWasAdded := foundAdded / total * 100.0
-	fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Was Added %.1f\n",
-		total, pctWasMissing, pctWasAdded)
-	fmt.Println("Not Found Missing:", errorMissing)
-	fmt.Println("Not Found Added:", errorAdded)
+	if total > 0 {
+		pctWasMissing := foundMissing / total * 100.0
+		pctWasAdded := foundAdded / total * 100.0
+		fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Was Added %.1f\n",
+			total, pctWasMissing, pctWasAdded)
+		fmt.Println("Not Found Missing:", errorMissing)
+		fmt.Println("Not Found Added:", errorAdded)
+	} else {
+		fmt.Println("No test results")
+	}
+}
+
+func hasASRWord(verse proofing_rpt.Verse2) bool {
+	for _, wd := range verse.Words {
+		if wd.Ttype == "ASR" {
+			return true
+		}
+	}
+	return false
+}
+
+func findWordById(verse proofing_rpt.Verse2, wordId int64) (proofing_rpt.Word2, bool) {
+	for _, wd := range verse.Words {
+		if wd.WordId == wordId {
+			return wd, true
+		}
+	}
+	return proofing_rpt.Word2{}, false
 }
 
 func displayVerseDetail(verse proofing_rpt.Verse2, testCase wordSwitch) {
 	fmt.Println(verse.ScriptId)
-	for i, wd := range verse.Words {
-		if i == testCase.fromWord {
-			fmt.Print("FROM: ")
-		} else if i == testCase.toWord {
-			fmt.Print("TOWD: ")
+	for _, wd := range verse.Words {
+		if wd.WordId == testCase.fromWordId {
+			fmt.Print("MOVED: ")
+		} else if wd.Ttype == "ASR" {
+			fmt.Print("ASR: ")
 		}
 		fmt.Printf("%d  %s  %.2f  [", wd.WordId, wd.Text, wd.FAScore)
 		for _, ch := range wd.Chars {
