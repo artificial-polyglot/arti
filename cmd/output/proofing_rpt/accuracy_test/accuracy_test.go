@@ -244,19 +244,45 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
-			displayVerseDetail(vs, testWords)
+			fmt.Printf("%s  %d\n", vs.LineRef.Description(), vs.ScriptId)
+			var missingResult string
+			movedWord, found := findWordById(vs, testWords.movedWordId)
+			for _, wd := range vs.Words {
+				if wd.FAScore < 0.1 {
+					if wd.WordId == movedWord.WordId {
+						missingResult = "FOUND MISSING"
+					} else {
+						missingResult = "MISSING FALSE+"
+					}
+				} else {
+					if wd.WordId == movedWord.WordId {
+						missingResult = "NOT FOUND MISS"
+					} else {
+						missingResult = "OK"
+					}
+
+				}
+				fmt.Printf("%s  %d  %s  %.2f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+				for _, ch := range wd.Chars {
+					fmt.Printf(" %s (%.2f)", string(ch.Char), ch.FAScore)
+				}
+				fmt.Println()
+			}
+			//var missing bool
 			total++
 			if hasASRWord(vs) {
 				foundAdded++
+
 			} else {
 				errorAdded = append(errorAdded, vs.LineRef)
 			}
-			movedWord, found := findWordById(vs, testWords.movedWordId)
+
 			if found && movedWord.FAScore < 0.1 {
 				foundMissing++
 			} else {
 				errorMissing = append(errorMissing, vs.LineRef)
 			}
+			//displayVerseDetail(vs, testWords)
 		}
 	}
 	if total > 0 {
@@ -287,22 +313,6 @@ func findWordById(verse proofing_rpt.Verse2, wordId int64) (proofing_rpt.Word2, 
 		}
 	}
 	return proofing_rpt.Word2{}, false
-}
-
-func displayVerseDetail(verse proofing_rpt.Verse2, testCase wordSwitch) {
-	fmt.Println(verse.LineRef.Description(), verse.ScriptId)
-	for _, wd := range verse.Words {
-		if wd.WordId == testCase.movedWordId {
-			fmt.Print("MOVED: ")
-		} else if wd.Ttype == "ASR" {
-			fmt.Print("ASR: ")
-		}
-		fmt.Printf("%d  %s  %.2f  [", wd.WordId, wd.Text, wd.FAScore)
-		for _, ch := range wd.Chars {
-			fmt.Printf(" %s (%.2f)", string(ch.Char), ch.FAScore)
-		}
-		fmt.Println()
-	}
 }
 
 func exit(err error) {
