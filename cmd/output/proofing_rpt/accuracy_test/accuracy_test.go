@@ -49,13 +49,6 @@ func TestAccuracy(t *testing.T) {
 	req.Testament.BuildBookMaps()
 	conn := downloadAndOpenDatabase(mediaId, runNum)
 	verses := selectVersesWithoutFAError(conn, req.Testament, 0.5)
-	for _, vs := range verses {
-		print(vs.ScriptId, " ")
-		for _, wd := range vs.Words {
-			print(wd.Text, " ")
-		}
-		println()
-	}
 	var testCases = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
@@ -70,13 +63,6 @@ func TestAccuracy(t *testing.T) {
 			origWordIds[vs.ScriptId] = ids
 			moveFirstToSecond(vs, testWords)
 		}
-	}
-	for _, vs := range verses {
-		print(vs.ScriptId, " ")
-		for _, wd := range vs.Words {
-			print(wd.Text, " ")
-		}
-		println()
 	}
 	status := storeAlteredData(conn, verses, origWordIds)
 	if status != nil {
@@ -304,7 +290,7 @@ func findWordById(verse proofing_rpt.Verse2, wordId int64) (proofing_rpt.Word2, 
 }
 
 func displayVerseDetail(verse proofing_rpt.Verse2, testCase wordSwitch) {
-	fmt.Println(verse.ScriptId)
+	fmt.Println(verse.LineRef.Description(), verse.ScriptId)
 	for _, wd := range verse.Words {
 		if wd.WordId == testCase.movedWordId {
 			fmt.Print("MOVED: ")

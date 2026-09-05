@@ -162,7 +162,6 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 		request.ScriptId = ts.ScriptId
 		request.AudioPath = ts.AudioVerseWav
 		request.ReferenceText = ts.Text
-		println("QA", ts.ScriptId, ts.Text)
 		content, err := json.Marshal(request)
 		if err != nil {
 			return log.Error(a.ctx, 500, err, "Could not Marshal FARequest")
