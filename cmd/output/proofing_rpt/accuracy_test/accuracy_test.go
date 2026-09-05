@@ -29,9 +29,13 @@ of the qa_align and proofing_rpt
 */
 
 type wordSwitch struct {
-	fromWord   int
-	toWord     int
-	fromWordId int64
+	fromWord int
+	toWord   int
+	// movedWordId is the word_id the moved word will carry in the database
+	// once storeAlteredData relabels word_id to match the new arrangement -
+	// i.e. the *original* word_id of the toWord slot, not the fromWord slot.
+	// See storeAlteredData for why the moved word ends up wearing that id.
+	movedWordId int64
 }
 
 func TestAccuracy(t *testing.T) {
@@ -45,16 +49,36 @@ func TestAccuracy(t *testing.T) {
 	req.Testament.BuildBookMaps()
 	conn := downloadAndOpenDatabase(mediaId, runNum)
 	verses := selectVersesWithoutFAError(conn, req.Testament, 0.5)
+	for _, vs := range verses {
+		print(vs.ScriptId, " ")
+		for _, wd := range vs.Words {
+			print(wd.Text, " ")
+		}
+		println()
+	}
 	var testCases = make(map[int64]wordSwitch)
+	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
 		if len(vs.Words) > 1 {
+			ids := make([]int64, len(vs.Words))
+			for i, wd := range vs.Words {
+				ids[i] = wd.WordId
+			}
 			testWords := computeTwoRandoms(len(vs.Words))
-			testWords.fromWordId = vs.Words[testWords.fromWord].WordId
+			testWords.movedWordId = vs.Words[testWords.toWord].WordId
 			testCases[vs.ScriptId] = testWords
+			origWordIds[vs.ScriptId] = ids
 			moveFirstToSecond(vs, testWords)
 		}
 	}
-	status := storeAlteredData(conn, verses)
+	for _, vs := range verses {
+		print(vs.ScriptId, " ")
+		for _, wd := range vs.Words {
+			print(wd.Text, " ")
+		}
+		println()
+	}
+	status := storeAlteredData(conn, verses, origWordIds)
 	if status != nil {
 		exit(status)
 	}
@@ -157,8 +181,29 @@ func moveFirstToSecond(verse proofing_rpt.Verse2, tWds wordSwitch) {
 	verse.Words[tWds.toWord] = w
 }
 
-func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2) *log.Status {
-	query := `UPDATE scripts set script_text = ? WHERE script_id = ?`
+// storeAlteredData applies each verse's word rearrangement to the words
+// table itself, by relabeling word_id - the column qa_align's selectWords
+// and proofing_rpt's SelectFACharTimestamps actually order by (see
+// fa_results.go and db_adapter.go). Every other column - word, word_punct,
+// ttype, timestamps, fa_score - stays attached to its row and travels with
+// it automatically, so Word2's {WordId, Text, FAScore} is all this needs;
+// there's no reason to delete and reinsert rows, and no other column ever
+// has to be read or rewritten.
+//
+// word_id is the PRIMARY KEY, so swapping two rows' ids directly would
+// collide mid-statement. Each affected row is staged at a temporary negative
+// id first (guaranteed free, since AUTOINCREMENT ids are never negative),
+// then assigned its final id in a second pass. The final id for the row now
+// sitting at position i is origWordIds[scriptId][i] - the id that slot held
+// before the shuffle - which is exactly how every downstream ORDER BY
+// word_id query will reconstruct the new sequence.
+//
+// The ttype='W' rows referenced by the ingest-time chars/word_mfcc tables
+// are not touched or read anywhere in the qa_align/proofing_rpt pipeline
+// this test exercises, so relabeling word_id here does not need to update
+// them too.
+func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordIds map[int64][]int64) *log.Status {
+	query := `UPDATE words SET word_id = ? WHERE word_id = ?`
 	tx, err := conn.DB.Begin()
 	if err != nil {
 		return log.Error(conn.Ctx, 500, err, query)
@@ -169,17 +214,21 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2) *log.Stat
 	}
 	defer stmt.Close()
 	for _, vs := range verses {
-		var scriptWords []string
-		for _, wd := range vs.Words {
-			scriptWords = append(scriptWords, wd.Text)
-			//if wd.Ttype != "W" {
-			//	panic("Type: " + wd.Ttype)
-			//}
+		slotIds, ok := origWordIds[vs.ScriptId]
+		if !ok {
+			continue
 		}
-		scriptText := strings.Join(scriptWords, " ")
-		_, err = stmt.Exec(scriptText, vs.ScriptId)
-		if err != nil {
-			return log.Error(conn.Ctx, 500, err, `Error while updating script text.`)
+		for _, wd := range vs.Words {
+			_, err = stmt.Exec(-wd.WordId, wd.WordId)
+			if err != nil {
+				return log.Error(conn.Ctx, 500, err, `Error while staging temporary word_id.`)
+			}
+		}
+		for i, wd := range vs.Words {
+			_, err = stmt.Exec(slotIds[i], -wd.WordId)
+			if err != nil {
+				return log.Error(conn.Ctx, 500, err, `Error while assigning final word_id.`)
+			}
 		}
 	}
 	err = tx.Commit()
@@ -216,7 +265,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 			} else {
 				errorAdded = append(errorAdded, vs.LineRef)
 			}
-			movedWord, found := findWordById(vs, testWords.fromWordId)
+			movedWord, found := findWordById(vs, testWords.movedWordId)
 			if found && movedWord.FAScore < 0.1 {
 				foundMissing++
 			} else {
@@ -257,7 +306,7 @@ func findWordById(verse proofing_rpt.Verse2, wordId int64) (proofing_rpt.Word2, 
 func displayVerseDetail(verse proofing_rpt.Verse2, testCase wordSwitch) {
 	fmt.Println(verse.ScriptId)
 	for _, wd := range verse.Words {
-		if wd.WordId == testCase.fromWordId {
+		if wd.WordId == testCase.movedWordId {
 			fmt.Print("MOVED: ")
 		} else if wd.Ttype == "ASR" {
 			fmt.Print("ASR: ")

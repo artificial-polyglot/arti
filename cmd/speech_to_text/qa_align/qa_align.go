@@ -162,9 +162,10 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 		request.ScriptId = ts.ScriptId
 		request.AudioPath = ts.AudioVerseWav
 		request.ReferenceText = ts.Text
+		println("QA", ts.ScriptId, ts.Text)
 		content, err := json.Marshal(request)
 		if err != nil {
-			return log.Error(a.ctx, 500, err, "Could not Markshal FARequest")
+			return log.Error(a.ctx, 500, err, "Could not Marshal FARequest")
 		}
 		log.Info(a.ctx, request, ts.BeginTS, ts.EndTS)
 		response, status1 := a.mmsAsrPy.Process(string(content))
@@ -183,7 +184,7 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 func (a *QAAlign) selectScriptLine(scriptLine string) (db.Audio, *log.Status) {
 	var rec db.Audio
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.audio_file, s.script_begin_ts, s.script_end_ts,
-			GROUP_CONCAT(w.word, ' ') AS text
+			GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS text
 			FROM scripts s JOIN words w ON w.script_id = s.script_id
 			WHERE s.script_num = ? AND w.ttype = 'W'
 			GROUP BY s.script_id`
