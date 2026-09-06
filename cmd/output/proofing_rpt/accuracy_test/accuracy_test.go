@@ -239,57 +239,67 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordI
 //     check correct even when an ASR splice earlier in the verse has shifted
 //     every subsequent word's index.
 func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
-	var foundMissing, foundAdded, total float64
+	var foundMissing, foundFalse, foundNot, foundAdded, total float64
 	var errorMissing, errorAdded []generic.VerseRef
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
-			fmt.Printf("%s  %d\n", vs.LineRef.Description(), vs.ScriptId)
-			var missingResult string
-			movedWord, found := findWordById(vs, testWords.movedWordId)
+			var text []string
 			for _, wd := range vs.Words {
-				if wd.FAScore < 0.1 {
+				text = append(text, wd.Text)
+			}
+			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+			var missingResult string
+			movedWord, _ := findWordById(vs, testWords.movedWordId)
+			for _, wd := range vs.Words {
+				if wd.FAScore < 0.5 {
 					if wd.WordId == movedWord.WordId {
 						missingResult = "FOUND MISSING"
+						foundMissing++
 					} else {
 						missingResult = "MISSING FALSE+"
+						foundFalse++
 					}
 				} else {
 					if wd.WordId == movedWord.WordId {
 						missingResult = "NOT FOUND MISS"
+						foundNot++
+
 					} else {
 						missingResult = "OK"
 					}
-
 				}
-				fmt.Printf("%s  %d  %s  %.2f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
-				for _, ch := range wd.Chars {
-					fmt.Printf(" %s (%.2f)", string(ch.Char), ch.FAScore)
+				if wd.FAScore < 0.9 {
+					fmt.Printf("%s  %d  %s  %.2f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+					for _, ch := range wd.Chars {
+						fmt.Printf(" %s (%.2f)", string(ch.Char), ch.FAScore)
+					}
+					fmt.Println()
 				}
-				fmt.Println()
 			}
 			//var missing bool
 			total++
 			if hasASRWord(vs) {
 				foundAdded++
-
 			} else {
 				errorAdded = append(errorAdded, vs.LineRef)
 			}
 
-			if found && movedWord.FAScore < 0.1 {
-				foundMissing++
-			} else {
-				errorMissing = append(errorMissing, vs.LineRef)
-			}
+			//if found && movedWord.FAScore < 0.1 {
+			//	foundMissing++
+			//} else {
+			//	errorMissing = append(errorMissing, vs.LineRef)
+			//}
 			//displayVerseDetail(vs, testWords)
 		}
 	}
 	if total > 0 {
 		pctWasMissing := foundMissing / total * 100.0
-		pctWasAdded := foundAdded / total * 100.0
-		fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Was Added %.1f\n",
-			total, pctWasMissing, pctWasAdded)
+		pctFoundFalse := foundFalse / total * 100.0
+		pctFoundNot := foundNot / total * 100.0
+		//pctWasAdded := foundAdded / total * 100.0
+		fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
+			total, pctWasMissing, pctFoundFalse, pctFoundNot)
 		fmt.Println("Not Found Missing:", errorMissing)
 		fmt.Println("Not Found Added:", errorAdded)
 	} else {
