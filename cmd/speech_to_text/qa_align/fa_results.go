@@ -7,7 +7,6 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/utility/fa"
 	sa "github.com/artificial-polyglot/arti/utility/sequence_align"
 )
 
@@ -61,19 +60,7 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 		if status != nil {
 			return status
 		}
-
-		var faChars = make([]fa.CharFA, len(wChars))
-		for ic, ch := range wChars {
-			var fac fa.CharFA
-			fac.Char = ch.Char
-			fac.Score = ch.Error
-			fac.BeginSec = ch.Begin
-			fac.EndSec = ch.End
-			faChars[ic] = fac
-		}
-		faWord := fa.ComputeWordFA(faChars, fa.DefaultFAConfig())
-		wordScore := faWord.RecommendedScore()
-		//wordScore := wordErrorSum / float64(len(wChars))
+		wordScore := wordErrorSum / float64(len(wChars))
 		status = insertWords(conn, w.wordID, wordText, wordBegin, wordEnd, wordScore)
 		if status != nil {
 			return status
