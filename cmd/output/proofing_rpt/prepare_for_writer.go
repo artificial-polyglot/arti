@@ -43,7 +43,8 @@ func (a *AlignSilence) PrepareDataForWriter(chars []generic.AlignChar) []Verse2 
 	var verse Verse2
 	var words []Word2
 	var word Word2
-	var sumFAScore, cntFAScore float64
+	var sumFAScore, cntFAScore, minFAScore float64
+	minFAScore = 1.0
 	haveVerse := false
 	haveWord := false
 
@@ -82,6 +83,7 @@ func (a *AlignSilence) PrepareDataForWriter(chars []generic.AlignChar) []Verse2 
 			flushWord()
 			word = Word2{WordId: char.WordId, Ttype: "W", Text: char.Word, BeginTS: char.BeginTS}
 			sumFAScore, cntFAScore = 0, 0
+			minFAScore = 1.0
 			haveWord = true
 		}
 		char2 := Char2{Char: char.Char, BeginTS: char.BeginTS, EndTS: char.EndTS,
@@ -89,6 +91,9 @@ func (a *AlignSilence) PrepareDataForWriter(chars []generic.AlignChar) []Verse2 
 		word.Chars = append(word.Chars, char2)
 		word.EndTS = char.EndTS
 		sumFAScore += char.FAScore
+		if minFAScore > char.FAScore {
+			minFAScore = char.FAScore
+		}
 		cntFAScore++
 	}
 	flushVerse()
