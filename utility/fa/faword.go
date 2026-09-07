@@ -1,25 +1,21 @@
-// Package fa derives robust word-level forced-alignment scores and failure-mode
-// classifications from per-character fa_score + begin/end timestamp rows.
+// Package fa derives word-level forced-alignment features and failure-mode
+// classifications from per-character rows, using true durations recovered from
+// the inter-character Silence (which restores the timing that CTC's peaky,
+// one-frame-per-character spikes otherwise hide).
 //
-// It is designed for a CTC forced aligner (torchaudio.functional.forced_align)
-// that cannot skip a target token, so a word missing from the audio distorts the
-// alignment of its neighbor. Rather than collapse each word to a single mean, we
-// compute several features and classify the likely failure mode:
+// SilenceLong tells us how to read Silence and where words/verses/chapters end:
 //
-//   - Over-optimism (a mostly-wrong word rescued by a few good characters) is
-//     addressed by GeoMean (log-domain mean, harsh on a single bad character)
-//     and by keeping Min / P25 as separate signals.
-//   - Boundary spillover (the reported problem: a present word whose LEADING
-//     characters were shoved onto the missing word's frames or silence) is
-//     detected as a low->high ramp and repaired by trimming the contaminated
-//     leading characters *by timing/position*, not by value.
-//   - A genuinely missing word shows its characters crammed into near-zero
-//     duration (Compressed), a deletion signal independent of score value.
+//	3 -> silence is an intra-WORD gap: part of the character's real duration
+//	4 -> this char ends a WORD;    Silence is the inter-word pause
+//	5 -> this char ends a VERSE;   Silence is the inter-verse pause
+//	6 -> this char ends a CHAPTER; Silence runs to end of file (not a real pause)
+//	(1 and 2 are unused.)
 //
-// Timestamps are in seconds, matching begin/end computed as frame_index *
-// frame_duration, where frame_duration = (len(sample)/16000) / log_probs.shape[1].
-// Rename the package/types to fit your codebase. Defaults in DefaultFAConfig are
-// starting points to calibrate against your labeled data.
+// The primary error detector is the MINIMUM character score (empirically the
+// strongest single signal): an alignment error collapses at least one character
+// toward zero, while a merely-hard-but-correct word stays uniformly mediocre.
+// The duration and pause features corroborate and CLASSIFY a flag rather than
+// replace it: crammed -> deletion, stretched / long pause -> extra audio.
 package fa
 
 import (
@@ -27,32 +23,50 @@ import (
 	"sort"
 )
 
-// CharFA is one per-character forced-alignment row for a word, in text order.
-// BeginSec/EndSec are the character's alignment span in seconds.
-type CharFA struct {
-	Char     string  // the character (for debugging/inspection)
-	Score    float64 // per-character fa_score in [0,1] = exp(char log-prob)
-	BeginSec float64 // alignment begin timestamp, seconds
-	EndSec   float64 // alignment end timestamp, seconds
+// SilenceLong values.
+const (
+	SilInWord          = 3 // intra-word gap
+	SilBetweenWords    = 4 // word boundary
+	SilBetweenVerses   = 5 // verse boundary
+	SilBetweenChapters = 6 // chapter boundary / end of file
+)
+
+func isWordEnd(sl int) bool { return sl >= SilBetweenWords } // 4, 5, or 6
+
+// FAChar mirrors your Char2, so filling it is a field-for-field copy.
+type FAChar struct {
+	Char        rune
+	BeginTS     float64
+	EndTS       float64
+	FAScore     float64
+	Silence     float64
+	SilenceLong int
+	IsASR       bool // reserved; not used yet
 }
 
-// Dur is the character's duration in seconds (never negative).
-func (c CharFA) Dur() float64 {
-	d := c.EndSec - c.BeginSec
+// trueDur is a character's real footprint: its spike plus, for an in-word
+// character, the intra-word gap to the next one. Boundary characters exclude
+// their Silence, since that is a pause, not the character's speech.
+func trueDur(c FAChar) float64 {
+	d := c.EndTS - c.BeginTS
 	if d < 0 {
-		return 0
+		d = 0
+	}
+	if c.SilenceLong == SilInWord {
+		d += c.Silence
 	}
 	return d
 }
 
-// WordClass is the classified failure mode for a word.
+// WordClass is the classified state of a word.
 type WordClass int
 
 const (
-	ClassOK          WordClass = iota // present and well-aligned
-	BoundaryArtifact                  // present, but leading chars contaminated by a neighbor
-	SuspectDeletion                   // characters crammed into ~no audio: likely missing from audio
-	SuspectError                      // low score with no benign explanation: likely a real problem
+	ClassOK          WordClass = iota
+	BoundaryArtifact           // low score explained by contamination from an adjacent error
+	SuspectDeletion            // word crammed into too little audio: likely missing from audio
+	SuspectInsertion           // stretched char or over-long pause: likely extra audio
+	SuspectError               // low score with no benign explanation
 )
 
 func (c WordClass) String() string {
@@ -63,6 +77,8 @@ func (c WordClass) String() string {
 		return "BoundaryArtifact"
 	case SuspectDeletion:
 		return "SuspectDeletion"
+	case SuspectInsertion:
+		return "SuspectInsertion"
 	case SuspectError:
 		return "SuspectError"
 	default:
@@ -70,36 +86,60 @@ func (c WordClass) String() string {
 	}
 }
 
-// WordFA is the computed feature vector for one word.
+// WordFA is the feature vector for one word.
 type WordFA struct {
-	Mean           float64   // arithmetic mean of char scores (your current metric)
-	GeoMean        float64   // geometric mean = exp(mean(log score)); harsh on bad chars
-	TrimmedGeoMean float64   // GeoMean after dropping contaminated leading chars
-	Min            float64   // worst character score
-	P25            float64   // 25th-percentile char score
-	MinCharDur     float64   // shortest character duration (seconds)
-	TrimmedLead    int       // number of leading chars judged contaminated
-	LeadingRamp    bool      // spillover-victim signature present
-	Compressed     bool      // deletion signature: many near-zero-duration chars
-	Class          WordClass // overall classification
+	NumChars int
+
+	// scores
+	MinScore        float64 // primary detector
+	TrimmedMinScore float64 // min after dropping contaminated edge chars
+	Mean            float64
+	GeoMean         float64
+	P25             float64
+	TrimmedGeoMean  float64
+
+	// durations (seconds), from true per-character duration
+	ExtentSec      float64 // spoken footprint: last.EndTS - first.BeginTS
+	MeanCharDurSec float64 // ExtentSec / NumChars
+	MinCharDurSec  float64
+	MaxCharDurSec  float64
+
+	// boundary
+	TrailingPauseSec float64 // Silence after the word
+	TrailingKind     int     // SilenceLong of the word-final char (4/5/6)
+
+	// contamination (edge ramps)
+	TrimmedLead  int
+	TrimmedTrail int
+	LeadingRamp  bool
+	TrailingRamp bool
+
+	// baseline-relative flags (set by ClassifyWord)
+	Crammed        bool
+	Stretched      bool
+	LongTrailPause bool
+
+	Class WordClass
 }
 
-// RecommendedScore is the score to trust in QA: contamination-trimmed and
-// log-domain, so it serves both the spillover and over-optimism cases.
-func (f WordFA) RecommendedScore() float64 { return f.TrimmedGeoMean }
-
-// FAConfig holds the tunable thresholds. Calibrate on labeled examples.
+// FAConfig holds tunable thresholds. Duration/pause thresholds are RATIOS
+// against a local (per-chapter) baseline, so they travel across languages.
 type FAConfig struct {
-	Epsilon          float64 // floor for log() so a 0 score doesn't blow up
-	StrongScore      float64 // score considered "healthy" for the back region
-	RampDropFrac     float64 // leading char is contaminated if < RampDropFrac*strong
-	MaxLeadingFrac   float64 // never trim more than this fraction as "leading"
-	MinRampChars     int     // skip ramp detection for words shorter than this
-	CrammedDurSec    float64 // char with duration <= this counts as "crammed" (~1.5 frames)
-	CompressedFrac   float64 // word is Compressed if this fraction of chars are crammed
-	FailScore        float64 // RecommendedScore below this is a failure
-	RequireShortLead bool    // also require short duration to trim a leading char
-	LeadShortDurSec  float64 // duration below this is "short" for RequireShortLead
+	Epsilon float64 // log() floor
+
+	// ramp detection
+	StrongScore      float64
+	RampDropFrac     float64
+	MaxLeadingFrac   float64
+	MinRampChars     int
+	RequireShortLead bool
+	LeadShortDurSec  float64
+
+	// detection + classification
+	FailScore      float64 // MinScore below this flags the word
+	CrammedRatio   float64 // MeanCharDur < ratio*baseline  -> crammed (deletion)
+	StretchedRatio float64 // MaxCharDur  > ratio*baseline  -> stretched (insertion)
+	LongPauseRatio float64 // trailing pause > ratio*baseline pause -> insertion
 }
 
 func DefaultFAConfig() FAConfig {
@@ -109,82 +149,194 @@ func DefaultFAConfig() FAConfig {
 		RampDropFrac:     0.60,
 		MaxLeadingFrac:   0.50,
 		MinRampChars:     4,
-		CrammedDurSec:    0.03, // ~1.5 frames at a 20ms stride; set to ~1.5*frame_duration
-		CompressedFrac:   0.50,
-		FailScore:        0.50,
 		RequireShortLead: false,
 		LeadShortDurSec:  0.03,
+		FailScore:        0.50,
+		CrammedRatio:     0.45,
+		StretchedRatio:   2.50,
+		LongPauseRatio:   3.00,
 	}
 }
 
-// ComputeWordFA turns the per-character rows of one word into its feature vector.
-func ComputeWordFA(chars []CharFA, cfg FAConfig) WordFA {
+// Baseline holds local (per-chapter) norms for duration and pause.
+type Baseline struct {
+	MedianCharDurSec    float64
+	MedianTrailPauseSec float64
+}
+
+// Word is one segmented word: its char range in the input, its span, features.
+type Word struct {
+	Start    int // index of first char in the input slice
+	End      int // one past the last char
+	BeginSec float64
+	EndSec   float64
+	FA       WordFA
+}
+
+// AnalyzeChars is the batteries-included entry point: pass one chapter's flat
+// character stream (words delimited by SilenceLong), get back classified words.
+// It segments, computes intrinsic features, derives a chapter baseline, and
+// classifies each word against it.
+func AnalyzeChars(chars []FAChar, cfg FAConfig) []Word {
+	var words []Word
+	start := 0
+	for i := 0; i < len(chars); i++ {
+		if isWordEnd(chars[i].SilenceLong) || i == len(chars)-1 {
+			seg := chars[start : i+1]
+			w := Word{Start: start, End: i + 1, FA: ComputeWordFA(seg, cfg)}
+			if len(seg) > 0 {
+				w.BeginSec = seg[0].BeginTS
+				w.EndSec = seg[len(seg)-1].EndTS
+			}
+			words = append(words, w)
+			start = i + 1
+		}
+	}
+	base := ComputeBaseline(words)
+	for i := range words {
+		ClassifyWord(&words[i].FA, base, cfg)
+	}
+	return words
+}
+
+// ComputeWordFA computes the intrinsic (baseline-independent) features of one
+// word from its character rows. Use it directly if you already group words.
+func ComputeWordFA(chars []FAChar, cfg FAConfig) WordFA {
 	var f WordFA
 	n := len(chars)
 	if n == 0 {
 		return f
 	}
+	f.NumChars = n
 
 	scores := make([]float64, n)
-	durs := make([]float64, n)
-	minDur := math.Inf(1)
-	crammed := 0
+	tdur := make([]float64, n)
+	f.MinCharDurSec = math.Inf(1)
 	for i, c := range chars {
-		scores[i] = c.Score
-		d := c.Dur()
-		durs[i] = d
-		if d < minDur {
-			minDur = d
+		scores[i] = c.FAScore
+		d := trueDur(c)
+		tdur[i] = d
+		if d < f.MinCharDurSec {
+			f.MinCharDurSec = d
 		}
-		if d <= cfg.CrammedDurSec {
-			crammed++
+		if d > f.MaxCharDurSec {
+			f.MaxCharDurSec = d
 		}
 	}
 
+	f.MinScore = minOf(scores)
 	f.Mean = arithMean(scores)
 	f.GeoMean = geoMean(scores, cfg.Epsilon)
-
 	sorted := append([]float64(nil), scores...)
 	sort.Float64s(sorted)
-	f.Min = sorted[0]
 	f.P25 = percentile(sorted, 0.25)
-	f.MinCharDur = minDur
-	f.Compressed = float64(crammed)/float64(n) >= cfg.CompressedFrac
 
-	lead := leadingContaminated(scores, durs, cfg)
+	f.ExtentSec = chars[n-1].EndTS - chars[0].BeginTS
+	if f.ExtentSec < 0 {
+		f.ExtentSec = 0
+	}
+	f.MeanCharDurSec = f.ExtentSec / float64(n)
+
+	f.TrailingPauseSec = chars[n-1].Silence
+	f.TrailingKind = chars[n-1].SilenceLong
+
+	lead, trail := edgeContaminated(scores, tdur, cfg)
 	f.TrimmedLead = lead
+	f.TrimmedTrail = trail
 	f.LeadingRamp = lead > 0
-	if lead > 0 && lead < n {
-		f.TrimmedGeoMean = geoMean(scores[lead:], cfg.Epsilon)
+	f.TrailingRamp = trail > 0
+	if lead+trail > 0 && lead+trail < n {
+		surv := scores[lead : n-trail]
+		f.TrimmedGeoMean = geoMean(surv, cfg.Epsilon)
+		f.TrimmedMinScore = minOf(surv)
 	} else {
 		f.TrimmedGeoMean = f.GeoMean
+		f.TrimmedMinScore = f.MinScore
 	}
-
-	f.Class = classify(f, cfg)
 	return f
 }
 
-// leadingContaminated returns the length of the longest contiguous prefix of
-// characters that look like spillover contamination: low score relative to the
-// word's healthy back region (optionally corroborated by short duration).
-func leadingContaminated(scores, durs []float64, cfg FAConfig) int {
+// ComputeBaseline derives per-chapter norms from the analyzed words.
+func ComputeBaseline(words []Word) Baseline {
+	var durs, pauses []float64
+	for _, w := range words {
+		if w.FA.MeanCharDurSec > 0 {
+			durs = append(durs, w.FA.MeanCharDurSec)
+		}
+		if w.FA.TrailingKind == SilBetweenWords {
+			pauses = append(pauses, w.FA.TrailingPauseSec)
+		}
+	}
+	return Baseline{MedianCharDurSec: median(durs), MedianTrailPauseSec: median(pauses)}
+}
+
+// ClassifyWord sets the baseline-relative flags and the overall class.
+func ClassifyWord(f *WordFA, base Baseline, cfg FAConfig) {
+	if base.MedianCharDurSec > 0 {
+		f.Crammed = f.MeanCharDurSec < cfg.CrammedRatio*base.MedianCharDurSec
+		f.Stretched = f.MaxCharDurSec > cfg.StretchedRatio*base.MedianCharDurSec
+	}
+	if f.TrailingKind == SilBetweenWords && base.MedianTrailPauseSec > 0 {
+		f.LongTrailPause = f.TrailingPauseSec > cfg.LongPauseRatio*base.MedianTrailPauseSec
+	}
+
+	flagged := f.MinScore < cfg.FailScore
+	switch {
+	case flagged && f.Crammed:
+		f.Class = SuspectDeletion
+	case flagged && f.Stretched:
+		f.Class = SuspectInsertion
+	case flagged && (f.LeadingRamp || f.TrailingRamp):
+		f.Class = BoundaryArtifact
+	case flagged:
+		f.Class = SuspectError
+	case f.LongTrailPause:
+		// extra audio can leave a long pause without lowering any text score
+		f.Class = SuspectInsertion
+	default:
+		f.Class = ClassOK
+	}
+}
+
+// edgeContaminated returns leading and trailing runs of characters that look
+// like spillover contamination: low score vs the healthy opposite half,
+// optionally corroborated by short true duration.
+func edgeContaminated(scores, tdur []float64, cfg FAConfig) (lead, trail int) {
 	n := len(scores)
 	if n < cfg.MinRampChars {
-		return 0
+		return 0, 0
 	}
-	backStart := n / 2
-	strong := median(scores[backStart:])
-	if strong < cfg.StrongScore {
-		return 0 // back region isn't healthy; the ramp explanation doesn't apply
+	half := n / 2
+	if strong := median(scores[half:]); strong >= cfg.StrongScore {
+		lead = runFromEnd(scores, tdur, cfg, strong, true)
 	}
+	if strong := median(scores[:half]); strong >= cfg.StrongScore {
+		trail = runFromEnd(scores, tdur, cfg, strong, false)
+	}
+	if lead+trail >= n {
+		if lead >= trail {
+			trail = 0
+		} else {
+			lead = 0
+		}
+	}
+	return lead, trail
+}
+
+func runFromEnd(scores, tdur []float64, cfg FAConfig, strong float64, fromFront bool) int {
+	n := len(scores)
 	limit := int(float64(n) * cfg.MaxLeadingFrac)
 	if limit < 1 {
 		limit = 1
 	}
 	count := 0
 	for i := 0; i < limit; i++ {
-		low := scores[i] < cfg.RampDropFrac*strong
-		shortDur := durs[i] < cfg.LeadShortDurSec
+		idx := i
+		if !fromFront {
+			idx = n - 1 - i
+		}
+		low := scores[idx] < cfg.RampDropFrac*strong
+		shortDur := tdur[idx] < cfg.LeadShortDurSec
 		if low && (!cfg.RequireShortLead || shortDur) {
 			count = i + 1
 		} else {
@@ -194,17 +346,14 @@ func leadingContaminated(scores, durs []float64, cfg FAConfig) int {
 	return count
 }
 
-func classify(f WordFA, cfg FAConfig) WordClass {
-	switch {
-	case f.Compressed:
-		return SuspectDeletion
-	case f.LeadingRamp:
-		return BoundaryArtifact
-	case f.RecommendedScore() < cfg.FailScore:
-		return SuspectError
-	default:
-		return ClassOK
+func minOf(xs []float64) float64 {
+	m := math.Inf(1)
+	for _, x := range xs {
+		if x < m {
+			m = x
+		}
 	}
+	return m
 }
 
 func arithMean(xs []float64) float64 {
@@ -215,7 +364,6 @@ func arithMean(xs []float64) float64 {
 	return s / float64(len(xs))
 }
 
-// geoMean is exp(mean(log(x))); a single near-zero value drags it toward zero.
 func geoMean(xs []float64, eps float64) float64 {
 	if len(xs) == 0 {
 		return 0
@@ -227,7 +375,6 @@ func geoMean(xs []float64, eps float64) float64 {
 	return math.Exp(s / float64(len(xs)))
 }
 
-// percentile does linear interpolation on an already-sorted ascending slice.
 func percentile(sorted []float64, p float64) float64 {
 	n := len(sorted)
 	if n == 0 {
@@ -247,6 +394,9 @@ func percentile(sorted []float64, p float64) float64 {
 }
 
 func median(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
 	s := append([]float64(nil), xs...)
 	sort.Float64s(s)
 	return percentile(s, 0.5)
