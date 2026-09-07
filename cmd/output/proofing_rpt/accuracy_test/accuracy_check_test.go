@@ -35,9 +35,18 @@ func computeMinWordError(verses []proofing_rpt.Verse2) {
 	for i, vs := range verses {
 		for j, wd := range vs.Words {
 			var minimum = 1.0
-			for _, ch := range wd.Chars {
-				if minimum > ch.FAScore {
-					minimum = ch.FAScore
+			for c := range wd.Chars {
+				ch := wd.Chars[c]
+				if len(wd.Chars) > 4 {
+					if c > 0 && c < len(wd.Chars)-1 {
+						if minimum > ch.FAScore {
+							minimum = ch.FAScore
+						}
+					}
+				} else {
+					if minimum > ch.FAScore {
+						minimum = ch.FAScore
+					}
 				}
 			}
 			verses[i].Words[j].FAScore = minimum
@@ -61,7 +70,7 @@ func computeFAWordError(verses []proofing_rpt.Verse2) {
 				faChars = append(faChars, char)
 			}
 			faWord := fa.ComputeWordFA(faChars, fa.DefaultFAConfig())
-			verses[i].Words[j].FAScore = faWord.TrimmedGeoMean
+			verses[i].Words[j].FAScore = faWord.TrimmedMinScore
 		}
 	}
 }
