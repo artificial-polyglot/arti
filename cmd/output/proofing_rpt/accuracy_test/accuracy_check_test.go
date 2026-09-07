@@ -9,6 +9,7 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/utility/fa"
 )
 
 // This is a shortcut for running the last part of accuracy_test.
@@ -25,11 +26,12 @@ func TestAccuracyCheck(t *testing.T) {
 	if status != nil {
 		exit(status)
 	}
-	computeWordError(verses)
+	computeMinWordError(verses)
+	//computeFAWordError(verses)
 	checkResults(verses, testCases)
 }
 
-func computeWordError(verses []proofing_rpt.Verse2) {
+func computeMinWordError(verses []proofing_rpt.Verse2) {
 	for i, vs := range verses {
 		for j, wd := range vs.Words {
 			var minimum = 1.0
@@ -39,6 +41,27 @@ func computeWordError(verses []proofing_rpt.Verse2) {
 				}
 			}
 			verses[i].Words[j].FAScore = minimum
+		}
+	}
+}
+
+func computeFAWordError(verses []proofing_rpt.Verse2) {
+	for i, vs := range verses {
+		for j, wd := range vs.Words {
+			var faChars []fa.FAChar
+			for _, ch := range wd.Chars {
+				var char fa.FAChar
+				char.Char = ch.Char
+				char.BeginTS = ch.BeginTS
+				char.EndTS = ch.EndTS
+				char.FAScore = ch.FAScore
+				char.Silence = ch.Silence
+				char.SilenceLong = ch.SilenceLong
+				char.IsASR = ch.IsASR
+				faChars = append(faChars, char)
+			}
+			faWord := fa.ComputeWordFA(faChars, fa.DefaultFAConfig())
+			verses[i].Words[j].FAScore = faWord.TrimmedGeoMean
 		}
 	}
 }
@@ -71,7 +94,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 			var missingResult string
 			movedWord, _ := findWordById(vs, testWords.MovedWordId)
 			for _, wd := range vs.Words {
-				if wd.FAScore < 0.5 {
+				if wd.FAScore < 0.01 {
 					if wd.WordId == movedWord.WordId {
 						missingResult = "FOUND MISSING"
 						foundMissing++
@@ -91,9 +114,9 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 				if wd.FAScore < 0.5 || wd.WordId == movedWord.WordId {
 					fmt.Printf("%s  %d  %s  %.2f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
 					for _, ch := range wd.Chars {
-						fmt.Printf(" %s (%.2f)", string(ch.Char), ch.FAScore)
+						fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
 					}
-					fmt.Println()
+					fmt.Println("]")
 				}
 			}
 			//var missing bool

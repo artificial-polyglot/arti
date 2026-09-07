@@ -81,7 +81,8 @@ func TestAccuracy(t *testing.T) {
 	if status != nil {
 		exit(status)
 	}
-	computeWordError(results)
+	//computeMinWordError(results)
+	computeFAWordError(results)
 	checkResults(results, testCases)
 }
 
