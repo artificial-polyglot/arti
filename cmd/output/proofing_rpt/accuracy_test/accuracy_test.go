@@ -18,7 +18,7 @@ import (
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
 
-const TEST_DATA = "accuracy_test.txt"
+const TEST_DATA = "accuracy_test.json"
 
 /*
 This test moves the position of a word in each test sentence.
@@ -31,13 +31,11 @@ of the qa_align and proofing_rpt
 */
 
 type wordSwitch struct {
-	FromWord int `json:"from_word"`
-	ToWord   int `json:"to_word"`
-	// movedWordId is the word_id the moved word will carry in the database
-	// once storeAlteredData relabels word_id to match the new arrangement -
-	// i.e. the *original* word_id of the toWord slot, not the fromWord slot.
-	// See storeAlteredData for why the moved word ends up wearing that id.
-	MovedWordId int64 `json:"move_word_id"`
+	Word       string `json:"word"`
+	FromWord   int    `json:"from_word"`
+	ToWord     int    `json:"to_word"`
+	FromWordId int64  `json:"from_word_id"`
+	ToWordId   int64  `json:"to_word_id"`
 }
 
 func TestAccuracy(t *testing.T) {
@@ -60,11 +58,10 @@ func TestAccuracy(t *testing.T) {
 			for i, wd := range vs.Words {
 				ids[i] = wd.WordId
 			}
-			testWords := computeTwoRandoms(len(vs.Words))
-			testWords.MovedWordId = vs.Words[testWords.ToWord].WordId
-			testCases[vs.ScriptId] = testWords
 			origWordIds[vs.ScriptId] = ids
-			moveFirstToSecond(vs, testWords)
+			testWords := computeTwoRandoms(len(vs.Words))
+			moveFirstToSecond(vs, &testWords)
+			testCases[vs.ScriptId] = testWords
 		}
 	}
 	storeTestCases(testCases)
@@ -161,7 +158,10 @@ func computeTwoRandoms(wordCnt int) wordSwitch {
 	return wordSwitch{FromWord: first, ToWord: second}
 }
 
-func moveFirstToSecond(verse proofing_rpt.Verse2, tWds wordSwitch) {
+func moveFirstToSecond(verse proofing_rpt.Verse2, tWds *wordSwitch) {
+	tWds.Word = verse.Words[tWds.FromWord].Text
+	tWds.ToWordId = verse.Words[tWds.ToWord].WordId
+	tWds.FromWordId = verse.Words[tWds.FromWord].WordId
 	w := verse.Words[tWds.FromWord]
 	if tWds.FromWord < tWds.ToWord {
 		// shift the gap left, closing the hole at `first`
@@ -274,5 +274,6 @@ func retrieveTestCases() map[int64]wordSwitch {
 
 func exit(err error) {
 	fmt.Println("ERR", err)
+	panic(err)
 	os.Exit(1)
 }

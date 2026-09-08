@@ -26,9 +26,18 @@ func TestAccuracyCheck(t *testing.T) {
 	if status != nil {
 		exit(status)
 	}
-	computeMinWordError(verses)
-	//computeFAWordError(verses)
+	//computeMinWordError(verses)
+	computeFAWordError(verses)
 	checkResults(verses, testCases)
+	for _, vs := range verses {
+		for _, wd := range vs.Words {
+			for _, ch := range wd.Chars {
+				if ch.IsASR {
+					fmt.Println("ch", string(ch.Char), wd.WordId, wd.Text, vs.LineRef.Description())
+				}
+			}
+		}
+	}
 }
 
 func computeMinWordError(verses []proofing_rpt.Verse2) {
@@ -101,7 +110,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 			}
 			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
 			var missingResult string
-			movedWord, _ := findWordById(vs, testWords.MovedWordId)
+			movedWord, _ := findWordById(vs, testWords.ToWordId)
 			for _, wd := range vs.Words {
 				if wd.FAScore < 0.01 {
 					if wd.WordId == movedWord.WordId {

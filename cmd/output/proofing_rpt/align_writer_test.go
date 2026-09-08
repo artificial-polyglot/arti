@@ -7,6 +7,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/input"
+	"github.com/artificial-polyglot/arti/request"
 )
 
 func TestAlignWriter(t *testing.T) {
@@ -27,8 +28,9 @@ func TestAlignWriter(t *testing.T) {
 		if status != nil {
 			t.Fatal(status)
 		}
+		var req request.Request
 		conn := db.NewDBAdapter(ctx, database[0].FilePath())
-		output, status := Process(conn)
+		output, status := Process(conn, req)
 		fmt.Println("output", output)
 	}
 }

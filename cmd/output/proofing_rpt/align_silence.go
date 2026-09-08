@@ -47,54 +47,73 @@ func NewAlignSilence(conn db.DBAdapter) AlignSilence {
 	return a
 }
 
+// silencePositionOf classifies the gap between the char at (prevVi, prevWi)
+// and the char at (vi, wi) - both are indices into verses - as within a word,
+// between words, between verses, or between chapters.
+func silencePositionOf(verses []Verse2, prevVi, prevWi, vi, wi int) SilencePosition {
+	switch {
+	case prevVi == vi && prevWi == wi:
+		return betweenChars
+	case prevVi == vi:
+		return betweenWords
+	case verses[prevVi].LineRef.BookId == verses[vi].LineRef.BookId && verses[prevVi].LineRef.ChapterNum == verses[vi].LineRef.ChapterNum:
+		return betweenVerses
+	default:
+		return betweenChapters
+	}
+}
+
 func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.Status) {
-	var verses []Verse2
 	var audioURLs map[string]generic.AudioFile
-	faChars, status := a.conn.SelectFACharTimestamps(FA_SCORE_CUTOFF)
+	verses, status := SelectCharData(a.conn, FA_SCORE_CUTOFF)
 	if status != nil {
 		return verses, audioURLs, status
 	}
-	for i := 0; i < len(faChars)-1; i++ {
-		var curr = faChars[i]
-		var next = faChars[i+1]
-		faChars[i].Duration = curr.EndTS - curr.BeginTS
-		faChars[i].Silence = next.BeginTS - curr.EndTS
-		if curr.WordId == next.WordId {
-			faChars[i].SilencePos = int(betweenChars)
-		} else if curr.LineId == next.LineId {
-			faChars[i].SilencePos = int(betweenWords)
-		} else if curr.LineRef.BookId == next.LineRef.BookId && curr.LineRef.ChapterNum == next.LineRef.ChapterNum {
-			faChars[i].SilencePos = int(betweenVerses)
-		} else {
-			faChars[i].SilencePos = int(betweenChapters)
-			var duration float64
-			duration, status = a.SelectDuration(faChars[i].LineId)
-			if status != nil {
-				return verses, audioURLs, status
-			}
-			if duration > curr.EndTS {
-				faChars[i].Silence = duration - curr.EndTS
-			} else {
-				faChars[i].Silence = 0.0
+	var charSilence, wordSilence, verseSilence, chapterSilence []float64
+	var prev *Char2
+	var prevVi, prevWi int
+	for vi := range verses {
+		for wi := range verses[vi].Words {
+			chars := verses[vi].Words[wi].Chars
+			for ci := range chars {
+				curr := &chars[ci]
+				if prev != nil {
+					prev.Silence = curr.BeginTS - prev.EndTS
+					switch silencePositionOf(verses, prevVi, prevWi, vi, wi) {
+					case betweenChars:
+						charSilence = append(charSilence, prev.Silence)
+					case betweenWords:
+						wordSilence = append(wordSilence, prev.Silence)
+					case betweenVerses:
+						verseSilence = append(verseSilence, prev.Silence)
+					case betweenChapters:
+						var duration float64
+						duration, status = a.SelectDuration(verses[prevVi].ScriptId)
+						if status != nil {
+							return verses, audioURLs, status
+						}
+						if duration > prev.EndTS {
+							prev.Silence = duration - prev.EndTS
+						} else {
+							prev.Silence = 0.0
+						}
+						chapterSilence = append(chapterSilence, prev.Silence)
+					}
+				}
+				prev = curr
+				prevVi, prevWi = vi, wi
 			}
 		}
 	}
-	mean, stddev := a.analyzeData(a.getDurations(faChars))
-	//fmt.Println("Char Widths:", mean, stddev, mini, maxi)
-	mean, stddev = a.analyzeData(a.getSilence(faChars, betweenChars))
-	//fmt.Println("Between Chars:", mean, stddev, mini, maxi)
+	mean, stddev := a.analyzeData(charSilence)
 	var charLimit = mean + (4.0 * stddev)
-	mean, stddev = a.analyzeData(a.getSilence(faChars, betweenWords))
-	//fmt.Println("Between Words:", mean, stddev, mini, maxi)
+	mean, stddev = a.analyzeData(wordSilence)
 	var wordLimit = mean + (4.0 * stddev)
-	mean, stddev = a.analyzeData(a.getSilence(faChars, betweenVerses))
-	//fmt.Println("Between Verses:", mean, stddev, mini, maxi)
+	mean, stddev = a.analyzeData(verseSilence)
 	var verseLimit = mean + (4.0 * stddev)
-	mean, stddev = a.analyzeData(a.getSilence(faChars, betweenChapters))
-	//fmt.Println("Between Chapters:", mean, stddev, mini, maxi)
+	mean, stddev = a.analyzeData(chapterSilence)
 	var chapLimit = mean + (3.0 * stddev)
-	a.markSilenceOutliers(faChars, charLimit, wordLimit, verseLimit, chapLimit)
-	verses = a.PrepareDataForWriter(faChars)
+	a.markSilenceOutliers(verses, charLimit, wordLimit, verseLimit, chapLimit)
 	verses, status = a.CompareLines2ASR(verses)
 	if status != nil {
 		return verses, audioURLs, status
@@ -113,25 +132,6 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 	return verses, audioURLs, status
 }
 
-func (a *AlignSilence) getDurations(chars []generic.AlignChar) []float64 {
-	var data []float64
-	for _, ch := range chars {
-		data = append(data, ch.Duration)
-	}
-	return data
-}
-
-func (a *AlignSilence) getSilence(chars []generic.AlignChar, pos SilencePosition) []float64 {
-	var data []float64
-	posInt := int(pos)
-	for _, ch := range chars {
-		if ch.SilencePos == posInt {
-			data = append(data, ch.Silence)
-		}
-	}
-	return data
-}
-
 func (a *AlignSilence) analyzeData(data []float64) (mean, stddev float64) {
 	if len(data) == 0 {
 		return 0.0, 0.0
@@ -141,24 +141,36 @@ func (a *AlignSilence) analyzeData(data []float64) (mean, stddev float64) {
 	return mean, stddev
 }
 
-func (a *AlignSilence) markSilenceOutliers(chars []generic.AlignChar, charLimit, wordLimit, verseLimit, chapLimit float64) { //, mean float64, stddev float64,
-	for i, ch := range chars {
-		switch SilencePosition(ch.SilencePos) {
-		case betweenChars:
-			if ch.Silence >= charLimit {
-				chars[i].SilenceLong = int(betweenCharsLong)
-			}
-		case betweenWords:
-			if ch.Silence >= wordLimit {
-				chars[i].SilenceLong = int(betweenWordsLong)
-			}
-		case betweenVerses:
-			if ch.Silence >= verseLimit {
-				chars[i].SilenceLong = int(betweenVersesLong)
-			}
-		case betweenChapters:
-			if ch.Silence >= chapLimit {
-				chars[i].SilenceLong = int(betweenChaptersLong)
+func (a *AlignSilence) markSilenceOutliers(verses []Verse2, charLimit, wordLimit, verseLimit, chapLimit float64) {
+	var prev *Char2
+	var prevVi, prevWi int
+	for vi := range verses {
+		for wi := range verses[vi].Words {
+			chars := verses[vi].Words[wi].Chars
+			for ci := range chars {
+				curr := &chars[ci]
+				if prev != nil {
+					switch silencePositionOf(verses, prevVi, prevWi, vi, wi) {
+					case betweenChars:
+						if prev.Silence >= charLimit {
+							prev.SilenceLong = int(betweenCharsLong)
+						}
+					case betweenWords:
+						if prev.Silence >= wordLimit {
+							prev.SilenceLong = int(betweenWordsLong)
+						}
+					case betweenVerses:
+						if prev.Silence >= verseLimit {
+							prev.SilenceLong = int(betweenVersesLong)
+						}
+					case betweenChapters:
+						if prev.Silence >= chapLimit {
+							prev.SilenceLong = int(betweenChaptersLong)
+						}
+					}
+				}
+				prev = curr
+				prevVi, prevWi = vi, wi
 			}
 		}
 	}
