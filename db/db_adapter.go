@@ -836,7 +836,7 @@ func (d *DBAdapter) SelectFAScriptTimestamps(bookId string, chapter int) ([]Audi
 func (d *DBAdapter) SelectFACharTimestamps(cutoff float64) ([]generic.AlignChar, *log.Status) {
 	var chars []generic.AlignChar
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str,
-				w.word_id, w.word_punct, c.seq, c.char, c.begin_ts, c.end_ts, c.fa_score
+				w.word_id, w.word, w.word_punct, c.seq, c.char, c.begin_ts, c.end_ts, c.fa_score
 				FROM scripts s JOIN words w ON s.script_id = w.script_id
 				LEFT OUTER JOIN chars_qa_align c ON w.word_id = c.word_id
 				WHERE w.ttype = 'W' AND w.script_id IN (
@@ -853,7 +853,7 @@ func (d *DBAdapter) SelectFACharTimestamps(cutoff float64) ([]generic.AlignChar,
 		var ch generic.AlignChar
 		var chr string
 		err = rows.Scan(&ch.LineId, &ch.LineRef.BookId, &ch.LineRef.ChapterNum, &ch.LineRef.VerseStr,
-			&ch.WordId, &ch.Word, &ch.CharSeq, &chr, &ch.BeginTS, &ch.EndTS, &ch.FAScore)
+			&ch.WordId, &ch.Word, &ch.WordPunct, &ch.CharSeq, &chr, &ch.BeginTS, &ch.EndTS, &ch.FAScore)
 		if err != nil {
 			return chars, log.Error(d.Ctx, 500, err, "Error in SelectFACharTimestamps.")
 		}

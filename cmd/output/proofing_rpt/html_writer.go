@@ -138,22 +138,22 @@ func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
 			span = wd.Text
 		} else if wd.Ttype == "ASR" && wd.Text == wd.Uroman {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgb(255, 193, 84);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct)
 		} else if wd.Ttype == "ASR" {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgb(255, 193, 84);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Text)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.WordPunct)
 		} else if wd.Text == wd.Uroman && wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f>%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct)
 		} else if wd.Text == wd.Uroman {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Opacity, wd.Text)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Opacity, wd.WordPunct)
 		} else if wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Text)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.WordPunct)
 		} else {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Text, wd.Uroman, wd.Opacity, wd.Text)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.Opacity, wd.WordPunct)
 		}
 		_, _ = h.out.WriteString(span)
 		_, _ = h.out.WriteString(" ")

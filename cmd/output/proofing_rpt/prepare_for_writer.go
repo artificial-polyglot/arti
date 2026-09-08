@@ -13,15 +13,16 @@ type Verse2 struct {
 	Words    []Word2
 }
 type Word2 struct {
-	WordId  int64
-	Ttype   string
-	Chars   []Char2
-	Text    string
-	Uroman  string
-	BeginTS float64
-	EndTS   float64
-	FAScore float64
-	Opacity float64
+	WordId    int64
+	Ttype     string
+	Chars     []Char2
+	Text      string
+	WordPunct string
+	Uroman    string
+	BeginTS   float64
+	EndTS     float64
+	FAScore   float64
+	Opacity   float64
 }
 
 type Char2 struct {
@@ -81,7 +82,7 @@ func (a *AlignSilence) PrepareDataForWriter(chars []generic.AlignChar) []Verse2 
 		}
 		if !haveWord || char.WordId != word.WordId {
 			flushWord()
-			word = Word2{WordId: char.WordId, Ttype: "W", Text: char.Word, BeginTS: char.BeginTS}
+			word = Word2{WordId: char.WordId, Ttype: "W", Text: char.Word, WordPunct: char.WordPunct, BeginTS: char.BeginTS}
 			sumFAScore, cntFAScore = 0, 0
 			minFAScore = 1.0
 			haveWord = true
