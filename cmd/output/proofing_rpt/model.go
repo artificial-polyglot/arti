@@ -12,7 +12,6 @@ type Verse2 struct {
 }
 type Word2 struct {
 	WordId    int64
-	Ttype     string // W=word, ASR=added by align_compare
 	Chars     []Char2
 	Text      string // Word text with no punctuation
 	WordPunct string // Word with punctuation added back
@@ -20,6 +19,7 @@ type Word2 struct {
 	BeginTS   float64 // Used in report for word Karoke highlighting
 	EndTS     float64 // Used in report for word Karoke highlighting
 	FAScore   float64 // Computed in align_compare
+	IsASR     bool
 	Opacity   float64
 }
 

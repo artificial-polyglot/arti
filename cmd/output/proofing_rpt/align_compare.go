@@ -83,7 +83,7 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText stri
 					}
 					if len(newWord.Chars) > 0 {
 						a.interpolateASRTimestamps(&newWord, ch.EndTS, ch.Silence)
-						newWord.Ttype = "ASR"
+						newWord.IsASR = true
 						newWord.Text = string(text)
 						newWord.FAScore = 1.0
 						pendingASR = append(pendingASR, newWord)

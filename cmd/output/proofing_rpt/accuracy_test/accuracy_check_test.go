@@ -92,6 +92,7 @@ func computeFAWordError(verses []proofing_rpt.Verse2) {
 func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
+		total++
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
 			var text []string
@@ -103,7 +104,6 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 			var missingResult string
 			for _, wd := range vs.Words {
 				if wd.FAScore < 0.01 {
-					total++
 					if wd.WordId == testWords.ToWordId {
 						missingResult = "FOUND MISSING"
 						foundMissing++
@@ -149,18 +149,17 @@ func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wor
 		if ok {
 			var text []string
 			for _, wd := range vs.Words {
-				text = append(text, wd.Text)
-				if wd.Ttype == "ASR" {
-					text = append(text, "ASR")
-				}
+				lastChar := wd.Chars[len(wd.Chars)-1]
+				msg := fmt.Sprintf(" %s (%.2f %t)", wd.Text, lastChar.Silence, wd.IsASR)
+				text = append(text, msg)
 			}
 			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
 			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
 			var addedResult string
 			var verseHasResult bool
 			for _, wd := range vs.Words {
-				if wd.Ttype == "ASR" {
-					if strings.TrimSpace(wd.Text) == testWords.Word {
+				if wd.IsASR {
+					if strings.ToLower(strings.TrimSpace(wd.Text)) == strings.ToLower(testWords.Word) {
 						addedResult = "FOUND ADDED"
 						foundMissing++
 						verseHasResult = true
@@ -172,23 +171,6 @@ func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wor
 						displayAdded(addedResult, testWords, wd)
 					}
 				}
-
-				//else {
-				//	if strings.TrimSpace(wd.Text) == testWords.Word {
-				//		addedResult = "NOT FOUND ADDED"
-				//		foundNot++
-				//	} else {
-				//		addedResult = "OK"
-				//	}
-				//}
-				//if addedResult != "OK" {
-				//if foundMissing
-				//	fmt.Printf("%s  %v  %s  %d  [", addedResult, testWords, wd.Text, wd.WordId)
-				//	for _, ch := range wd.Chars {
-				//		fmt.Printf(" %s (%.3f, %d)", string(ch.Char), ch.Silence, ch.SilenceLong)
-				//	}
-				//	fmt.Println("]")
-				//}
 			}
 			if !verseHasResult {
 				displayAdded("NOTHING ADDED", testWords, proofing_rpt.Word2{})

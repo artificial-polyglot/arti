@@ -79,7 +79,7 @@ func SelectCharData(conn db.DBAdapter, cutoff float64) ([]Verse2, *log.Status) {
 		}
 		if !haveWord || wordId != word.WordId {
 			flushWord()
-			word = Word2{WordId: wordId, Ttype: "W", Text: wordText, WordPunct: wordPunct, BeginTS: wordBeginTS,
+			word = Word2{WordId: wordId, Text: wordText, WordPunct: wordPunct, BeginTS: wordBeginTS,
 				EndTS: wordEndTS, FAScore: wordFAScore}
 			haveWord = true
 		}

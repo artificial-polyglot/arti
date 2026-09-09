@@ -134,12 +134,12 @@ func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
 	_, _ = h.out.WriteString(`<td>`)
 	var span string
 	for _, wd := range verse.Words {
-		if wd.Ttype != "W" {
+		if wd.IsASR {
 			span = wd.Text
-		} else if wd.Ttype == "ASR" && wd.Text == wd.Uroman {
+		} else if wd.IsASR && wd.Text == wd.Uroman {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgb(255, 193, 84);">%s</span>`,
 				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct)
-		} else if wd.Ttype == "ASR" {
+		} else if wd.IsASR {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgb(255, 193, 84);">%s</span>`,
 				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.WordPunct)
 		} else if wd.Text == wd.Uroman && wd.Opacity == 0 {
@@ -329,20 +329,20 @@ func minSecFormat(duration float64) string {
 func ComputeMinimum(words []Word2) float64 {
 	var minimum = 1.0
 	for _, w := range words {
-		if w.Ttype == "W" {
-			if w.FAScore < minimum {
-				minimum = w.FAScore
-			}
+		//if w.Ttype == "W" {
+		if w.FAScore < minimum {
+			minimum = w.FAScore
 		}
+		//}
 	}
 	return minimum
 }
 
 func startTime(words []Word2) float64 {
 	for _, w := range words {
-		if w.Ttype == "W" {
-			return w.BeginTS
-		}
+		//if w.Ttype == "W" {
+		return w.BeginTS
+		//}
 	}
 	return 0.0
 }

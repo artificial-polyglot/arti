@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -53,7 +54,7 @@ func TestAccuracy(t *testing.T) {
 	var testCases = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
-		if len(vs.Words) > 1 {
+		if len(vs.Words) > 4 {
 			ids := make([]int64, len(vs.Words))
 			for i, wd := range vs.Words {
 				ids[i] = wd.WordId
@@ -152,7 +153,7 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books request.Testament, cuto
 func computeTwoRandoms(wordCnt int) wordSwitch {
 	first := rand.IntN(wordCnt)
 	second := rand.IntN(wordCnt)
-	for first == second {
+	for math.Abs(float64(first-second)) < 2 {
 		second = rand.IntN(wordCnt)
 	}
 	return wordSwitch{FromWord: first, ToWord: second}
@@ -230,14 +231,14 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordI
 	return nil
 }
 
-func hasASRWord(verse proofing_rpt.Verse2) bool {
-	for _, wd := range verse.Words {
-		if wd.Ttype == "ASR" {
-			return true
-		}
-	}
-	return false
-}
+//func hasASRWord(verse proofing_rpt.Verse2) bool {
+//	for _, wd := range verse.Words {
+//		if wd.Ttype == "ASR" {
+//			return true
+//		}
+//	}
+//	return false
+//}
 
 func findWordById(verse proofing_rpt.Verse2, wordId int64) (proofing_rpt.Word2, bool) {
 	for _, wd := range verse.Words {
