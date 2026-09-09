@@ -78,13 +78,15 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 			for ci := range chars {
 				curr := &chars[ci]
 				if prev != nil {
-					prev.Silence = curr.BeginTS - prev.EndTS
 					switch silencePositionOf(verses, prevVi, prevWi, vi, wi) {
 					case betweenChars:
+						prev.Silence = curr.BeginTS - prev.EndTS
 						charSilence = append(charSilence, prev.Silence)
 					case betweenWords:
+						prev.Silence = curr.BeginTS - prev.EndTS
 						wordSilence = append(wordSilence, prev.Silence)
 					case betweenVerses:
+						prev.Silence = curr.BeginTS - verses[prevVi].EndTS
 						verseSilence = append(verseSilence, prev.Silence)
 					case betweenChapters:
 						var duration float64
@@ -92,10 +94,9 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 						if status != nil {
 							return verses, audioURLs, status
 						}
-						if duration > prev.EndTS {
-							prev.Silence = duration - prev.EndTS
-						} else {
-							prev.Silence = 0.0
+						prev.Silence = duration - prev.EndTS
+						if prev.Silence < 0 {
+							prev.Silence = 0
 						}
 						chapterSilence = append(chapterSilence, prev.Silence)
 					}
@@ -106,27 +107,27 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 		}
 	}
 	mean, stddev := a.analyzeData(charSilence)
-	var charLimit = mean + (4.0 * stddev)
+	var charLimit = mean + (0.0 * stddev)
 	mean, stddev = a.analyzeData(wordSilence)
-	var wordLimit = mean + (4.0 * stddev)
+	var wordLimit = mean + (0.0 * stddev)
 	mean, stddev = a.analyzeData(verseSilence)
-	var verseLimit = mean + (4.0 * stddev)
+	var verseLimit = mean + (0.0 * stddev)
 	mean, stddev = a.analyzeData(chapterSilence)
-	var chapLimit = mean + (3.0 * stddev)
+	var chapLimit = mean + (0.0 * stddev)
 	a.markSilenceOutliers(verses, charLimit, wordLimit, verseLimit, chapLimit)
 	verses, status = a.CompareLines2ASR(verses)
 	if status != nil {
 		return verses, audioURLs, status
 	}
-	for _, v := range verses {
-		for _, w := range v.Words {
-			for _, c := range w.Chars {
-				if c.IsASR {
-					fmt.Println(v.LineRef, "ISASR", c, string(c.Char))
-				}
-			}
-		}
-	}
+	//for _, v := range verses {
+	//	for _, w := range v.Words {
+	//		for _, c := range w.Chars {
+	//			if c.IsASR {
+	//				fmt.Println(v.LineRef, "ISASR", c, string(c.Char))
+	//			}
+	//		}
+	//	}
+	//}
 	audioURLs, status = db.CreateAudioFileMap(a.conn)
 	a.ComputeOpacity(verses, OPACITY_CUTOFF)
 	return verses, audioURLs, status

@@ -41,24 +41,32 @@ func (a *AlignSilence) HasSilence(verse Verse2) bool {
 
 func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 	var text []string
-	for i, wd := range verse.Words {
-		if i > 0 {
-			text = append(text, " ")
-		}
+	for _, wd := range verse.Words {
 		text = append(text, wd.Text)
 	}
-	return strings.ToLower(strings.Join(text, ""))
+	return strings.ToLower(strings.Join(text, " "))
 }
 
 func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText string) Verse2 {
 	cDiffs := a.DiffMatchPatch(refText, asrText)
 	newWords := make([]Word2, 0, len(verse.Words)+10)
-	position := 0
+	position := -2
 	for _, wd := range verse.Words {
+		position++
 		var pendingASR []Word2
 		for _, ch := range wd.Chars {
-			if ch.SilenceLong > 0 {
-				diffPos := a.FindPositionInDiff(cDiffs, position)
+			position++
+			//if ch.SilenceLong > 0 {
+			if true {
+				lookupPos := position
+				if ch.SilenceLong == int(betweenWordsLong) {
+					// GetOriginalText inserts a synthetic space between this word
+					// and the next; its own diff entry must be passed before
+					// scanning for ASR inserts, or an insertion right after the
+					// space is missed entirely.
+					lookupPos++
+				}
+				diffPos := a.FindPositionInDiff(cDiffs, lookupPos)
 				if diffPos >= 0 {
 					var newWord Word2
 					var text []rune
@@ -67,49 +75,52 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText stri
 							Char:    cDiffs[i].Char,
 							BeginTS: -1,
 							EndTS:   -1,
-							FAScore: 0.0,
+							FAScore: 1.0,
 							IsASR:   true,
 						}
 						text = append(text, newChar.Char)
 						newWord.Chars = append(newWord.Chars, newChar)
 					}
 					if len(newWord.Chars) > 0 {
-						n := len(newWord.Chars)
-						start := ch.EndTS
-						span := ch.Silence // duration of the silence gap
-
-						if span > 0 {
-							slice := span / float64(n)
-							for j := range newWord.Chars {
-								newWord.Chars[j].BeginTS = start + float64(j)*slice
-								newWord.Chars[j].EndTS = start + float64(j+1)*slice
-							}
-							newWord.BeginTS = newWord.Chars[0].BeginTS
-							newWord.EndTS = newWord.Chars[n-1].EndTS
-						} else {
-							// no usable duration — fall back to the -1 "unknown" sentinel
-							for j := range newWord.Chars {
-								newWord.Chars[j].BeginTS = -1
-								newWord.Chars[j].EndTS = -1
-							}
-							newWord.BeginTS = -1
-							newWord.EndTS = -1
-						}
-
+						a.interpolateASRTimestamps(&newWord, ch.EndTS, ch.Silence)
 						newWord.Ttype = "ASR"
 						newWord.Text = string(text)
-						newWord.FAScore = 0.0
+						newWord.FAScore = 1.0
 						pendingASR = append(pendingASR, newWord)
 					}
 				}
 			}
-			position++
 		}
 		newWords = append(newWords, wd)
 		newWords = append(newWords, pendingASR...) // ASR words follow their word
 	}
 	verse.Words = newWords
 	return verse
+}
+
+// interpolateASRTimestamps assigns BeginTS/EndTS to each inserted ASR char by
+// dividing the silence gap (span) that follows the reference char at start
+// evenly across them, and sets newWord's own BeginTS/EndTS from the result.
+// When there's no usable gap (span <= 0), every timestamp falls back to the
+// -1 "unknown" sentinel instead.
+func (a *AlignSilence) interpolateASRTimestamps(newWord *Word2, start, span float64) {
+	n := len(newWord.Chars)
+	if span > 0 {
+		slice := span / float64(n)
+		for j := range newWord.Chars {
+			newWord.Chars[j].BeginTS = start + float64(j)*slice
+			newWord.Chars[j].EndTS = start + float64(j+1)*slice
+		}
+		newWord.BeginTS = newWord.Chars[0].BeginTS
+		newWord.EndTS = newWord.Chars[n-1].EndTS
+	} else {
+		for j := range newWord.Chars {
+			newWord.Chars[j].BeginTS = -1
+			newWord.Chars[j].EndTS = -1
+		}
+		newWord.BeginTS = -1
+		newWord.EndTS = -1
+	}
 }
 
 type CDiff struct {
@@ -141,9 +152,9 @@ func (a *AlignSilence) FindPositionInDiff(cDiffs []CDiff, charPos int) int {
 	for i, ch := range cDiffs {
 		if ch.Type != diffmatchpatch.DiffInsert {
 			refCount++
-			if refCount >= charPos {
-				return i // array index of the charPos-th reference char
-			}
+		}
+		if refCount >= charPos {
+			return i // array index of the charPos-th reference char
 		}
 	}
 	return len(cDiffs)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/utility/fa"
 )
 
@@ -28,16 +27,8 @@ func TestAccuracyCheck(t *testing.T) {
 	}
 	//computeMinWordError(verses)
 	computeFAWordError(verses)
-	checkResults(verses, testCases)
-	for _, vs := range verses {
-		for _, wd := range vs.Words {
-			for _, ch := range wd.Chars {
-				if ch.IsASR {
-					fmt.Println("ch", string(ch.Char), wd.WordId, wd.Text, vs.LineRef.Description())
-				}
-			}
-		}
-	}
+	checkMissingWordResults(verses, testCases)
+	checkAddedWordResults(verses, testCases)
 }
 
 func computeMinWordError(verses []proofing_rpt.Verse2) {
@@ -98,9 +89,8 @@ func computeFAWordError(verses []proofing_rpt.Verse2) {
 //     by WordId - rather than by the pre-move index into vs.Words - keeps this
 //     check correct even when an ASR splice earlier in the verse has shifted
 //     every subsequent word's index.
-func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
-	var foundMissing, foundFalse, foundNot, foundAdded, total float64
-	var errorMissing, errorAdded []generic.VerseRef
+func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
+	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
@@ -109,11 +99,12 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 				text = append(text, wd.Text)
 			}
 			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
 			var missingResult string
-			movedWord, _ := findWordById(vs, testWords.ToWordId)
 			for _, wd := range vs.Words {
 				if wd.FAScore < 0.01 {
-					if wd.WordId == movedWord.WordId {
+					total++
+					if wd.WordId == testWords.ToWordId {
 						missingResult = "FOUND MISSING"
 						foundMissing++
 					} else {
@@ -121,7 +112,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 						foundFalse++
 					}
 				} else {
-					if wd.WordId == movedWord.WordId {
+					if wd.WordId == testWords.ToWordId {
 						missingResult = "NOT FOUND MISS"
 						foundNot++
 
@@ -129,7 +120,7 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 						missingResult = "OK"
 					}
 				}
-				if wd.FAScore < 0.5 || wd.WordId == movedWord.WordId {
+				if wd.FAScore < 0.5 || wd.WordId == testWords.ToWordId {
 					fmt.Printf("%s  %d  %s  %.2f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
 					for _, ch := range wd.Chars {
 						fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
@@ -137,32 +128,88 @@ func checkResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) 
 					fmt.Println("]")
 				}
 			}
-			//var missing bool
-			total++
-			if hasASRWord(vs) {
-				foundAdded++
-			} else {
-				errorAdded = append(errorAdded, vs.LineRef)
-			}
-
-			//if found && movedWord.FAScore < 0.1 {
-			//	foundMissing++
-			//} else {
-			//	errorMissing = append(errorMissing, vs.LineRef)
-			//}
-			//displayVerseDetail(vs, testWords)
 		}
 	}
 	if total > 0 {
 		pctWasMissing := foundMissing / total * 100.0
 		pctFoundFalse := foundFalse / total * 100.0
 		pctFoundNot := foundNot / total * 100.0
-		//pctWasAdded := foundAdded / total * 100.0
-		fmt.Printf("Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
+		fmt.Printf("\n*** Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
 			total, pctWasMissing, pctFoundFalse, pctFoundNot)
-		fmt.Println("Not Found Missing:", errorMissing)
-		fmt.Println("Not Found Added:", errorAdded)
 	} else {
-		fmt.Println("No test results")
+		fmt.Println("No Missing Word test results")
 	}
+}
+
+func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
+	var foundMissing, foundFalse, foundNot, total float64
+	for _, vs := range verses {
+		total++
+		testWords, ok := testCases[vs.ScriptId]
+		if ok {
+			var text []string
+			for _, wd := range vs.Words {
+				text = append(text, wd.Text)
+				if wd.Ttype == "ASR" {
+					text = append(text, "ASR")
+				}
+			}
+			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
+			var addedResult string
+			var verseHasResult bool
+			for _, wd := range vs.Words {
+				if wd.Ttype == "ASR" {
+					if strings.TrimSpace(wd.Text) == testWords.Word {
+						addedResult = "FOUND ADDED"
+						foundMissing++
+						verseHasResult = true
+						displayAdded(addedResult, testWords, wd)
+					} else {
+						addedResult = "ADDED FALSE+"
+						foundFalse++
+						verseHasResult = true
+						displayAdded(addedResult, testWords, wd)
+					}
+				}
+
+				//else {
+				//	if strings.TrimSpace(wd.Text) == testWords.Word {
+				//		addedResult = "NOT FOUND ADDED"
+				//		foundNot++
+				//	} else {
+				//		addedResult = "OK"
+				//	}
+				//}
+				//if addedResult != "OK" {
+				//if foundMissing
+				//	fmt.Printf("%s  %v  %s  %d  [", addedResult, testWords, wd.Text, wd.WordId)
+				//	for _, ch := range wd.Chars {
+				//		fmt.Printf(" %s (%.3f, %d)", string(ch.Char), ch.Silence, ch.SilenceLong)
+				//	}
+				//	fmt.Println("]")
+				//}
+			}
+			if !verseHasResult {
+				displayAdded("NOTHING ADDED", testWords, proofing_rpt.Word2{})
+			}
+		}
+	}
+	if total > 0 {
+		pctWasMissing := foundMissing / total * 100.0
+		pctFoundFalse := foundFalse / total * 100.0
+		pctFoundNot := foundNot / total * 100.0
+		fmt.Printf("\n*** Total Processed: %0.f  Pct Was Added %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
+			total, pctWasMissing, pctFoundFalse, pctFoundNot)
+	} else {
+		fmt.Println("No Added Word test results")
+	}
+}
+
+func displayAdded(addedResult string, testWords wordSwitch, word proofing_rpt.Word2) {
+	fmt.Printf("%s  %v  %s  %d  [", addedResult, testWords, word.Text, word.WordId)
+	for _, ch := range word.Chars {
+		fmt.Printf(" %s (%.3f, %d)", string(ch.Char), ch.Silence, ch.SilenceLong)
+	}
+	fmt.Println("]")
 }
