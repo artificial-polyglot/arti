@@ -82,6 +82,7 @@ func TestAccuracy(t *testing.T) {
 	//computeMinWordError(results)
 	computeFAWordError(results)
 	checkMissingWordResults(results, testCases)
+	checkAddedWordResults(verses, testCases)
 }
 
 func downloadAndOpenDatabase(mediaId string, runNum string) db.DBAdapter {

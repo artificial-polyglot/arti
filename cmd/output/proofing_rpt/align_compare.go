@@ -2,6 +2,7 @@ package proofing_rpt
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
@@ -12,7 +13,8 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 	var result []Verse2
 	var status *log.Status
 	for _, verse := range verses {
-		if !a.HasSilence(verse) {
+		if false {
+			//if !a.HasSilence(verse) {
 			result = append(result, verse)
 		} else {
 			var asrText string
@@ -49,24 +51,22 @@ func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 
 func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText string) Verse2 {
 	cDiffs := a.DiffMatchPatch(refText, asrText)
+	fmt.Print(verse.LineRef.Description())
+	for i, d := range cDiffs {
+		if d.Type == diffmatchpatch.DiffInsert {
+			fmt.Print(" ", i, string(d.Char))
+		}
+	}
+	fmt.Println()
 	newWords := make([]Word2, 0, len(verse.Words)+10)
-	position := -2
+	position := -1
 	for _, wd := range verse.Words {
-		position++
 		var pendingASR []Word2
 		for _, ch := range wd.Chars {
 			position++
 			//if ch.SilenceLong > 0 {
 			if true {
-				lookupPos := position
-				if ch.SilenceLong == int(betweenWordsLong) {
-					// GetOriginalText inserts a synthetic space between this word
-					// and the next; its own diff entry must be passed before
-					// scanning for ASR inserts, or an insertion right after the
-					// space is missed entirely.
-					lookupPos++
-				}
-				diffPos := a.FindPositionInDiff(cDiffs, lookupPos)
+				diffPos := a.FindPositionInDiff(cDiffs, position)
 				if diffPos >= 0 {
 					var newWord Word2
 					var text []rune
@@ -82,10 +82,10 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText stri
 						newWord.Chars = append(newWord.Chars, newChar)
 					}
 					if len(newWord.Chars) > 0 {
-						a.interpolateASRTimestamps(&newWord, ch.EndTS, ch.Silence)
 						newWord.IsASR = true
 						newWord.Text = string(text)
 						newWord.FAScore = 1.0
+						a.interpolateASRTimestamps(&newWord, ch.EndTS, ch.Silence)
 						pendingASR = append(pendingASR, newWord)
 					}
 				}
@@ -138,10 +138,9 @@ func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
 
 	for _, df := range diffs {
 		for _, ch := range df.Text {
-			var cDiff CDiff
-			cDiff.Type = df.Type
-			cDiff.Char = ch
-			result = append(result, cDiff)
+			if ch != ' ' || df.Type == diffmatchpatch.DiffInsert {
+				result = append(result, CDiff{Type: df.Type, Char: ch})
+			}
 		}
 	}
 	return result
