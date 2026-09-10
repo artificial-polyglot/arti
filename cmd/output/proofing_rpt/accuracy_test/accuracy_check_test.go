@@ -103,7 +103,7 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
 			var missingResult string
 			for _, wd := range vs.Words {
-				if wd.FAScore < 0.01 {
+				if wd.FAScore < 0.001 {
 					if wd.WordId == testWords.ToWordId {
 						missingResult = "FOUND MISSING"
 						foundMissing++

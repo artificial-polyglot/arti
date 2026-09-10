@@ -23,7 +23,8 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 				return result, status
 			}
 			refText := a.GetOriginalText(verse) // This could be done by selecting line
-			newLine := a.InsertASRSilenceChars(verse, refText, asrText)
+			newLine := a.MarkDeletedChars(verse, refText, asrText)
+			newLine = a.InsertASRSilenceChars(newLine, refText, asrText)
 			result = append(result, newLine)
 		}
 	}
@@ -95,6 +96,28 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText stri
 		newWords = append(newWords, pendingASR...) // ASR words follow their word
 	}
 	verse.Words = newWords
+	return verse
+}
+
+// MarkDeletedChars is an experiment: it walks the verse's chars in the same
+// order as InsertASRSilenceChars, and for every reference char that
+// diff-match-patch marked as Deleted - present in refText but absent from
+// asrText, meaning the ASR transcript never produced it - sets that char's
+// FAScore to 0.0. It repeats its own DiffMatchPatch call rather than sharing
+// cDiffs with InsertASRSilenceChars, so the two can be tried independently.
+func (a *AlignSilence) MarkDeletedChars(verse Verse2, refText, asrText string) Verse2 {
+	cDiffs := a.DiffMatchPatch(refText, asrText)
+	position := -1
+	for wi := range verse.Words {
+		chars := verse.Words[wi].Chars
+		for ci := range chars {
+			position++
+			diffPos := a.FindPositionInDiff(cDiffs, position)
+			if diffPos < len(cDiffs) && cDiffs[diffPos].Type == diffmatchpatch.DiffDelete {
+				chars[ci].FAScore = 0.0
+			}
+		}
+	}
 	return verse
 }
 
