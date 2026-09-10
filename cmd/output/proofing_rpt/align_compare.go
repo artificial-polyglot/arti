@@ -23,8 +23,9 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 				return result, status
 			}
 			refText := a.GetOriginalText(verse) // This could be done by selecting line
-			newLine := a.MarkDeletedChars(verse, refText, asrText)
-			newLine = a.InsertASRSilenceChars(newLine, refText, asrText)
+			cDiffs := a.DiffMatchPatch(refText, asrText)
+			newLine := a.MarkDeletedChars(verse, cDiffs)
+			newLine = a.InsertASRSilenceChars(newLine, cDiffs)
 			result = append(result, newLine)
 		}
 	}
@@ -50,8 +51,7 @@ func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 	return strings.ToLower(strings.Join(text, " "))
 }
 
-func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText string) Verse2 {
-	cDiffs := a.DiffMatchPatch(refText, asrText)
+func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse2 {
 	fmt.Print(verse.LineRef.Description())
 	for i, d := range cDiffs {
 		if d.Type == diffmatchpatch.DiffInsert {
@@ -105,8 +105,7 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, refText, asrText stri
 // asrText, meaning the ASR transcript never produced it - sets that char's
 // FAScore to 0.0. It repeats its own DiffMatchPatch call rather than sharing
 // cDiffs with InsertASRSilenceChars, so the two can be tried independently.
-func (a *AlignSilence) MarkDeletedChars(verse Verse2, refText, asrText string) Verse2 {
-	cDiffs := a.DiffMatchPatch(refText, asrText)
+func (a *AlignSilence) MarkDeletedChars(verse Verse2, cDiffs []CDiff) Verse2 {
 	position := -1
 	for wi := range verse.Words {
 		chars := verse.Words[wi].Chars
