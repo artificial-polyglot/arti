@@ -54,6 +54,15 @@ func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 
 func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse2 {
 	newWords := make([]Word2, 0, len(verse.Words)+10)
+	// ASR text inserted before the very first reference char has no preceding
+	// word to follow, so the per-char scan below (which only looks forward
+	// from a matched reference char) can never reach it. Handle it once,
+	// up front, interpolated against the gap before the first real char.
+	leading := a.buildASRWordFromInserts(cDiffs, 0)
+	if len(leading.Chars) > 0 {
+		a.interpolateASRTimestamps(&leading, 0, firstCharBeginTS(verse))
+		newWords = append(newWords, leading)
+	}
 	position := -1
 	for _, wd := range verse.Words {
 		var pendingASR []Word2
@@ -63,23 +72,8 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse
 			if true {
 				diffPos := a.FindPositionInDiff(cDiffs, position)
 				if diffPos >= 0 {
-					var newWord Word2
-					var text []rune
-					for i := diffPos + 1; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
-						newChar := Char2{
-							Char:    cDiffs[i].Char,
-							BeginTS: -1,
-							EndTS:   -1,
-							FAScore: 1.0,
-							IsASR:   true,
-						}
-						text = append(text, newChar.Char)
-						newWord.Chars = append(newWord.Chars, newChar)
-					}
+					newWord := a.buildASRWordFromInserts(cDiffs, diffPos+1)
 					if len(newWord.Chars) > 0 {
-						newWord.IsASR = true
-						newWord.Text = string(text)
-						newWord.FAScore = 1.0
 						a.interpolateASRTimestamps(&newWord, ch.EndTS, ch.Silence)
 						pendingASR = append(pendingASR, newWord)
 					}
@@ -91,6 +85,43 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse
 	}
 	verse.Words = newWords
 	return verse
+}
+
+// buildASRWordFromInserts consumes the run of consecutive DiffInsert entries
+// in cDiffs starting at idx, returning the resulting ASR word (zero value,
+// with no Chars, if idx isn't the start of an insert run).
+func (a *AlignSilence) buildASRWordFromInserts(cDiffs []CDiff, idx int) Word2 {
+	var newWord Word2
+	var text []rune
+	for i := idx; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
+		newChar := Char2{
+			Char:    cDiffs[i].Char,
+			BeginTS: -1,
+			EndTS:   -1,
+			FAScore: 1.0,
+			IsASR:   true,
+		}
+		text = append(text, newChar.Char)
+		newWord.Chars = append(newWord.Chars, newChar)
+	}
+	if len(newWord.Chars) > 0 {
+		newWord.IsASR = true
+		newWord.Text = string(text)
+		newWord.FAScore = 1.0
+	}
+	return newWord
+}
+
+// firstCharBeginTS returns the BeginTS of the verse's first character, used
+// to size the gap before it for a leading ASR insertion. Both are in the
+// same per-verse-clip-relative frame, so no conversion is needed.
+func firstCharBeginTS(verse Verse2) float64 {
+	for _, wd := range verse.Words {
+		if len(wd.Chars) > 0 {
+			return wd.Chars[0].BeginTS
+		}
+	}
+	return 0
 }
 
 // MarkDeletedChars is an experiment: it walks the verse's chars in the same
