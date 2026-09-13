@@ -41,7 +41,7 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 		return status
 	}
 
-	wordCharSlices := alignToWords(alignResult.Alignment, words)
+	wordCharSlices := alignToWords(alignResult.Alignment, words, request.BeginTS)
 
 	var scriptText []string
 	var scriptBegin float64
@@ -91,11 +91,13 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 // sequence alignment and returns one []sa.TimedChar per word. Spaces are stripped
 // from the ASR stream before alignment. Reference chars with no ASR match
 // (deletions) get interpolated timestamps and Error = 1.0.
-func alignToWords(asrChars []CharResult, words []wordRecord) [][]sa.TimedChar {
+func alignToWords(asrChars []CharResult, words []wordRecord, verseBeginTS float64) [][]sa.TimedChar {
 	// Strip spaces — word boundaries come from the reference, not ASR.
 	var queryChars []CharResult
 	for _, c := range asrChars {
 		if c.Char != "|" {
+			c.Start += verseBeginTS
+			c.End += verseBeginTS
 			c.Score = math.Exp(c.Score) // anti natural log
 			queryChars = append(queryChars, c)
 		}

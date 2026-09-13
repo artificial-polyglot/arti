@@ -60,7 +60,7 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse
 	// up front, interpolated against the gap before the first real char.
 	leading := a.buildASRWordFromInserts(cDiffs, 0)
 	if len(leading.Chars) > 0 {
-		a.interpolateASRTimestamps(&leading, 0, firstCharBeginTS(verse))
+		a.interpolateASRTimestamps(&leading, verse.BeginTS, firstCharBeginTS(verse)-verse.BeginTS)
 		newWords = append(newWords, leading)
 	}
 	position := -1
@@ -113,8 +113,11 @@ func (a *AlignSilence) buildASRWordFromInserts(cDiffs []CDiff, idx int) Word2 {
 }
 
 // firstCharBeginTS returns the BeginTS of the verse's first character, used
-// to size the gap before it for a leading ASR insertion. Both are in the
-// same per-verse-clip-relative frame, so no conversion is needed.
+// with Verse2.BeginTS to size the gap before it for a leading ASR insertion.
+// Both are chapter-absolute. Note verse.BeginTS (scripts_qa_align.begin_ts)
+// is itself defined as the first word's begin, i.e. the first char's begin,
+// so this gap is 0 in practice and the leading case degrades to the -1
+// "unknown timestamp" fallback in interpolateASRTimestamps.
 func firstCharBeginTS(verse Verse2) float64 {
 	for _, wd := range verse.Words {
 		if len(wd.Chars) > 0 {

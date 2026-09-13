@@ -23,9 +23,11 @@ type Word2 struct {
 	Opacity   float64
 }
 
-// Char2 is sourced from chars_qa_align which is the result of forced alignment
-// using a model for the language, not MMS.  The timestamps here are per verse,
-// while the timestamps in the other tables are per chapter.
+// Char2 is sourced from chars_qa_align, words_qa_align, and scripts_qa_align,
+// the result of forced alignment using a model for the language, not MMS.
+// qa_align adds each verse's chop offset (qa_align.go's FARequest.BeginTS)
+// onto its timestamps before storing them, so they are chapter-absolute, the
+// same frame as the timestamps in the other tables.
 type Char2 struct {
 	Char        rune
 	BeginTS     float64 // Used in align_silence to compute silence

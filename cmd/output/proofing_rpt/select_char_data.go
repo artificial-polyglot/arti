@@ -8,16 +8,20 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
-// SelectCharData reads data from scripts, words, chars, and chars_qa_align
-// Note that fa_score at the character level is from chars_qa_align.  It is a result of the
-// forced alignment done in the qa_align module.
+// SelectCharData reads verse/word identity (script_id, book/chapter/verse,
+// word_id, word text) from scripts and words, but all timestamps and
+// fa_scores - at the script, word, and char level - from scripts_qa_align,
+// words_qa_align, and chars_qa_align, the result of forced alignment done in
+// the qa_align module using a model for the language, not MMS.
 func SelectCharData(conn db.DBAdapter, cutoff float64) ([]Verse2, *log.Status) {
 	var verses []Verse2
-	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, s.script_begin_ts, s.script_end_ts,
-				w.word_id, w.word, w.word_punct, w.word_begin_ts, w.word_end_ts, w.fa_score,
+	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, qs.begin_ts, qs.end_ts,
+				w.word_id, w.word, w.word_punct, qw.begin_ts, qw.end_ts, qw.fa_score,
 				qc.seq, qc.char, qc.begin_ts, qc.end_ts, qc.fa_score
 				FROM scripts s JOIN words w ON s.script_id = w.script_id
 				LEFT OUTER JOIN chars_qa_align qc ON w.word_id = qc.word_id
+				LEFT OUTER JOIN words_qa_align qw ON w.word_id = qw.word_id
+				LEFT OUTER JOIN scripts_qa_align qs ON qs.script_id = s.script_id
 				WHERE w.ttype = 'W' AND w.script_id IN (
        				SELECT DISTINCT w2.script_id
        				FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id

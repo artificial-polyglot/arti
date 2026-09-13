@@ -86,11 +86,10 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 						prev.Silence = curr.BeginTS - prev.EndTS
 						wordSilence = append(wordSilence, prev.Silence)
 					case betweenVerses:
-						// Char timestamps are per-verse (0-based within that verse's
-						// chopped audio clip), so prev and curr live in different
-						// clips. Verse.BeginTS is the chapter-absolute offset used to
-						// chop each clip, so add it back in to compare in one frame.
-						prev.Silence = (verses[vi].BeginTS + curr.BeginTS) - (verses[prevVi].BeginTS + prev.EndTS)
+						// Char timestamps are chapter-absolute (qa_align now adds the
+						// verse's chop offset before storing them), so prev and curr
+						// are already in the same frame - no conversion needed.
+						prev.Silence = curr.BeginTS - prev.EndTS
 						verseSilence = append(verseSilence, prev.Silence)
 					case betweenChapters:
 						var duration float64

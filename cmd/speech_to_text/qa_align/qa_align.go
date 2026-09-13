@@ -18,9 +18,10 @@ import (
 )
 
 type FARequest struct {
-	ScriptId      int64  `json:"script_id"`
-	AudioPath     string `json:"audio"`
-	ReferenceText string `json:"text"`
+	ScriptId      int64   `json:"script_id"`
+	AudioPath     string  `json:"audio"`
+	BeginTS       float64 `json:"begin_ts"`
+	ReferenceText string  `json:"text"`
 }
 
 type QAAlign struct {
@@ -161,6 +162,7 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 		var request FARequest
 		request.ScriptId = ts.ScriptId
 		request.AudioPath = ts.AudioVerseWav
+		request.BeginTS = ts.BeginTS
 		request.ReferenceText = ts.Text
 		content, err := json.Marshal(request)
 		if err != nil {
@@ -192,5 +194,6 @@ func (a *QAAlign) selectScriptLine(scriptLine string) (db.Audio, *log.Status) {
 	if err != nil {
 		return rec, log.Error(a.ctx, 500, err, "Error during SelectScriptLine.")
 	}
+	rec.BeginTS = rec.ScriptBeginTS
 	return rec, nil
 }
