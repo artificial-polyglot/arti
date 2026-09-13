@@ -119,15 +119,6 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 	if status != nil {
 		return verses, audioURLs, status
 	}
-	//for _, v := range verses {
-	//	for _, w := range v.Words {
-	//		for _, c := range w.Chars {
-	//			if c.IsASR {
-	//				fmt.Println(v.LineRef, "ISASR", c, string(c.Char))
-	//			}
-	//		}
-	//	}
-	//}
 	audioURLs, status = db.CreateAudioFileMap(a.conn)
 	a.ComputeOpacity(verses, OPACITY_CUTOFF)
 	return verses, audioURLs, status
