@@ -86,7 +86,11 @@ func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.S
 						prev.Silence = curr.BeginTS - prev.EndTS
 						wordSilence = append(wordSilence, prev.Silence)
 					case betweenVerses:
-						prev.Silence = curr.BeginTS - verses[prevVi].EndTS
+						// Char timestamps are per-verse (0-based within that verse's
+						// chopped audio clip), so prev and curr live in different
+						// clips. Verse.BeginTS is the chapter-absolute offset used to
+						// chop each clip, so add it back in to compare in one frame.
+						prev.Silence = (verses[vi].BeginTS + curr.BeginTS) - (verses[prevVi].BeginTS + prev.EndTS)
 						verseSilence = append(verseSilence, prev.Silence)
 					case betweenChapters:
 						var duration float64
