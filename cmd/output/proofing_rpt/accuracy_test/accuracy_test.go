@@ -79,10 +79,8 @@ func TestAccuracy(t *testing.T) {
 	if status != nil {
 		exit(status)
 	}
-	//computeMinWordError(results)
-	computeFAWordError(results)
 	checkMissingWordResults(results, testCases)
-	checkAddedWordResults(verses, testCases)
+	checkAddedWordResults(results, testCases)
 }
 
 func downloadAndOpenDatabase(mediaId string, runNum string) db.DBAdapter {
@@ -154,7 +152,7 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books request.Testament, cuto
 func computeTwoRandoms(wordCnt int) wordSwitch {
 	first := rand.IntN(wordCnt)
 	second := rand.IntN(wordCnt)
-	for math.Abs(float64(first-second)) < 2 {
+	for math.Abs(float64(first-second)) < 3 {
 		second = rand.IntN(wordCnt)
 	}
 	return wordSwitch{FromWord: first, ToWord: second}
@@ -175,27 +173,6 @@ func moveFirstToSecond(verse proofing_rpt.Verse2, tWds *wordSwitch) {
 	verse.Words[tWds.ToWord] = w
 }
 
-// storeAlteredData applies each verse's word rearrangement to the words
-// table itself, by relabeling word_id - the column qa_align's selectWords
-// and proofing_rpt's SelectFACharTimestamps actually order by (see
-// fa_results.go and db_adapter.go). Every other column - word, word_punct,
-// ttype, timestamps, fa_score - stays attached to its row and travels with
-// it automatically, so Word2's {WordId, Text, FAScore} is all this needs;
-// there's no reason to delete and reinsert rows, and no other column ever
-// has to be read or rewritten.
-//
-// word_id is the PRIMARY KEY, so swapping two rows' ids directly would
-// collide mid-statement. Each affected row is staged at a temporary negative
-// id first (guaranteed free, since AUTOINCREMENT ids are never negative),
-// then assigned its final id in a second pass. The final id for the row now
-// sitting at position i is origWordIds[scriptId][i] - the id that slot held
-// before the shuffle - which is exactly how every downstream ORDER BY
-// word_id query will reconstruct the new sequence.
-//
-// The ttype='W' rows referenced by the ingest-time chars/word_mfcc tables
-// are not touched or read anywhere in the qa_align/proofing_rpt pipeline
-// this test exercises, so relabeling word_id here does not need to update
-// them too.
 func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordIds map[int64][]int64) *log.Status {
 	query := `UPDATE words SET word_id = ? WHERE word_id = ?`
 	tx, err := conn.DB.Begin()
@@ -230,24 +207,6 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordI
 		return log.Error(conn.Ctx, 500, err, "Error committing transaction for query:", query)
 	}
 	return nil
-}
-
-//func hasASRWord(verse proofing_rpt.Verse2) bool {
-//	for _, wd := range verse.Words {
-//		if wd.Ttype == "ASR" {
-//			return true
-//		}
-//	}
-//	return false
-//}
-
-func findWordById(verse proofing_rpt.Verse2, wordId int64) (proofing_rpt.Word2, bool) {
-	for _, wd := range verse.Words {
-		if wd.WordId == wordId {
-			return wd, true
-		}
-	}
-	return proofing_rpt.Word2{}, false
 }
 
 func storeTestCases(tests map[int64]wordSwitch) {

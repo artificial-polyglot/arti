@@ -2,10 +2,10 @@ package proofing_rpt
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/fa"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -29,6 +29,7 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 			result = append(result, newLine)
 		}
 	}
+	ComputeFAWordError(result)
 	return result, status
 }
 
@@ -52,13 +53,6 @@ func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 }
 
 func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse2 {
-	fmt.Print(verse.LineRef.Description())
-	for i, d := range cDiffs {
-		if d.Type == diffmatchpatch.DiffInsert {
-			fmt.Print(" ", i, string(d.Char))
-		}
-	}
-	fmt.Println()
 	newWords := make([]Word2, 0, len(verse.Words)+10)
 	position := -1
 	for _, wd := range verse.Words {
@@ -192,5 +186,26 @@ func (a *AlignSilence) SelectTranscript(scriptId int64) (string, *log.Status) {
 		return "", log.Error(a.ctx, 500, err, "Failed to select from qa_align_scripts")
 	} else {
 		return transcript, nil
+	}
+}
+
+func ComputeFAWordError(verses []Verse2) {
+	for i, vs := range verses {
+		for j, wd := range vs.Words {
+			var faChars []fa.FAChar
+			for _, ch := range wd.Chars {
+				var char fa.FAChar
+				char.Char = ch.Char
+				char.BeginTS = ch.BeginTS
+				char.EndTS = ch.EndTS
+				char.FAScore = ch.FAScore
+				char.Silence = ch.Silence
+				char.SilenceLong = ch.SilenceLong
+				char.IsASR = ch.IsASR
+				faChars = append(faChars, char)
+			}
+			faWord := fa.ComputeWordFA(faChars, fa.DefaultFAConfig())
+			verses[i].Words[j].FAScore = faWord.TrimmedMinScore
+		}
 	}
 }

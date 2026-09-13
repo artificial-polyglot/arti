@@ -8,7 +8,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/utility/fa"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // This is a shortcut for running the last part of accuracy_test.
@@ -25,8 +25,6 @@ func TestAccuracyCheck(t *testing.T) {
 	if status != nil {
 		exit(status)
 	}
-	//computeMinWordError(verses)
-	computeFAWordError(verses)
 	checkMissingWordResults(verses, testCases)
 	checkAddedWordResults(verses, testCases)
 }
@@ -50,27 +48,6 @@ func computeMinWordError(verses []proofing_rpt.Verse2) {
 				}
 			}
 			verses[i].Words[j].FAScore = minimum
-		}
-	}
-}
-
-func computeFAWordError(verses []proofing_rpt.Verse2) {
-	for i, vs := range verses {
-		for j, wd := range vs.Words {
-			var faChars []fa.FAChar
-			for _, ch := range wd.Chars {
-				var char fa.FAChar
-				char.Char = ch.Char
-				char.BeginTS = ch.BeginTS
-				char.EndTS = ch.EndTS
-				char.FAScore = ch.FAScore
-				char.Silence = ch.Silence
-				char.SilenceLong = ch.SilenceLong
-				char.IsASR = ch.IsASR
-				faChars = append(faChars, char)
-			}
-			faWord := fa.ComputeWordFA(faChars, fa.DefaultFAConfig())
-			verses[i].Words[j].FAScore = faWord.TrimmedMinScore
 		}
 	}
 }
@@ -194,4 +171,59 @@ func displayAdded(addedResult string, testWords wordSwitch, word proofing_rpt.Wo
 		fmt.Printf(" %s (%.3f, %d)", string(ch.Char), ch.Silence, ch.SilenceLong)
 	}
 	fmt.Println("]")
+}
+
+func TestDisplayDifferences(t *testing.T) {
+	ctx := context.Background()
+	// Set this path to database created by accuracy_test
+	databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db"
+	conn := db.NewDBAdapter(ctx, databasePath)
+	testCases := retrieveTestCases()
+	report := proofing_rpt.NewAlignSilence(conn)
+	verses, _, status := report.Process()
+	if status != nil {
+		panic(status)
+	}
+	for _, vs := range verses {
+		test := testCases[vs.ScriptId]
+		asrText, status1 := report.SelectTranscript(vs.ScriptId)
+		if status1 != nil {
+			panic(status1)
+		}
+		refText := report.GetOriginalText(vs)
+		diffSample(refText, asrText)
+		fmt.Println(vs.LineRef.Description(), test)
+
+		fmt.Print("ZER:")
+		for _, wd := range vs.Words {
+			//if wd.FAScore == 0.0 {
+			//	fmt.Println(wd.Text)
+			//}
+			//for _, ch := range wd.Chars {}
+
+			for _, ch := range wd.Chars {
+				if ch.FAScore == 0.0 {
+					fmt.Print(string(ch.Char), " ")
+				}
+			}
+		}
+		fmt.Println()
+	}
+}
+
+func diffSample(refText string, asrText string) {
+	diffMatch := diffmatchpatch.New()
+	fmt.Println("REF:", refText)
+	fmt.Println("ASR:", asrText)
+	refText = strings.TrimSpace(refText)
+	asrText = strings.TrimSpace(asrText)
+	diffs := diffMatch.DiffMain(refText, asrText, false)
+	diffs = diffMatch.DiffCleanupSemantic(diffs)
+	for _, d := range diffs {
+		fmt.Print("DIF:")
+		if d.Type != diffmatchpatch.DiffEqual {
+			fmt.Print(d.Type, ": |", d.Text, "|")
+		}
+		fmt.Println()
+	}
 }
