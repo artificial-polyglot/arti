@@ -1,25 +1,35 @@
-package accuracy_test
+package accuracy
 
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-// This is a shortcut for running the last part of accuracy_test.
-// Capture the path of the database created by accuracy_test and use it here.
-
-func TestAccuracyCheck(t *testing.T) {
+func TestResults(t *testing.T) {
 	ctx := context.Background()
+	tests := CasesForTest()
+	for _, tst := range tests {
+		AccuracyCheck(ctx, tst)
+	}
+}
+
+func AccuracyCheck(ctx context.Context, test testCase) {
+
 	// Set this path to database created by accuracy_test
-	databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db"
-	conn := db.NewDBAdapter(ctx, databasePath)
-	testCases := retrieveTestCases()
+	//databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db" *****
+	//conn := db.NewDBAdapter(ctx, databasePath)
+	conn := FindLatestDatabase(ctx, USERNAME, test.mediaId)
+	testCases := retrieveTestCases(test.mediaId)
 	report := proofing_rpt.NewAlignSilence(conn)
 	verses, _, status := report.Process()
 	if status != nil {
@@ -27,6 +37,34 @@ func TestAccuracyCheck(t *testing.T) {
 	}
 	checkMissingWordResults(verses, testCases)
 	checkAddedWordResults(verses, testCases)
+}
+
+func FindLatestDatabase(ctx context.Context, username string, mediaId string) db.DBAdapter {
+	client, status := s3_datastore.NewS3Client(ctx)
+	if status != nil {
+		exit(status)
+	}
+	prefix := filepath.Join(username, mediaId, "arti")
+	keys, status := client.ListPrefixes(OUTPUT_BUCKET, prefix)
+	var maximum = 0
+	for _, key := range keys {
+		keyNum, err := strconv.Atoi(key)
+		if err != nil {
+			exit(err)
+		}
+		if keyNum > maximum {
+			maximum = keyNum
+		}
+	}
+	latest := fmt.Sprintf("%05d", maximum)
+	objectKey := filepath.Join(prefix, latest, "database", mediaId+".db")
+	localPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), mediaId+".db")
+	status = client.DownloadFile(OUTPUT_BUCKET, objectKey, localPath)
+	if status != nil {
+		exit(status)
+	}
+	conn := db.NewDBAdapter(ctx, localPath)
+	return conn
 }
 
 func computeMinWordError(verses []proofing_rpt.Verse2) {
@@ -78,32 +116,33 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 			}
 			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
 			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
-			var missingResult string
+			//var missingResult string
 			for _, wd := range vs.Words {
 				if wd.FAScore < 0.001 {
 					if wd.WordId == testWords.ToWordId {
-						missingResult = "FOUND MISSING"
+						//missingResult = "FOUND MISSING"
 						foundMissing++
 					} else {
-						missingResult = "MISSING FALSE+"
+						//missingResult = "MISSING FALSE+"
 						foundFalse++
+						displayMissingError("MISSING FALSE+", wd)
 					}
 				} else {
 					if wd.WordId == testWords.ToWordId {
-						missingResult = "NOT FOUND MISS"
+						//missingResult = "NOT FOUND MISS"
 						foundNot++
-
-					} else {
-						missingResult = "OK"
-					}
+						displayMissingError("NOT FOUND MISS", wd)
+					} //else {
+					//	missingResult = "OK"
+					//}
 				}
-				if wd.FAScore < 0.5 || wd.WordId == testWords.ToWordId {
-					fmt.Printf("%s  %d  %s  %.2f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
-					for _, ch := range wd.Chars {
-						fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
-					}
-					fmt.Println("]")
-				}
+				//if wd.FAScore < 0.5 || wd.WordId == testWords.ToWordId {
+				//	fmt.Printf("%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+				//	for _, ch := range wd.Chars {
+				//		fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
+				//	}
+				//	fmt.Println("]")
+				//}
 			}
 		}
 	}
@@ -116,6 +155,14 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 	} else {
 		fmt.Println("No Missing Word test results")
 	}
+}
+
+func displayMissingError(missingResult string, wd proofing_rpt.Word2) {
+	fmt.Printf("%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+	for _, ch := range wd.Chars {
+		fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
+	}
+	fmt.Println("]")
 }
 
 func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
@@ -132,20 +179,20 @@ func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wor
 			}
 			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
 			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
-			var addedResult string
+			//var addedResult string
 			var verseHasResult bool
 			for _, wd := range vs.Words {
 				if wd.IsASR {
 					if strings.ToLower(strings.TrimSpace(wd.Text)) == strings.ToLower(testWords.Word) {
-						addedResult = "FOUND ADDED"
+						//addedResult = "FOUND ADDED"
 						foundMissing++
 						verseHasResult = true
-						displayAdded(addedResult, testWords, wd)
+						//displayAdded(addedResult, testWords, wd)
 					} else {
-						addedResult = "ADDED FALSE+"
+						//addedResult = "ADDED FALSE+"
 						foundFalse++
-						verseHasResult = true
-						displayAdded(addedResult, testWords, wd)
+						//verseHasResult = true
+						displayAdded("ADDED FALSE+", testWords, wd)
 					}
 				}
 			}
@@ -178,7 +225,7 @@ func TestDisplayDifferences(t *testing.T) {
 	// Set this path to database created by accuracy_test
 	databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db"
 	conn := db.NewDBAdapter(ctx, databasePath)
-	testCases := retrieveTestCases()
+	testCases := retrieveTestCases("")
 	report := proofing_rpt.NewAlignSilence(conn)
 	verses, _, status := report.Process()
 	if status != nil {
