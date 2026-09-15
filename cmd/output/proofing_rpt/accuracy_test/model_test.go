@@ -6,7 +6,8 @@ const USERNAME = "GaryNTest"
 const INPUT_BUCKET = "arti-input"
 const OUTPUT_BUCKET = "arti-output"
 const TEST_DATA = "accuracy_test_%s.json"
-const ACCURACY_TEST_DB = "accuracy_test.db"
+const ACCURACY_TEST_DB = "ACCURACY_TEST.db"
+const APP_NAME = "/app/runpod_arti"
 
 type testCase struct {
 	on            bool

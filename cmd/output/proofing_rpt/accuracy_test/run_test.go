@@ -20,8 +20,10 @@ This test generates a yaml file for a run, and generates a shell file that will 
 func TestRun(t *testing.T) {
 	tests := CasesForTest()
 	for _, tst := range tests {
-		yamlString := CreateYaml(tst)
-		SubmitToRunpod("arti", tst.mediaId, yamlString)
+		if tst.on {
+			yamlString := CreateYaml(tst)
+			SubmitToRunpod(APP_NAME, tst.mediaId, yamlString)
+		}
 	}
 }
 
@@ -35,12 +37,12 @@ func CreateYaml(test testCase) string {
 	req.NotifyOk = []string{"ntfy/arti2"}
 	req.NotifyErr = []string{"ntfy/arti2"}
 	req.Testament = test.testament
-	database := fmt.Sprintf("s3://%s/%s/%s/arti/%s/database/%s.db", OUTPUT_BUCKET, USERNAME, test.mediaId,
-		test.runNum, test.mediaId)
+	database := fmt.Sprintf("s3://%s/%s/%s/arti/%s/database/%s", OUTPUT_BUCKET, USERNAME, test.mediaId,
+		test.runNum, ACCURACY_TEST_DB)
 	req.Database.AWSS3 = database
-	req.AudioData.AWSS3 = fmt.Sprint("s3://%s/%s/%s", INPUT_BUCKET, test.mediaName, test.audioFilesKey)
-	req.Detail.Lines = true
-	req.Detail.Words = true
+	req.AudioData.AWSS3 = fmt.Sprintf("s3://%s/%s/%s", INPUT_BUCKET, test.mediaName, test.audioFilesKey)
+	//req.Detail.Lines = true
+	//req.Detail.Words = true
 	req.AudioProof.HTMLReport = true
 	//req.Compare.HTMLReport = true
 	//req.Compare.CompareSettings.LowerCase = true

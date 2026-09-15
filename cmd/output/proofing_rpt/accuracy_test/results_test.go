@@ -19,7 +19,9 @@ func TestResults(t *testing.T) {
 	ctx := context.Background()
 	tests := CasesForTest()
 	for _, tst := range tests {
-		AccuracyCheck(ctx, tst)
+		if tst.on {
+			AccuracyCheck(ctx, tst)
+		}
 	}
 }
 
@@ -44,11 +46,12 @@ func FindLatestDatabase(ctx context.Context, username string, mediaId string) db
 	if status != nil {
 		exit(status)
 	}
-	prefix := filepath.Join(username, mediaId, "arti")
+	prefix := filepath.Join(username, mediaId, "arti") + "/"
 	keys, status := client.ListPrefixes(OUTPUT_BUCKET, prefix)
 	var maximum = 0
 	for _, key := range keys {
-		keyNum, err := strconv.Atoi(key)
+		parts := strings.Split(key, "/")
+		keyNum, err := strconv.Atoi(parts[3])
 		if err != nil {
 			exit(err)
 		}
@@ -58,7 +61,7 @@ func FindLatestDatabase(ctx context.Context, username string, mediaId string) db
 	}
 	latest := fmt.Sprintf("%05d", maximum)
 	objectKey := filepath.Join(prefix, latest, "database", mediaId+".db")
-	localPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), mediaId+".db")
+	localPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), mediaId+"_out.db")
 	status = client.DownloadFile(OUTPUT_BUCKET, objectKey, localPath)
 	if status != nil {
 		exit(status)

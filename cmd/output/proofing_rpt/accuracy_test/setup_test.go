@@ -37,45 +37,53 @@ and produces a report of problems, and run statistics
 func TestSetup(t *testing.T) {
 	tests := CasesForTest()
 	for _, tst := range tests {
-		conn := downloadAndOpenDatabase(USERNAME, tst.mediaId, tst.runNum)
-		fmt.Println("Database Path", conn.DatabasePath)
-		verses := selectVersesWithoutFAError(conn, tst.testament, 0.5)
-		var wordSwitches = make(map[int64]wordSwitch)
-		var origWordIds = make(map[int64][]int64)
-		for _, vs := range verses {
-			if len(vs.Words) > 4 {
-				ids := make([]int64, len(vs.Words))
-				for i, wd := range vs.Words {
-					ids[i] = wd.WordId
-				}
-				origWordIds[vs.ScriptId] = ids
-				testWords := computeTwoRandoms(len(vs.Words))
-				moveFirstToSecond(vs, &testWords)
-				wordSwitches[vs.ScriptId] = testWords
-			}
+		if tst.on {
+			Setup(tst)
 		}
-		storeTestCases(tst.mediaId, wordSwitches)
-		status := storeAlteredData(conn, verses, origWordIds)
-		if status != nil {
-			exit(status)
-		}
-		upoadloadDatabase(conn, tst.mediaName)
 	}
 }
 
-func downloadAndOpenDatabase(username string, mediaId string, runNum string) db.DBAdapter {
-	objectKey := filepath.Join(username, mediaId, "arti", runNum, "database", mediaId+".db")
-	localPath := filepath.Join(os.Getenv("FCBH_DATASET_DB"), username, mediaId+".db")
+func Setup(tst testCase) {
+	dbPrefix := filepath.Join(USERNAME, tst.mediaId, "arti", tst.runNum, "database")
+	conn := downloadAndOpenDatabase(USERNAME, tst.mediaId, dbPrefix)
+	fmt.Println("Database Path", conn.DatabasePath)
+	verses := selectVersesWithoutFAError(conn, tst.testament, 0.5)
+	var wordSwitches = make(map[int64]wordSwitch)
+	var origWordIds = make(map[int64][]int64)
+	for _, vs := range verses {
+		if len(vs.Words) > 4 {
+			ids := make([]int64, len(vs.Words))
+			for i, wd := range vs.Words {
+				ids[i] = wd.WordId
+			}
+			origWordIds[vs.ScriptId] = ids
+			testWords := computeTwoRandoms(len(vs.Words))
+			moveFirstToSecond(vs, &testWords)
+			wordSwitches[vs.ScriptId] = testWords
+		}
+	}
+	storeTestCases(tst.mediaId, wordSwitches)
+	status := storeAlteredData(conn, verses, origWordIds)
+	if status != nil {
+		exit(status)
+	}
+	upoadloadDatabase(conn, dbPrefix)
+}
+
+func downloadAndOpenDatabase(username string, mediaId string, dbPrefix string) db.DBAdapter {
+	//objectKey := filepath.Join(username, mediaId, "arti", runNum, "database", mediaId+".db")
+	objectKey := filepath.Join(dbPrefix, mediaId+".db")
+	localPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), username, mediaId+".db")
 	client, status := s3_datastore.NewS3Client(context.Background())
 	if status != nil {
 		exit(status)
 	}
 	// Remove database because it was altered in prior test.
 	err := os.Remove(localPath)
-	if err != nil && os.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(err) {
 		exit(err)
 	}
-	status = client.DownloadFile("arti-output", objectKey, localPath)
+	status = client.DownloadFile(OUTPUT_BUCKET, objectKey, localPath)
 	if status != nil {
 		exit(status)
 	}
@@ -215,7 +223,7 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordI
 	return nil
 }
 
-func upoadloadDatabase(conn db.DBAdapter, mediaName string) {
+func upoadloadDatabase(conn db.DBAdapter, dbPrefix string) {
 	dbPath := conn.DatabasePath
 	ctx := conn.Ctx
 	conn.Close()
@@ -223,8 +231,8 @@ func upoadloadDatabase(conn db.DBAdapter, mediaName string) {
 	if status != nil {
 		exit(status)
 	}
-	key := filepath.Join(mediaName, ACCURACY_TEST_DB)
-	status = client.PutFile(INPUT_BUCKET, key, dbPath, "application/x-sqlite3", false)
+	key := filepath.Join(dbPrefix, ACCURACY_TEST_DB)
+	status = client.PutFile(OUTPUT_BUCKET, key, dbPath, "application/x-sqlite3", false)
 	if status != nil {
 		exit(status)
 	}
