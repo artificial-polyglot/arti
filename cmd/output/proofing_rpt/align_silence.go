@@ -32,7 +32,8 @@ const (
 	betweenChapters
 )
 
-const FA_SCORE_CUTOFF = 0.5
+const FA_SCORE_CUTOFF = 1.0 // This was originally set to 0.5. What was the reason for this?  The process
+// is very fast at 1.0 Should there be any cutoff at all?
 const OPACITY_CUTOFF = 0.5
 
 type AlignSilence struct {

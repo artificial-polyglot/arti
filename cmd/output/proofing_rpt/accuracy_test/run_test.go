@@ -10,14 +10,21 @@ import (
 
 	"github.com/artificial-polyglot/arti/cmd/dispatch/runpod"
 	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/tests"
 	"gopkg.in/yaml.v3"
 )
+
+func TestDebugLocally(t *testing.T) {
+	testCases := retrieveTestCases()
+	tst := testCases[0]
+	yamlString := CreateYaml(tst)
+	tests.DirectSqlTest(yamlString, []tests.SqliteTest{}, t)
+}
 
 /*
 This test generates a yaml file for a run, and generates a shell file that will submit it to
 */
-
-func TestRun(t *testing.T) {
+func TestRunOnRunpod(t *testing.T) {
 	tests := retrieveTestCases()
 	for _, tst := range tests {
 		if tst.On {

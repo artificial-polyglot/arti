@@ -23,10 +23,6 @@ func TestResults(t *testing.T) {
 }
 
 func AccuracyCheck(ctx context.Context, test testCase) {
-
-	// Set this path to database created by accuracy_test
-	//databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db" *****
-	//conn := db.NewDBAdapter(ctx, databasePath)
 	conn := LoadDatabase(ctx, test.ResultsDBInput, test.ResultsDBLocal)
 	testCases := retrieveWordSwitches(test.MediaId)
 	report := proofing_rpt.NewAlignSilence(conn)
@@ -91,42 +87,23 @@ func computeMinWordError(verses []proofing_rpt.Verse2) {
 func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
-		total++
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
-			var text []string
+			total++
 			for _, wd := range vs.Words {
-				text = append(text, wd.Text)
-			}
-			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
-			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
-			//var missingResult string
-			for _, wd := range vs.Words {
-				if wd.FAScore < 0.001 {
+				if wd.FAScore < 0.01 {
 					if wd.WordId == testWords.ToWordId {
-						//missingResult = "FOUND MISSING"
 						foundMissing++
 					} else {
-						//missingResult = "MISSING FALSE+"
 						foundFalse++
-						displayMissingError("MISSING FALSE+", wd)
+						displayMissingError("MISSING FALSE+", vs, wd, testWords)
 					}
 				} else {
 					if wd.WordId == testWords.ToWordId {
-						//missingResult = "NOT FOUND MISS"
 						foundNot++
-						displayMissingError("NOT FOUND MISS", wd)
-					} //else {
-					//	missingResult = "OK"
-					//}
+						displayMissingError("NOT FOUND MISS", vs, wd, testWords)
+					}
 				}
-				//if wd.FAScore < 0.5 || wd.WordId == testWords.ToWordId {
-				//	fmt.Printf("%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
-				//	for _, ch := range wd.Chars {
-				//		fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
-				//	}
-				//	fmt.Println("]")
-				//}
 			}
 		}
 	}
@@ -141,47 +118,43 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 	}
 }
 
-func displayMissingError(missingResult string, wd proofing_rpt.Word2) {
-	fmt.Printf("%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
-	for _, ch := range wd.Chars {
-		fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
+func displayMissingError(missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+	var text []string
+	for _, wd := range vs.Words {
+		text = append(text, wd.Text)
 	}
-	fmt.Println("]")
+	fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+	fmt.Printf("%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
+	fmt.Printf("%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+	for _, wd2 := range vs.Words {
+		fmt.Printf("%s: (%.3f) %d [", wd2.Text, wd2.FAScore, wd2.WordId)
+		for _, ch := range wd2.Chars {
+			fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
+		}
+		fmt.Println("]")
+	}
 }
 
 func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
-		total++
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
-			var text []string
-			for _, wd := range vs.Words {
-				lastChar := wd.Chars[len(wd.Chars)-1]
-				msg := fmt.Sprintf(" %s (%.2f %t)", wd.Text, lastChar.Silence, wd.IsASR)
-				text = append(text, msg)
-			}
-			fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
-			fmt.Printf("%s From: %d To: %d\n", testWords.Word, testWords.FromWord, testWords.ToWord)
-			//var addedResult string
+			total++
 			var verseHasResult bool
 			for _, wd := range vs.Words {
 				if wd.IsASR {
 					if strings.ToLower(strings.TrimSpace(wd.Text)) == strings.ToLower(testWords.Word) {
-						//addedResult = "FOUND ADDED"
 						foundMissing++
 						verseHasResult = true
-						//displayAdded(addedResult, testWords, wd)
 					} else {
-						//addedResult = "ADDED FALSE+"
 						foundFalse++
-						//verseHasResult = true
-						displayAdded("ADDED FALSE+", testWords, wd)
+						displayAdded("ADDED FALSE+", vs, wd, testWords)
 					}
 				}
 			}
 			if !verseHasResult {
-				displayAdded("NOTHING ADDED", testWords, proofing_rpt.Word2{})
+				displayAdded("NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
 			}
 		}
 	}
@@ -196,9 +169,18 @@ func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wor
 	}
 }
 
-func displayAdded(addedResult string, testWords wordSwitch, word proofing_rpt.Word2) {
-	fmt.Printf("%s  %v  %s  %d  [", addedResult, testWords, word.Text, word.WordId)
-	for _, ch := range word.Chars {
+func displayAdded(addedResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+	var text []string
+	for _, wd2 := range vs.Words {
+		lastChar := wd2.Chars[len(wd2.Chars)-1]
+		msg := fmt.Sprintf(" %s (%.2f %t)", wd.Text, lastChar.Silence, wd.IsASR)
+		text = append(text, msg)
+	}
+	fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+	fmt.Printf("%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
+	fmt.Printf("%s  %d  %s  %.3f  [", addedResult, wd.WordId, wd.Text, wd.FAScore)
+	fmt.Printf("%s  %v  %s  %d  [", addedResult, tst, wd.Text, wd.WordId)
+	for _, ch := range wd.Chars {
 		fmt.Printf(" %s (%.3f, %d)", string(ch.Char), ch.Silence, ch.SilenceLong)
 	}
 	fmt.Println("]")
