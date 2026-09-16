@@ -18,11 +18,11 @@ This test generates a yaml file for a run, and generates a shell file that will 
 */
 
 func TestRun(t *testing.T) {
-	tests := CasesForTest()
+	tests := retrieveTestCases()
 	for _, tst := range tests {
-		if tst.on {
+		if tst.On {
 			yamlString := CreateYaml(tst)
-			SubmitToRunpod(APP_NAME, tst.mediaId, yamlString)
+			SubmitToRunpod(APP_NAME, tst.MediaId, yamlString)
 		}
 	}
 }
@@ -30,19 +30,15 @@ func TestRun(t *testing.T) {
 func CreateYaml(test testCase) string {
 	var req request.Request
 	req.IsNew = false
-	req.DatasetName = test.mediaId
+	req.DatasetName = test.MediaId
 	req.Username = USERNAME
-	req.LanguageISO = test.languageISO
+	req.LanguageISO = test.LanguageISO
 	req.Priority = 3
 	req.NotifyOk = []string{"ntfy/arti2"}
 	req.NotifyErr = []string{"ntfy/arti2"}
-	req.Testament = test.testament
-	database := fmt.Sprintf("s3://%s/%s/%s/arti/%s/database/%s", OUTPUT_BUCKET, USERNAME, test.mediaId,
-		test.runNum, ACCURACY_TEST_DB)
-	req.Database.AWSS3 = database
-	req.AudioData.AWSS3 = fmt.Sprintf("s3://%s/%s/%s", INPUT_BUCKET, test.mediaName, test.audioFilesKey)
-	//req.Detail.Lines = true
-	//req.Detail.Words = true
+	req.Testament = test.Testament
+	req.Database.AWSS3 = "s3://" + OUTPUT_BUCKET + "/" + test.SetupDBOutput
+	req.AudioData.AWSS3 = fmt.Sprintf("s3://%s/%s/%s", INPUT_BUCKET, test.MediaName, test.AudioFilesKey)
 	req.AudioProof.HTMLReport = true
 	//req.Compare.HTMLReport = true
 	//req.Compare.CompareSettings.LowerCase = true

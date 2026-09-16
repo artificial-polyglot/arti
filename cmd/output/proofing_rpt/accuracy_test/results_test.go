@@ -3,9 +3,6 @@ package accuracy
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -17,9 +14,9 @@ import (
 
 func TestResults(t *testing.T) {
 	ctx := context.Background()
-	tests := CasesForTest()
+	tests := retrieveTestCases()
 	for _, tst := range tests {
-		if tst.on {
+		if tst.On {
 			AccuracyCheck(ctx, tst)
 		}
 	}
@@ -30,8 +27,8 @@ func AccuracyCheck(ctx context.Context, test testCase) {
 	// Set this path to database created by accuracy_test
 	//databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db" *****
 	//conn := db.NewDBAdapter(ctx, databasePath)
-	conn := FindLatestDatabase(ctx, USERNAME, test.mediaId)
-	testCases := retrieveTestCases(test.mediaId)
+	conn := LoadDatabase(ctx, test.ResultsDBInput, test.ResultsDBLocal)
+	testCases := retrieveWordSwitches(test.MediaId)
 	report := proofing_rpt.NewAlignSilence(conn)
 	verses, _, status := report.Process()
 	if status != nil {
@@ -41,32 +38,16 @@ func AccuracyCheck(ctx context.Context, test testCase) {
 	checkAddedWordResults(verses, testCases)
 }
 
-func FindLatestDatabase(ctx context.Context, username string, mediaId string) db.DBAdapter {
+func LoadDatabase(ctx context.Context, resultsDBInput string, resultsDBLocal string) db.DBAdapter {
 	client, status := s3_datastore.NewS3Client(ctx)
 	if status != nil {
 		exit(status)
 	}
-	prefix := filepath.Join(username, mediaId, "arti") + "/"
-	keys, status := client.ListPrefixes(OUTPUT_BUCKET, prefix)
-	var maximum = 0
-	for _, key := range keys {
-		parts := strings.Split(key, "/")
-		keyNum, err := strconv.Atoi(parts[3])
-		if err != nil {
-			exit(err)
-		}
-		if keyNum > maximum {
-			maximum = keyNum
-		}
-	}
-	latest := fmt.Sprintf("%05d", maximum)
-	objectKey := filepath.Join(prefix, latest, "database", mediaId+".db")
-	localPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), mediaId+"_out.db")
-	status = client.DownloadFile(OUTPUT_BUCKET, objectKey, localPath)
+	status = client.DownloadFile(OUTPUT_BUCKET, resultsDBInput, resultsDBLocal)
 	if status != nil {
 		exit(status)
 	}
-	conn := db.NewDBAdapter(ctx, localPath)
+	conn := db.NewDBAdapter(ctx, resultsDBLocal)
 	return conn
 }
 
@@ -228,7 +209,7 @@ func TestDisplayDifferences(t *testing.T) {
 	// Set this path to database created by accuracy_test
 	databasePath := "/Users/gary/FCBH2024/GaryNTest/N1SKNSEC.db"
 	conn := db.NewDBAdapter(ctx, databasePath)
-	testCases := retrieveTestCases("")
+	testCases := retrieveWordSwitches("")
 	report := proofing_rpt.NewAlignSilence(conn)
 	verses, _, status := report.Process()
 	if status != nil {

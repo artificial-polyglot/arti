@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/rand/v2"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -36,18 +35,18 @@ and produces a report of problems, and run statistics
 
 func TestSetup(t *testing.T) {
 	tests := CasesForTest()
+	storeTestCases(tests)
 	for _, tst := range tests {
-		if tst.on {
+		if tst.On {
 			Setup(tst)
 		}
 	}
 }
 
 func Setup(tst testCase) {
-	dbPrefix := filepath.Join(USERNAME, tst.mediaId, "arti", tst.runNum, "database")
-	conn := downloadAndOpenDatabase(USERNAME, tst.mediaId, dbPrefix)
+	conn := downloadAndOpenDatabase(tst.SetupDBInput, tst.SetupDBLocal)
 	fmt.Println("Database Path", conn.DatabasePath)
-	verses := selectVersesWithoutFAError(conn, tst.testament, 0.5)
+	verses := selectVersesWithoutFAError(conn, tst.Testament, 0.5)
 	var wordSwitches = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
@@ -62,18 +61,15 @@ func Setup(tst testCase) {
 			wordSwitches[vs.ScriptId] = testWords
 		}
 	}
-	storeTestCases(tst.mediaId, wordSwitches)
+	storeWordSwitches(tst.MediaId, wordSwitches)
 	status := storeAlteredData(conn, verses, origWordIds)
 	if status != nil {
 		exit(status)
 	}
-	upoadloadDatabase(conn, dbPrefix)
+	upoadloadDatabase(conn, tst.SetupDBOutput)
 }
 
-func downloadAndOpenDatabase(username string, mediaId string, dbPrefix string) db.DBAdapter {
-	//objectKey := filepath.Join(username, mediaId, "arti", runNum, "database", mediaId+".db")
-	objectKey := filepath.Join(dbPrefix, mediaId+".db")
-	localPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), username, mediaId+".db")
+func downloadAndOpenDatabase(s3Path string, localPath string) db.DBAdapter {
 	client, status := s3_datastore.NewS3Client(context.Background())
 	if status != nil {
 		exit(status)
@@ -83,7 +79,7 @@ func downloadAndOpenDatabase(username string, mediaId string, dbPrefix string) d
 	if err != nil && !os.IsNotExist(err) {
 		exit(err)
 	}
-	status = client.DownloadFile(OUTPUT_BUCKET, objectKey, localPath)
+	status = client.DownloadFile(OUTPUT_BUCKET, s3Path, localPath)
 	if status != nil {
 		exit(status)
 	}
@@ -161,7 +157,7 @@ func moveFirstToSecond(verse proofing_rpt.Verse2, tWds *wordSwitch) {
 	verse.Words[tWds.ToWord] = w
 }
 
-func storeTestCases(mediaId string, tests map[int64]wordSwitch) {
+func storeWordSwitches(mediaId string, tests map[int64]wordSwitch) {
 	bytes, err := json.Marshal(tests)
 	if err != nil {
 		exit(err)
@@ -173,7 +169,7 @@ func storeTestCases(mediaId string, tests map[int64]wordSwitch) {
 	}
 }
 
-func retrieveTestCases(mediaId string) map[int64]wordSwitch {
+func retrieveWordSwitches(mediaId string) map[int64]wordSwitch {
 	var result map[int64]wordSwitch
 	filePath := fmt.Sprintf(TEST_DATA, mediaId)
 	bytes, err := os.ReadFile(filePath)
@@ -223,7 +219,7 @@ func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordI
 	return nil
 }
 
-func upoadloadDatabase(conn db.DBAdapter, dbPrefix string) {
+func upoadloadDatabase(conn db.DBAdapter, s3DBPath string) {
 	dbPath := conn.DatabasePath
 	ctx := conn.Ctx
 	conn.Close()
@@ -231,8 +227,7 @@ func upoadloadDatabase(conn db.DBAdapter, dbPrefix string) {
 	if status != nil {
 		exit(status)
 	}
-	key := filepath.Join(dbPrefix, ACCURACY_TEST_DB)
-	status = client.PutFile(OUTPUT_BUCKET, key, dbPath, "application/x-sqlite3", false)
+	status = client.PutFile(OUTPUT_BUCKET, s3DBPath, dbPath, "application/x-sqlite3", false)
 	if status != nil {
 		exit(status)
 	}
