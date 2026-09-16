@@ -44,7 +44,7 @@ type wordSwitch struct {
 }
 
 func CasesForTest() []testCase {
-	testament := req.Testament{NTBooks: []string{"PHM"}}
+	testament := req.Testament{NTBooks: []string{"JHN"}}
 	var tests []testCase
 	tests = append(tests, testCase{On: true, MediaId: "N1SKNSEC", RunNum: "00004", MediaName: "Kolibugan N1SKNSEC",
 		LanguageISO: "skn", Testament: testament, AudioFilesKey: "N1SKNSEC Chapter mp3/*.mp3"})
@@ -107,7 +107,7 @@ func FindNextRunNum(client s3_datastore.S3Client, prefix string) string {
 }
 
 func storeTestCases(tests []testCase) {
-	bytes, err := json.Marshal(tests)
+	bytes, err := json.MarshalIndent(tests, "", "  ")
 	if err != nil {
 		exit(err)
 	}

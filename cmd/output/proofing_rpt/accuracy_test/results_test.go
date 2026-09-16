@@ -3,6 +3,7 @@ package accuracy
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -24,14 +25,18 @@ func TestResults(t *testing.T) {
 
 func AccuracyCheck(ctx context.Context, test testCase) {
 	conn := LoadDatabase(ctx, test.ResultsDBInput, test.ResultsDBLocal)
-	testCases := retrieveWordSwitches(test.MediaId)
 	report := proofing_rpt.NewAlignSilence(conn)
 	verses, _, status := report.Process()
 	if status != nil {
 		exit(status)
 	}
-	checkMissingWordResults(verses, testCases)
-	checkAddedWordResults(verses, testCases)
+	outFile, err := os.Create(test.MediaId + ".txt")
+	if err != nil {
+		exit(err)
+	}
+	checkMissingWordResults(outFile, verses, test)
+	checkAddedWordResults(outFile, verses, test)
+	_ = outFile.Close()
 }
 
 func LoadDatabase(ctx context.Context, resultsDBInput string, resultsDBLocal string) db.DBAdapter {
@@ -84,7 +89,8 @@ func computeMinWordError(verses []proofing_rpt.Verse2) {
 //     by WordId - rather than by the pre-move index into vs.Words - keeps this
 //     check correct even when an ASR splice earlier in the verse has shifted
 //     every subsequent word's index.
-func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
+func checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2, test testCase) {
+	testCases := retrieveWordSwitches(test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
@@ -96,12 +102,13 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 						foundMissing++
 					} else {
 						foundFalse++
-						displayMissingError("MISSING FALSE+", vs, wd, testWords)
+						displayMissingError(outFile, "MISSING FALSE+", vs, wd, testWords)
 					}
 				} else {
 					if wd.WordId == testWords.ToWordId {
 						foundNot++
-						displayMissingError("NOT FOUND MISS", vs, wd, testWords)
+						displayMissingError(os.Stdout, "NOT FOUND MISS", vs, wd, testWords)
+						displayMissingError(outFile, "NOT FOUND MISS", vs, wd, testWords)
 					}
 				}
 			}
@@ -111,31 +118,32 @@ func checkMissingWordResults(verses []proofing_rpt.Verse2, testCases map[int64]w
 		pctWasMissing := foundMissing / total * 100.0
 		pctFoundFalse := foundFalse / total * 100.0
 		pctFoundNot := foundNot / total * 100.0
-		fmt.Printf("\n*** Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
-			total, pctWasMissing, pctFoundFalse, pctFoundNot)
+		fmt.Printf("\n*** %s Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
+			test.MediaId, total, pctWasMissing, pctFoundFalse, pctFoundNot)
 	} else {
 		fmt.Println("No Missing Word test results")
 	}
 }
 
-func displayMissingError(missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+func displayMissingError(outFile *os.File, missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
 	var text []string
-	for _, wd := range vs.Words {
-		text = append(text, wd.Text)
-	}
-	fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
-	fmt.Printf("%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
-	fmt.Printf("%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
 	for _, wd2 := range vs.Words {
-		fmt.Printf("%s: (%.3f) %d [", wd2.Text, wd2.FAScore, wd2.WordId)
+		text = append(text, wd2.Text)
+	}
+	_, _ = fmt.Fprintf(outFile, "\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
+	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+	for i, wd2 := range vs.Words {
+		_, _ = fmt.Fprintf(outFile, "%d %s: (%.3f) %d [", i, wd2.Text, wd2.FAScore, wd2.WordId)
 		for _, ch := range wd2.Chars {
-			fmt.Printf(" %s (%.3f)", string(ch.Char), ch.FAScore)
+			_, _ = fmt.Fprintf(outFile, " %s (%.3f)", string(ch.Char), ch.FAScore)
 		}
-		fmt.Println("]")
+		_, _ = fmt.Fprintln(outFile, "]")
 	}
 }
 
-func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wordSwitch) {
+func checkAddedWordResults(outFile *os.File, verses []proofing_rpt.Verse2, test testCase) {
+	testCases := retrieveWordSwitches(test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
@@ -149,12 +157,13 @@ func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wor
 						verseHasResult = true
 					} else {
 						foundFalse++
-						displayAdded("ADDED FALSE+", vs, wd, testWords)
+						displayAdded(outFile, "ADDED FALSE+", vs, wd, testWords)
 					}
 				}
 			}
 			if !verseHasResult {
-				displayAdded("NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
+				displayAdded(os.Stdout, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
+				displayAdded(outFile, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
 			}
 		}
 	}
@@ -169,21 +178,21 @@ func checkAddedWordResults(verses []proofing_rpt.Verse2, testCases map[int64]wor
 	}
 }
 
-func displayAdded(addedResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+func displayAdded(outFile *os.File, addedResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
 	var text []string
 	for _, wd2 := range vs.Words {
-		lastChar := wd2.Chars[len(wd2.Chars)-1]
-		msg := fmt.Sprintf(" %s (%.2f %t)", wd.Text, lastChar.Silence, wd.IsASR)
-		text = append(text, msg)
+		text = append(text, wd2.Text)
 	}
-	fmt.Printf("\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
-	fmt.Printf("%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
-	fmt.Printf("%s  %d  %s  %.3f  [", addedResult, wd.WordId, wd.Text, wd.FAScore)
-	fmt.Printf("%s  %v  %s  %d  [", addedResult, tst, wd.Text, wd.WordId)
-	for _, ch := range wd.Chars {
-		fmt.Printf(" %s (%.3f, %d)", string(ch.Char), ch.Silence, ch.SilenceLong)
+	_, _ = fmt.Fprintf(outFile, "\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
+	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  [", addedResult, wd.WordId, wd.Text, wd.FAScore)
+	for i, wd2 := range vs.Words {
+		_, _ = fmt.Fprintf(outFile, "%d %s: (%.3f) %d [", i, wd2.Text, wd2.FAScore, wd2.WordId)
+		for _, ch := range wd2.Chars {
+			_, _ = fmt.Fprintf(outFile, " %s (%.3f, %.3f, %d)", string(ch.Char), ch.FAScore, ch.Silence, ch.SilenceLong)
+		}
+		_, _ = fmt.Fprintln(outFile, "]")
 	}
-	fmt.Println("]")
 }
 
 func TestDisplayDifferences(t *testing.T) {

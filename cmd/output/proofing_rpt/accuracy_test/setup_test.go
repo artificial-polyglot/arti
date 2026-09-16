@@ -158,7 +158,7 @@ func moveFirstToSecond(verse proofing_rpt.Verse2, tWds *wordSwitch) {
 }
 
 func storeWordSwitches(mediaId string, tests map[int64]wordSwitch) {
-	bytes, err := json.Marshal(tests)
+	bytes, err := json.MarshalIndent(tests, "", "  ")
 	if err != nil {
 		exit(err)
 	}
