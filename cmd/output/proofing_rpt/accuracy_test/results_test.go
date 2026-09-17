@@ -88,29 +88,36 @@ func computeMinWordError(verses []proofing_rpt.Verse2) {
 //     since it no longer matches the audio at its new position. Looking it up
 //     by WordId - rather than by the pre-move index into vs.Words - keeps this
 //     check correct even when an ASR splice earlier in the verse has shifted
-//     every subsequent word's index.
+//     every subsequent word's index. When the move lands the word directly
+//     next to another instance of itself, either of the two identical,
+//     adjacent words may end up carrying the low score, so a flagged word
+//     next to the WordId-matching one counts too (see isAdjacentToTargetWord).
 func checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2, test testCase) {
 	testCases := retrieveWordSwitches(test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
+			isFound := false
 			total++
-			for _, wd := range vs.Words {
+			for j, wd := range vs.Words {
 				if wd.FAScore < 0.01 {
 					if wd.WordId == testWords.ToWordId {
+						isFound = true
+						foundMissing++
+					} else if isAdjacentToTargetWord(vs.Words, j, testWords.ToWordId) {
+						isFound = true
 						foundMissing++
 					} else {
 						foundFalse++
 						displayMissingError(outFile, "MISSING FALSE+", vs, wd, testWords)
 					}
-				} else {
-					if wd.WordId == testWords.ToWordId {
-						foundNot++
-						displayMissingError(os.Stdout, "NOT FOUND MISS", vs, wd, testWords)
-						displayMissingError(outFile, "NOT FOUND MISS", vs, wd, testWords)
-					}
 				}
+			}
+			if !isFound {
+				foundNot++
+				displayMissingError(os.Stdout, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
+				displayMissingError(outFile, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
 			}
 		}
 	}
@@ -123,6 +130,31 @@ func checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2, tes
 	} else {
 		fmt.Println("No Missing Word test results")
 	}
+}
+
+// isAdjacentToTargetWord handles the case where the moved word lands right
+// next to another instance of the same word (e.g. "the the"). When that
+// happens, it's ambiguous which of the two identical, adjacent words the
+// alignment should flag as low-scoring, so a flagged word is also accepted
+// when its neighbor carries the expected WordId and has the same text.
+func isAdjacentToTargetWord(words []proofing_rpt.Word2, idx int, targetWordId int64) bool {
+	wd := words[idx]
+	text := strings.ToLower(strings.TrimSpace(wd.Text))
+	if idx > 0 {
+		prev := words[idx-1]
+		if prev.WordId == targetWordId && strings.ToLower(strings.TrimSpace(prev.Text)) == text {
+			//if strings.ToLower(strings.TrimSpace(prev.Text)) == text {
+			return true
+		}
+	}
+	if idx < len(words)-1 {
+		next := words[idx+1]
+		if next.WordId == targetWordId && strings.ToLower(strings.TrimSpace(next.Text)) == text {
+			//if strings.ToLower(strings.TrimSpace(next.Text)) == text {
+			return true
+		}
+	}
+	return false
 }
 
 func displayMissingError(outFile *os.File, missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
