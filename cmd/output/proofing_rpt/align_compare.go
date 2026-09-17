@@ -22,7 +22,7 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 			if status != nil {
 				return result, status
 			}
-			refText := a.GetOriginalText(verse) // This could be done by selecting line
+			refText := a.GetOriginalText(verse)
 			cDiffs := a.DiffMatchPatch(refText, asrText)
 			newLine := a.MarkDeletedChars(verse, cDiffs)
 			newLine = a.InsertASRSilenceChars(newLine, cDiffs)
@@ -107,7 +107,7 @@ func (a *AlignSilence) buildASRWordFromInserts(cDiffs []CDiff, idx int) Word2 {
 	if len(newWord.Chars) > 0 {
 		newWord.IsASR = true
 		newWord.Text = string(text)
-		newWord.FAScore = 1.0
+		newWord.FAScore = 1.1
 	}
 	return newWord
 }
@@ -141,7 +141,7 @@ func (a *AlignSilence) MarkDeletedChars(verse Verse2, cDiffs []CDiff) Verse2 {
 			position++
 			diffPos := a.FindPositionInDiff(cDiffs, position)
 			if diffPos < len(cDiffs) && cDiffs[diffPos].Type == diffmatchpatch.DiffDelete {
-				chars[ci].FAScore = 0.0
+				chars[ci].FAScore = -0.1
 			}
 		}
 	}
