@@ -98,7 +98,7 @@ func (a *AlignSilence) buildASRWordFromInserts(cDiffs []CDiff, idx int) Word2 {
 			Char:    cDiffs[i].Char,
 			BeginTS: -1,
 			EndTS:   -1,
-			FAScore: 1.0,
+			FAScore: 1.1,
 			IsASR:   true,
 		}
 		text = append(text, newChar.Char)
