@@ -18,24 +18,39 @@ func TestResults(t *testing.T) {
 	tests := retrieveTestCases()
 	for _, tst := range tests {
 		if tst.On {
-			AccuracyCheck(ctx, tst)
+			accuracy := NewAccuracyTest(ctx, tst)
+			accuracy.AccuracyCheck()
 		}
 	}
 }
 
-func AccuracyCheck(ctx context.Context, test testCase) {
-	conn := LoadDatabase(ctx, test.ResultsDBInput, test.ResultsDBLocal)
-	report := proofing_rpt.NewAlignSilence(conn)
-	verses, _, status := report.Process()
+type AccuracyTest struct {
+	ctx     context.Context
+	test    testCase
+	conn    db.DBAdapter
+	silence proofing_rpt.AlignSilence
+}
+
+func NewAccuracyTest(ctx context.Context, test testCase) AccuracyTest {
+	var a AccuracyTest
+	a.ctx = ctx
+	a.test = test
+	a.conn = LoadDatabase(ctx, test.ResultsDBInput, test.ResultsDBLocal)
+	a.silence = proofing_rpt.NewAlignSilence(a.conn)
+	return a
+}
+
+func (a *AccuracyTest) AccuracyCheck() {
+	verses, _, status := a.silence.Process()
 	if status != nil {
 		exit(status)
 	}
-	outFile, err := os.Create(test.MediaId + ".txt")
+	outFile, err := os.Create(a.test.MediaId + ".txt")
 	if err != nil {
 		exit(err)
 	}
-	checkMissingWordResults(outFile, verses, test)
-	checkAddedWordResults(outFile, verses, test)
+	a.checkMissingWordResults(outFile, verses)
+	a.checkAddedWordResults(outFile, verses)
 	_ = outFile.Close()
 }
 
@@ -92,8 +107,8 @@ func computeMinWordError(verses []proofing_rpt.Verse2) {
 //     next to another instance of itself, either of the two identical,
 //     adjacent words may end up carrying the low score, so a flagged word
 //     next to the WordId-matching one counts too (see isAdjacentToTargetWord).
-func checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2, test testCase) {
-	testCases := retrieveWordSwitches(test.MediaId)
+func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2) {
+	testCases := retrieveWordSwitches(a.test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
@@ -110,14 +125,14 @@ func checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2, tes
 						foundMissing++
 					} else {
 						foundFalse++
-						displayMissingError(outFile, "MISSING FALSE+", vs, wd, testWords)
+						a.displayMissingError(outFile, "MISSING FALSE+", vs, wd, testWords)
 					}
 				}
 			}
 			if !isFound {
 				foundNot++
-				displayMissingError(os.Stdout, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
-				displayMissingError(outFile, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
+				a.displayMissingError(os.Stdout, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
+				a.displayMissingError(outFile, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
 			}
 		}
 	}
@@ -126,7 +141,7 @@ func checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2, tes
 		pctFoundFalse := foundFalse / total * 100.0
 		pctFoundNot := foundNot / total * 100.0
 		fmt.Printf("\n*** %s Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
-			test.MediaId, total, pctWasMissing, pctFoundFalse, pctFoundNot)
+			a.test.MediaId, total, pctWasMissing, pctFoundFalse, pctFoundNot)
 	} else {
 		fmt.Println("No Missing Word test results")
 	}
@@ -157,12 +172,22 @@ func isAdjacentToTargetWord(words []proofing_rpt.Word2, idx int, targetWordId in
 	return false
 }
 
-func displayMissingError(outFile *os.File, missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
 	var text []string
 	for _, wd2 := range vs.Words {
 		text = append(text, wd2.Text)
 	}
 	_, _ = fmt.Fprintf(outFile, "\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+	transcript, status := a.silence.SelectTranscript(vs.ScriptId)
+	if status != nil {
+		exit(status)
+	}
+	refText, status := a.conn.SelectScriptLine(vs.ScriptId)
+	if status != nil {
+		exit(status)
+	}
+	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
+	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
 	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
 	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
@@ -174,39 +199,39 @@ func displayMissingError(outFile *os.File, missingResult string, vs proofing_rpt
 	}
 }
 
-func checkAddedWordResults(outFile *os.File, verses []proofing_rpt.Verse2, test testCase) {
-	testCases := retrieveWordSwitches(test.MediaId)
+func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing_rpt.Verse2) {
+	testCases := retrieveWordSwitches(a.test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
 		testWords, ok := testCases[vs.ScriptId]
 		if ok {
 			total++
 			nonInsertedWordCount := 0
-			if testWords.FromWord > testWords.ToWord {
-				nonInsertedWordCount = 1
-			}
+			var nonInserted = make([]int, len(vs.Words))
 			var verseHasResult bool
-			for _, wd := range vs.Words {
+			for i, wd := range vs.Words {
+				nonInserted[i] = nonInsertedWordCount
 				if wd.IsASR {
 					// This is not checking that the expected word is present, because ASR might put something
 					// unexpected. It is checking that something has been added to the expected place.
 					// The nonInsertedWordCount is intended to step over false positives that have been added
-					// Why the testWords.FromWords+2 is needed is a mystery
-					if nonInsertedWordCount == testWords.FromWord ||
-						nonInsertedWordCount == testWords.FromWord+2 {
+					if testWords.FromWord > testWords.ToWord && nonInsertedWordCount-1 == testWords.FromWord {
+						foundMissing++
+						verseHasResult = true
+					} else if nonInsertedWordCount == testWords.FromWord {
 						foundMissing++
 						verseHasResult = true
 					} else {
 						foundFalse++
-						displayAdded(outFile, "ADDED FALSE+", vs, wd, testWords)
+						a.displayAdded(outFile, nonInserted, "ADDED FALSE+", vs, wd, testWords)
 					}
 				} else {
 					nonInsertedWordCount++
 				}
 			}
 			if !verseHasResult {
-				displayAdded(os.Stdout, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
-				displayAdded(outFile, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
+				a.displayAdded(os.Stdout, nonInserted, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
+				a.displayAdded(outFile, nonInserted, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
 			}
 		}
 	}
@@ -221,16 +246,26 @@ func checkAddedWordResults(outFile *os.File, verses []proofing_rpt.Verse2, test 
 	}
 }
 
-func displayAdded(outFile *os.File, addedResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+func (a *AccuracyTest) displayAdded(outFile *os.File, nonInserted []int, addedResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
 	var text []string
 	for _, wd2 := range vs.Words {
 		text = append(text, wd2.Text)
 	}
 	_, _ = fmt.Fprintf(outFile, "\n%s  %d  %s\n", vs.LineRef.Description(), vs.ScriptId, strings.Join(text, " "))
+	transcript, status := a.silence.SelectTranscript(vs.ScriptId)
+	if status != nil {
+		exit(status)
+	}
+	refText, status := a.conn.SelectScriptLine(vs.ScriptId)
+	if status != nil {
+		exit(status)
+	}
+	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
+	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
 	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
 	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  \n", addedResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
-		_, _ = fmt.Fprintf(outFile, "%d %s: (%.3f) %d [", i, wd2.Text, wd2.FAScore, wd2.WordId)
+		_, _ = fmt.Fprintf(outFile, "%d %d %s: (%.3f) %d [", nonInserted[i], i, wd2.Text, wd2.FAScore, wd2.WordId)
 		for _, ch := range wd2.Chars {
 			_, _ = fmt.Fprintf(outFile, " %s (%.3f, %.3f, %d)", string(ch.Char), ch.FAScore, ch.Silence, ch.SilenceLong)
 		}
