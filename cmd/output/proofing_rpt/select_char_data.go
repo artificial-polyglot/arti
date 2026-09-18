@@ -27,9 +27,6 @@ func SelectCharData(conn db.DBAdapter, cutoff float64) ([]Verse2, *log.Status) {
        				FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
        				WHERE q2.fa_score <= ?)
 				ORDER BY w.script_id, w.word_id, qc.seq`
-	//				LEFT OUTER JOIN chars_qa_align qc ON w.word_id = qc.word_id
-	//				LEFT OUTER JOIN words_qa_align qw ON w.word_id = qw.word_id
-	//				LEFT OUTER JOIN scripts_qa_align qs ON qs.script_id = s.script_id
 	rows, err := conn.DB.Query(query, cutoff)
 	if err != nil {
 		return verses, log.Error(conn.Ctx, 500, err, "Error during SelectCharData.")
