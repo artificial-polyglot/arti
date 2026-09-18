@@ -189,7 +189,7 @@ func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult strin
 	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
 	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
 	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
-	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  [", missingResult, wd.WordId, wd.Text, wd.FAScore)
+	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  \n", missingResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
 		_, _ = fmt.Fprintf(outFile, "%d %s: (%.3f) %d [", i, wd2.Text, wd2.FAScore, wd2.WordId)
 		for _, ch := range wd2.Chars {
