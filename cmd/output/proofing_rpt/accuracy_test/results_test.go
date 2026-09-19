@@ -9,6 +9,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/utility/diff"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -120,9 +121,11 @@ func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofi
 					if wd.WordId == testWords.ToWordId {
 						isFound = true
 						foundMissing++
+						//a.displayMissingError(os.Stdout, "IS FOUND", vs, wd, testWords)
 					} else if isAdjacentToTargetWord(vs.Words, j, testWords.ToWordId) {
 						isFound = true
 						foundMissing++
+						//a.displayMissingError(os.Stdout, "IS FOUND", vs, wd, testWords)
 					} else {
 						foundFalse++
 						a.displayMissingError(outFile, "MISSING FALSE+", vs, wd, testWords)
@@ -158,14 +161,12 @@ func isAdjacentToTargetWord(words []proofing_rpt.Word2, idx int, targetWordId in
 	if idx > 0 {
 		prev := words[idx-1]
 		if prev.WordId == targetWordId && strings.ToLower(strings.TrimSpace(prev.Text)) == text {
-			//if strings.ToLower(strings.TrimSpace(prev.Text)) == text {
 			return true
 		}
 	}
 	if idx < len(words)-1 {
 		next := words[idx+1]
 		if next.WordId == targetWordId && strings.ToLower(strings.TrimSpace(next.Text)) == text {
-			//if strings.ToLower(strings.TrimSpace(next.Text)) == text {
 			return true
 		}
 	}
@@ -182,12 +183,11 @@ func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult strin
 	if status != nil {
 		exit(status)
 	}
-	refText, status := a.conn.SelectScriptLine(vs.ScriptId)
-	if status != nil {
-		exit(status)
-	}
+	refText := a.SelectScriptLine(vs.ScriptId)
+	dif := diff.DiffReplace(strings.ToLower(refText), transcript)
 	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
 	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
+	_, _ = fmt.Fprintln(outFile, "Diff", dif)
 	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
 	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  \n", missingResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
@@ -256,12 +256,11 @@ func (a *AccuracyTest) displayAdded(outFile *os.File, nonInserted []int, addedRe
 	if status != nil {
 		exit(status)
 	}
-	refText, status := a.conn.SelectScriptLine(vs.ScriptId)
-	if status != nil {
-		exit(status)
-	}
+	refText := a.SelectScriptLine(vs.ScriptId)
+	dif := diff.DiffReplace(strings.ToLower(refText), transcript)
 	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
 	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
+	_, _ = fmt.Fprintln(outFile, "Diff", dif)
 	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
 	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  \n", addedResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
@@ -271,6 +270,20 @@ func (a *AccuracyTest) displayAdded(outFile *os.File, nonInserted []int, addedRe
 		}
 		_, _ = fmt.Fprintln(outFile, "]")
 	}
+}
+
+func (a *AccuracyTest) SelectScriptLine(scriptId int64) string {
+	var text string
+	var query = `SELECT GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS text
+			FROM scripts s JOIN words w ON w.script_id = s.script_id
+			WHERE s.script_id = ? AND w.ttype = 'W'
+			GROUP BY s.script_id`
+	row := a.conn.DB.QueryRow(query, scriptId)
+	err := row.Scan(&text)
+	if err != nil {
+		exit(err)
+	}
+	return text
 }
 
 func TestDisplayDifferences(t *testing.T) {

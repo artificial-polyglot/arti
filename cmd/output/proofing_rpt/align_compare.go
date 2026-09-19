@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/diff"
 	"github.com/artificial-polyglot/arti/utility/fa"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -23,7 +24,7 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 				return result, status
 			}
 			refText := a.GetOriginalText(verse)
-			cDiffs := a.DiffMatchPatch(refText, asrText)
+			cDiffs := diff.CharDiff(refText, asrText)
 			newLine := a.MarkDeletedChars(verse, cDiffs)
 			newLine = a.InsertASRSilenceChars(newLine, cDiffs)
 			result = append(result, newLine)
@@ -52,7 +53,7 @@ func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 	return strings.ToLower(strings.Join(text, " "))
 }
 
-func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse2 {
+func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []diff.CDiff) Verse2 {
 	newWords := make([]Word2, 0, len(verse.Words)+10)
 	// ASR text inserted before the very first reference char has no preceding
 	// word to follow, so the per-char scan below (which only looks forward
@@ -90,10 +91,10 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []CDiff) Verse
 // buildASRWordFromInserts consumes the run of consecutive DiffInsert entries
 // in cDiffs starting at idx, returning the resulting ASR word (zero value,
 // with no Chars, if idx isn't the start of an insert run).
-func (a *AlignSilence) buildASRWordFromInserts(cDiffs []CDiff, idx int) Word2 {
+func (a *AlignSilence) buildASRWordFromInserts(cDiffs []diff.CDiff, idx int) Word2 {
 	var newWord Word2
 	var text []rune
-	for i := idx; i < len(cDiffs) && cDiffs[i].Type == diffmatchpatch.DiffInsert; i++ {
+	for i := idx; i < len(cDiffs) && cDiffs[i].Type == diff.OpInsert; i++ {
 		newChar := Char2{
 			Char:    cDiffs[i].Char,
 			BeginTS: -1,
@@ -127,20 +128,20 @@ func firstCharBeginTS(verse Verse2) float64 {
 	return 0
 }
 
-// MarkDeletedChars is an experiment: it walks the verse's chars in the same
+// MarkDeletedChars walks the verse's chars in the same
 // order as InsertASRSilenceChars, and for every reference char that
 // diff-match-patch marked as Deleted - present in refText but absent from
 // asrText, meaning the ASR transcript never produced it - sets that char's
 // FAScore to 0.0. It repeats its own DiffMatchPatch call rather than sharing
 // cDiffs with InsertASRSilenceChars, so the two can be tried independently.
-func (a *AlignSilence) MarkDeletedChars(verse Verse2, cDiffs []CDiff) Verse2 {
+func (a *AlignSilence) MarkDeletedChars(verse Verse2, cDiffs []diff.CDiff) Verse2 {
 	position := -1
 	for wi := range verse.Words {
 		chars := verse.Words[wi].Chars
 		for ci := range chars {
 			position++
 			diffPos := a.FindPositionInDiff(cDiffs, position)
-			if diffPos < len(cDiffs) && cDiffs[diffPos].Type == diffmatchpatch.DiffDelete {
+			if diffPos < len(cDiffs) && cDiffs[diffPos].Type == diff.OpDelete {
 				chars[ci].FAScore = -0.1
 			}
 		}
@@ -178,28 +179,28 @@ type CDiff struct {
 	Char rune
 }
 
-func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
-	var result []CDiff
-	diffMatch := diffmatchpatch.New()
-	text = strings.TrimSpace(text)
-	asrText = strings.TrimSpace(asrText)
-	diffs := diffMatch.DiffMain(text, asrText, false)
-	diffs = diffMatch.DiffCleanupSemantic(diffs)
+//func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
+//	var result []CDiff
+//	diffMatch := diffmatchpatch.New()
+//	text = strings.TrimSpace(text)
+//	asrText = strings.TrimSpace(asrText)
+//	diffs := diffMatch.DiffMain(text, asrText, false)
+//	diffs = diffMatch.DiffCleanupSemantic(diffs)
+//
+//	for _, df := range diffs {
+//		for _, ch := range df.Text {
+//			if ch != ' ' || df.Type == diffmatchpatch.DiffInsert {
+//				result = append(result, CDiff{Type: df.Type, Char: ch})
+//			}
+//		}
+//	}
+//	return result
+//}
 
-	for _, df := range diffs {
-		for _, ch := range df.Text {
-			if ch != ' ' || df.Type == diffmatchpatch.DiffInsert {
-				result = append(result, CDiff{Type: df.Type, Char: ch})
-			}
-		}
-	}
-	return result
-}
-
-func (a *AlignSilence) FindPositionInDiff(cDiffs []CDiff, charPos int) int {
+func (a *AlignSilence) FindPositionInDiff(cDiffs []diff.CDiff, charPos int) int {
 	refCount := -1
 	for i, ch := range cDiffs {
-		if ch.Type != diffmatchpatch.DiffInsert {
+		if ch.Type != diff.OpInsert {
 			refCount++
 		}
 		if refCount >= charPos {
