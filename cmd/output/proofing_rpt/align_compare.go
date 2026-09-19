@@ -30,7 +30,8 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 			result = append(result, newLine)
 		}
 	}
-	ComputeFAWordError(result)
+	//ComputeFAWordError(result)
+	ComputeMinWordError(result)
 	return result, status
 }
 
@@ -179,24 +180,6 @@ type CDiff struct {
 	Char rune
 }
 
-//func (a *AlignSilence) DiffMatchPatch(text string, asrText string) []CDiff {
-//	var result []CDiff
-//	diffMatch := diffmatchpatch.New()
-//	text = strings.TrimSpace(text)
-//	asrText = strings.TrimSpace(asrText)
-//	diffs := diffMatch.DiffMain(text, asrText, false)
-//	diffs = diffMatch.DiffCleanupSemantic(diffs)
-//
-//	for _, df := range diffs {
-//		for _, ch := range df.Text {
-//			if ch != ' ' || df.Type == diffmatchpatch.DiffInsert {
-//				result = append(result, CDiff{Type: df.Type, Char: ch})
-//			}
-//		}
-//	}
-//	return result
-//}
-
 func (a *AlignSilence) FindPositionInDiff(cDiffs []diff.CDiff, charPos int) int {
 	refCount := -1
 	for i, ch := range cDiffs {
@@ -241,6 +224,30 @@ func ComputeFAWordError(verses []Verse2) {
 			}
 			faWord := fa.ComputeWordFA(faChars, fa.DefaultFAConfig())
 			verses[i].Words[j].FAScore = faWord.TrimmedMinScore
+			//verses[i].Words[j].FAScore = faWord.MinScore
+		}
+	}
+}
+
+func ComputeMinWordError(verses []Verse2) {
+	for i, vs := range verses {
+		for j, wd := range vs.Words {
+			var minimum = 1.0
+			for c := range wd.Chars {
+				ch := wd.Chars[c]
+				if len(wd.Chars) > 4 {
+					if c > 0 && c < len(wd.Chars)-1 {
+						if minimum > ch.FAScore {
+							minimum = ch.FAScore
+						}
+					}
+				} else {
+					if minimum > ch.FAScore {
+						minimum = ch.FAScore
+					}
+				}
+			}
+			verses[i].Words[j].FAScore = minimum
 		}
 	}
 }

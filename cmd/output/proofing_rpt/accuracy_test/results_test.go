@@ -11,7 +11,6 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/utility/diff"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func TestResults(t *testing.T) {
@@ -66,29 +65,6 @@ func LoadDatabase(ctx context.Context, resultsDBInput string, resultsDBLocal str
 	}
 	conn := db.NewDBAdapter(ctx, resultsDBLocal)
 	return conn
-}
-
-func computeMinWordError(verses []proofing_rpt.Verse2) {
-	for i, vs := range verses {
-		for j, wd := range vs.Words {
-			var minimum = 1.0
-			for c := range wd.Chars {
-				ch := wd.Chars[c]
-				if len(wd.Chars) > 4 {
-					if c > 0 && c < len(wd.Chars)-1 {
-						if minimum > ch.FAScore {
-							minimum = ch.FAScore
-						}
-					}
-				} else {
-					if minimum > ch.FAScore {
-						minimum = ch.FAScore
-					}
-				}
-			}
-			verses[i].Words[j].FAScore = minimum
-		}
-	}
 }
 
 // checkResults verifies two independent signals per verse:
@@ -325,16 +301,12 @@ func TestDisplayDifferences(t *testing.T) {
 }
 
 func diffSample(refText string, asrText string) {
-	diffMatch := diffmatchpatch.New()
 	fmt.Println("REF:", refText)
 	fmt.Println("ASR:", asrText)
-	refText = strings.TrimSpace(refText)
-	asrText = strings.TrimSpace(asrText)
-	diffs := diffMatch.DiffMain(refText, asrText, false)
-	diffs = diffMatch.DiffCleanupSemantic(diffs)
+	diffs := diff.DiffReplace(refText, asrText)
 	for _, d := range diffs {
 		fmt.Print("DIF:")
-		if d.Type != diffmatchpatch.DiffEqual {
+		if d.Type != diff.OpEqual {
 			fmt.Print(d.Type, ": |", d.Text, "|")
 		}
 		fmt.Println()
