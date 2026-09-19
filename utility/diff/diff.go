@@ -120,6 +120,9 @@ func DiffMatchPatch(refText string, asrText string) []diffmatchpatch.Diff {
 	refText = strings.TrimSpace(refText)
 	asrText = strings.TrimSpace(asrText)
 	diffs := diffMatch.DiffMain(refText, asrText, false)
-	diffs = diffMatch.DiffCleanupSemantic(diffs)
+	diffs = diffMatch.DiffCleanupSemanticLossless(diffs)
+	//diffs = diffMatch.DiffCleanupSemantic(diffs)
+	//diffs = diffMatch.DiffCleanupEfficiency(diffs)
+	//diffs = diffMatch.DiffCleanupMerge(diffs)
 	return diffs
 }
