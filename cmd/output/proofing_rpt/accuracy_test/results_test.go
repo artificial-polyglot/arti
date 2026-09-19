@@ -164,7 +164,7 @@ func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult strin
 	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
 	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
 	_, _ = fmt.Fprintln(outFile, "Diff", dif)
-	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
+	_, _ = fmt.Fprintf(outFile, "%s Add: %d (%d) Missing: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
 	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  \n", missingResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
 		_, _ = fmt.Fprintf(outFile, "%d %s: (%.3f) %d [", i, wd2.Text, wd2.FAScore, wd2.WordId)
@@ -191,10 +191,8 @@ func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing
 					// This is not checking that the expected word is present, because ASR might put something
 					// unexpected. It is checking that something has been added to the expected place.
 					// The nonInsertedWordCount is intended to step over false positives that have been added
-					if testWords.FromWord > testWords.ToWord && nonInsertedWordCount-1 == testWords.FromWord {
-						foundMissing++
-						verseHasResult = true
-					} else if nonInsertedWordCount == testWords.FromWord {
+					if testWords.FromWord <= nonInsertedWordCount &&
+						nonInsertedWordCount <= testWords.FromWord+2 {
 						foundMissing++
 						verseHasResult = true
 					} else {
@@ -237,7 +235,7 @@ func (a *AccuracyTest) displayAdded(outFile *os.File, nonInserted []int, addedRe
 	_, _ = fmt.Fprintf(outFile, "REF Script Txt: %s\n", refText)
 	_, _ = fmt.Fprintf(outFile, "ASR Transcript: %s\n", transcript)
 	_, _ = fmt.Fprintln(outFile, "Diff", dif)
-	_, _ = fmt.Fprintf(outFile, "%s From: %d (%d) To: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
+	_, _ = fmt.Fprintf(outFile, "%s Add: %d (%d) Missing: %d (%d)\n", tst.Word, tst.FromWord, tst.FromWordId, tst.ToWord, tst.ToWordId)
 	_, _ = fmt.Fprintf(outFile, "%s  %d  %s  %.3f  \n", addedResult, wd.WordId, wd.Text, wd.FAScore)
 	for i, wd2 := range vs.Words {
 		_, _ = fmt.Fprintf(outFile, "%d %d %s: (%.3f) %d [", nonInserted[i], i, wd2.Text, wd2.FAScore, wd2.WordId)

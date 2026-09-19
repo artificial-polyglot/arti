@@ -44,19 +44,20 @@ func TestSetup(t *testing.T) {
 }
 
 func Setup(tst testCase) {
+	random := rand.New(rand.NewPCG(12, 21)) // two uint64 seeds; fixed values → same sequence every run
 	conn := downloadAndOpenDatabase(tst.SetupDBInput, tst.SetupDBLocal)
 	fmt.Println("Database Path", conn.DatabasePath)
 	verses := selectVersesWithoutFAError(conn, tst.Testament, 0.5)
 	var wordSwitches = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
-		if len(vs.Words) > 4 {
+		if len(vs.Words) > 12 {
 			ids := make([]int64, len(vs.Words))
 			for i, wd := range vs.Words {
 				ids[i] = wd.WordId
 			}
 			origWordIds[vs.ScriptId] = ids
-			testWords := computeTwoRandoms(len(vs.Words))
+			testWords := computeTwoRandoms(random, len(vs.Words))
 			moveFirstToSecond(vs, &testWords)
 			wordSwitches[vs.ScriptId] = testWords
 		}
@@ -133,10 +134,10 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament, cutoff f
 	return result
 }
 
-func computeTwoRandoms(wordCnt int) wordSwitch {
-	first := rand.IntN(wordCnt)
-	second := rand.IntN(wordCnt)
-	for math.Abs(float64(first-second)) < 3 {
+func computeTwoRandoms(random *rand.Rand, wordCnt int) wordSwitch {
+	first := random.IntN(wordCnt)
+	second := random.IntN(wordCnt)
+	for math.Abs(float64(first-second)) < 6 {
 		second = rand.IntN(wordCnt)
 	}
 	return wordSwitch{FromWord: first, ToWord: second}
@@ -144,6 +145,9 @@ func computeTwoRandoms(wordCnt int) wordSwitch {
 
 func moveFirstToSecond(verse proofing_rpt.Verse2, tWds *wordSwitch) {
 	tWds.Word = verse.Words[tWds.FromWord].Text
+	//	if tWds.FromWord < tWds.ToWord {
+	//		tWds.ToWord -= 1
+	//	}
 	tWds.ToWordId = verse.Words[tWds.ToWord].WordId
 	tWds.FromWordId = verse.Words[tWds.FromWord].WordId
 	w := verse.Words[tWds.FromWord]
