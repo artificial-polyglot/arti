@@ -47,7 +47,7 @@ func Setup(tst testCase) {
 	random := rand.New(rand.NewPCG(12, 21)) // two uint64 seeds; fixed values → same sequence every run
 	conn := downloadAndOpenDatabase(tst.SetupDBInput, tst.SetupDBLocal)
 	fmt.Println("Database Path", conn.DatabasePath)
-	verses := selectVersesWithoutFAError(conn, tst.Testament, 0.5)
+	verses := selectVersesWithoutFAError(conn, tst.Testament, 0.0) // No cutoff
 	var wordSwitches = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
@@ -57,7 +57,7 @@ func Setup(tst testCase) {
 				ids[i] = wd.WordId
 			}
 			origWordIds[vs.ScriptId] = ids
-			testWords := computeTwoRandoms(random, len(vs.Words))
+			testWords := computeTwoRandoms(random, vs.Words)
 			moveFirstToSecond(vs, &testWords)
 			wordSwitches[vs.ScriptId] = testWords
 		}
@@ -95,8 +95,7 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament, cutoff f
           w.word_id, w.word, q.fa_score
           FROM words_qa_align q JOIN words w ON q.word_id = w.word_id
           JOIN scripts s ON s.script_id = w.script_id
-		  WHERE s.book_id IN (%s)
-          AND w.ttype = 'W' AND s.verse_str != '0' AND w.script_id IN (
+		  WHERE w.ttype = 'W' AND s.verse_str != '0' AND w.script_id IN (
                  SELECT DISTINCT w2.script_id
                  FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
                  WHERE q2.fa_score >= ?)
@@ -134,8 +133,12 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament, cutoff f
 	return result
 }
 
-func computeTwoRandoms(random *rand.Rand, wordCnt int) wordSwitch {
+func computeTwoRandoms(random *rand.Rand, words []proofing_rpt.Word2) wordSwitch {
+	wordCnt := len(words)
 	first := random.IntN(wordCnt)
+	for len(words[first].Text) < 3 {
+		first = random.IntN(wordCnt)
+	}
 	second := random.IntN(wordCnt)
 	for math.Abs(float64(first-second)) < 6 {
 		second = rand.IntN(wordCnt)
