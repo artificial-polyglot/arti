@@ -13,7 +13,7 @@ import (
 // fa_scores - at the script, word, and char level - from scripts_qa_align,
 // words_qa_align, and chars_qa_align, the result of forced alignment done in
 // the qa_align module using a model for the language, not MMS.
-func SelectCharData(conn db.DBAdapter, cutoff float64) ([]Verse2, *log.Status) {
+func SelectCharData(conn db.DBAdapter) ([]Verse2, *log.Status) {
 	var verses []Verse2
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, qs.begin_ts, qs.end_ts,
 				w.word_id, w.word, w.word_punct, qw.begin_ts, qw.end_ts, qw.fa_score,
@@ -22,12 +22,9 @@ func SelectCharData(conn db.DBAdapter, cutoff float64) ([]Verse2, *log.Status) {
 				JOIN chars_qa_align qc ON w.word_id = qc.word_id
 				JOIN words_qa_align qw ON w.word_id = qw.word_id
 				JOIN scripts_qa_align qs ON qs.script_id = s.script_id
-				WHERE w.ttype = 'W' AND w.script_id IN (
-       				SELECT DISTINCT w2.script_id
-       				FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
-       				WHERE q2.fa_score <= ?)
+				WHERE w.ttype = 'W'
 				ORDER BY w.script_id, w.word_id, qc.seq`
-	rows, err := conn.DB.Query(query, cutoff)
+	rows, err := conn.DB.Query(query)
 	if err != nil {
 		return verses, log.Error(conn.Ctx, 500, err, "Error during SelectCharData.")
 	}

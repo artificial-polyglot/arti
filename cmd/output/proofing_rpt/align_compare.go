@@ -30,8 +30,8 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 			result = append(result, newLine)
 		}
 	}
-	//ComputeFAWordError(result)
-	ComputeMinWordError(result)
+	ComputeFAWordError(result)
+	//ComputeMinWordError(result)
 	return result, status
 }
 

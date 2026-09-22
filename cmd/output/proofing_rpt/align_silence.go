@@ -32,8 +32,6 @@ const (
 	betweenChapters
 )
 
-const FA_SCORE_CUTOFF = 1.0 // This was originally set to 0.5. What was the reason for this?  The process
-// is very fast at 1.0 Should there be any cutoff at all?
 const OPACITY_CUTOFF = 0.5
 
 type AlignSilence struct {
@@ -66,7 +64,7 @@ func silencePositionOf(verses []Verse2, prevVi, prevWi, vi, wi int) SilencePosit
 
 func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.Status) {
 	var audioURLs map[string]generic.AudioFile
-	verses, status := SelectCharData(a.conn, FA_SCORE_CUTOFF)
+	verses, status := SelectCharData(a.conn)
 	if status != nil {
 		return verses, audioURLs, status
 	}

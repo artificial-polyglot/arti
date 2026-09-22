@@ -46,7 +46,7 @@ type wordSwitch struct {
 func CasesForTest() []testCase {
 	testament := req.Testament{NT: true}
 	var tests []testCase
-	tests = append(tests, testCase{On: true, MediaId: "N1SKNSEC", RunNum: "00004", MediaName: "Kolibugan N1SKNSEC",
+	tests = append(tests, testCase{On: true, MediaId: "N1SKNSEC", RunNum: "00019", MediaName: "Kolibugan N1SKNSEC",
 		LanguageISO: "skn", Testament: testament, AudioFilesKey: "N1SKNSEC Chapter mp3/*.mp3"})
 	tests = append(tests, testCase{On: false, MediaId: "N2ATGMLT", RunNum: "00003", MediaName: "Arhe N2ATGMLT",
 		LanguageISO: "atg", Testament: testament, AudioFilesKey: "N2ATGMLT Chapter mp3/*.mp3"})

@@ -93,7 +93,7 @@ func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofi
 			isFound := false
 			total++
 			for j, wd := range vs.Words {
-				if wd.FAScore < 0.01 {
+				if wd.FAScore <= 0 { //1 {
 					if wd.WordId == testWords.ToWordId {
 						isFound = true
 						foundMissing++
@@ -195,6 +195,7 @@ func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing
 						nonInsertedWordCount <= testWords.FromWord+2 {
 						foundMissing++
 						verseHasResult = true
+						//a.displayAdded(os.Stdout, nonInserted, "IS ADDED", vs, wd, testWords)
 					} else {
 						foundFalse++
 						a.displayAdded(outFile, nonInserted, "ADDED FALSE+", vs, wd, testWords)

@@ -14,6 +14,7 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
 	req "github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/utility/diff"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
 
@@ -47,7 +48,8 @@ func Setup(tst testCase) {
 	random := rand.New(rand.NewPCG(12, 21)) // two uint64 seeds; fixed values → same sequence every run
 	conn := downloadAndOpenDatabase(tst.SetupDBInput, tst.SetupDBLocal)
 	fmt.Println("Database Path", conn.DatabasePath)
-	verses := selectVersesWithoutFAError(conn, tst.Testament, 0.0) // No cutoff
+	verses := selectVersesWithoutFAError(conn, tst.Testament)
+	verses = pruneOutVersesWithASRDifferences(conn, verses)
 	var wordSwitches = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
@@ -89,20 +91,55 @@ func downloadAndOpenDatabase(s3Path string, localPath string) db.DBAdapter {
 	return conn
 }
 
-func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament, cutoff float64) []proofing_rpt.Verse2 {
+func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.Verse2) []proofing_rpt.Verse2 {
+	var goodOnes = make(map[int64]bool)
+	var query = `SELECT s.script_id, GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS script_text, q.transcript
+			FROM scripts s JOIN scripts_qa_align q ON s.script_id = q.script_id
+			JOIN words w ON s.script_id = w.script_id
+			WHERE w.ttype = 'W'
+			GROUP BY s.script_id`
+	rows, err := conn.DB.Query(query)
+	if err != nil {
+		exit(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var scriptId int64
+		var refText string
+		var asrText string
+		err = rows.Scan(&scriptId, &refText, &asrText)
+		refText = strings.ToLower(refText)
+		cdiff := diff.CharLevenshtein(refText, asrText)
+		cnt := diff.Count(cdiff)
+		if cnt.ErrorCount() == 0 {
+			goodOnes[scriptId] = true
+		}
+	}
+	var result []proofing_rpt.Verse2
+	for _, vs := range verses {
+		_, ok := goodOnes[vs.ScriptId]
+		if ok {
+			result = append(result, vs)
+		}
+	}
+	return result
+}
+
+// selectVersesWithoutFAError is using the FAScore from the original forced alignment to identify
+// verses that might contain errors, so they can be eliminated from the test.  This query
+// does not use FAScore from any of the qa_aline tables because these have sometimes been modified in
+// the qa_align process. ?? Should I be using an additional field to prevent modifying FAScore??
+func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament) []proofing_rpt.Verse2 {
 	var result []proofing_rpt.Verse2
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str,
           w.word_id, w.word, q.fa_score
           FROM words_qa_align q JOIN words w ON q.word_id = w.word_id
           JOIN scripts s ON s.script_id = w.script_id
-		  WHERE w.ttype = 'W' AND s.verse_str != '0' AND w.script_id IN (
-                 SELECT DISTINCT w2.script_id
-                 FROM words w2 JOIN words_qa_align q2 ON w2.word_id = q2.word_id
-                 WHERE q2.fa_score >= ?)
-             ORDER BY s.script_id, w.word_id`
+		  WHERE w.ttype = 'W' AND s.verse_str != '0'
+          ORDER BY s.script_id, w.word_id`
 	bookStr := "'" + strings.Join(books.NTBooks, "','") + "'"
 	query = strings.Replace(query, "%s", bookStr, 1)
-	rows, err := conn.DB.Query(query, cutoff)
+	rows, err := conn.DB.Query(query)
 	if err != nil {
 		exit(err)
 	}
