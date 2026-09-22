@@ -46,6 +46,7 @@ type CDiff struct {
 func CharDiff(refText string, asrText string) []CDiff {
 	var result []CDiff
 	diffs := DiffReplace(refText, asrText)
+	//diffs := DiffConvert(refText, asrText)
 	for _, df := range diffs {
 		text := []rune(df.Text)
 		replace := []rune(df.Replace)
@@ -65,6 +66,23 @@ func CharDiff(refText string, asrText string) []CDiff {
 				}
 				result = append(result, cdiff)
 			}
+		}
+	}
+	return result
+}
+
+// DiffConvert converts diffmatchpathch tree to a diff.Diff tree without modifying it.
+func DiffConvert(refText string, asrText string) []Diff {
+	var result []Diff
+	diffs := DiffMatchPatch(refText, asrText)
+	for _, diff := range diffs {
+		switch diff.Type {
+		case diffmatchpatch.DiffEqual:
+			result = append(result, Diff{Type: OpEqual, Text: diff.Text})
+		case diffmatchpatch.DiffInsert:
+			result = append(result, Diff{Type: OpInsert, Text: diff.Text})
+		case diffmatchpatch.DiffDelete:
+			result = append(result, Diff{Type: OpDelete, Text: diff.Text})
 		}
 	}
 	return result
