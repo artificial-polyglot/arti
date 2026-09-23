@@ -59,9 +59,9 @@ func CasesForTest() []testCase {
 		LanguageISO: "qae", Testament: testament, AudioFilesKey: "N2QAEBSP Chapter VOX/*.mp3"})
 	tests = append(tests, testCase{On: false, ErrorRateMax: 0.15, MediaId: "N2SHNOMF", RunNum: "00004", MediaName: "Shan N2SHNOMF",
 		LanguageISO: "shn", Testament: testament, AudioFilesKey: "N2SHNOMF Chapter VOX/*.mp3"})
-	tests = append(tests, testCase{On: true, ErrorRateMax: 0.0, MediaId: "N2XNRPMS", RunNum: "00010", MediaName: "Kangri N2XNRPMS",
+	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2XNRPMS", RunNum: "00010", MediaName: "Kangri N2XNRPMS",
 		LanguageISO: "xnr", Testament: testament, AudioFilesKey: "N2XNRPMS Chapter mp3/*.mp3"})
-	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "P2LBEBTI", RunNum: "00003", MediaName: "Lak P2LBEBTI (Mat-Act, Rev)",
+	tests = append(tests, testCase{On: true, ErrorRateMax: 0.0, MediaId: "P2LBEBTI", RunNum: "00004", MediaName: "Lak P2LBEBTI (Mat-Act, Rev)",
 		LanguageISO: "lbe", Testament: testament, AudioFilesKey: "P2LBEBTI Chapter mp3/*.mp3"})
 	BuildPaths(tests)
 	return tests
