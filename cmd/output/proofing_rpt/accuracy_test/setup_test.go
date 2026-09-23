@@ -49,11 +49,11 @@ func Setup(tst testCase) {
 	conn := downloadAndOpenDatabase(tst.SetupDBInput, tst.SetupDBLocal)
 	fmt.Println("Database Path", conn.DatabasePath)
 	verses := selectVersesWithoutFAError(conn, tst.Testament)
-	verses = pruneOutVersesWithASRDifferences(conn, verses)
+	verses = pruneOutVersesWithASRDifferences(conn, verses, tst.ErrorRateMax)
 	var wordSwitches = make(map[int64]wordSwitch)
 	var origWordIds = make(map[int64][]int64)
 	for _, vs := range verses {
-		if len(vs.Words) > 12 {
+		if len(vs.Words) > 20 {
 			ids := make([]int64, len(vs.Words))
 			for i, wd := range vs.Words {
 				ids[i] = wd.WordId
@@ -91,7 +91,7 @@ func downloadAndOpenDatabase(s3Path string, localPath string) db.DBAdapter {
 	return conn
 }
 
-func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.Verse2) []proofing_rpt.Verse2 {
+func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.Verse2, errorRateMax float64) []proofing_rpt.Verse2 {
 	var goodOnes = make(map[int64]bool)
 	var query = `SELECT s.script_id, GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS script_text, q.transcript
 			FROM scripts s JOIN scripts_qa_align q ON s.script_id = q.script_id
@@ -110,8 +110,12 @@ func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.V
 		err = rows.Scan(&scriptId, &refText, &asrText)
 		refText = strings.ToLower(refText)
 		cdiff := diff.CharLevenshtein(refText, asrText)
+		//fmt.Println("REF:", refText)
+		//fmt.Println("ASR:", asrText)
+		//fmt.Println("DIF:", cdiff)
+		//fmt.Println()
 		cnt := diff.Count(cdiff)
-		if cnt.ErrorCount() == 0 {
+		if cnt.ErrorRate() <= errorRateMax {
 			goodOnes[scriptId] = true
 		}
 	}

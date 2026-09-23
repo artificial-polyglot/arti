@@ -119,10 +119,10 @@ func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofi
 		pctWasMissing := foundMissing / total * 100.0
 		pctFoundFalse := foundFalse / total * 100.0
 		pctFoundNot := foundNot / total * 100.0
-		fmt.Printf("\n*** %s Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
+		_, _ = fmt.Fprintf(outFile, "\n*** %s Total Processed: %0.f  Pct Was Missing %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
 			a.test.MediaId, total, pctWasMissing, pctFoundFalse, pctFoundNot)
 	} else {
-		fmt.Println("No Missing Word test results")
+		_, _ = fmt.Fprintf(outFile, "No Missing Word test results\n")
 	}
 }
 
@@ -214,10 +214,10 @@ func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing
 		pctWasMissing := foundMissing / total * 100.0
 		pctFoundFalse := foundFalse / total * 100.0
 		pctFoundNot := foundNot / total * 100.0
-		fmt.Printf("\n*** Total Processed: %0.f  Pct Was Added %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
+		_, _ = fmt.Fprintf(outFile, "\n*** Total Processed: %0.f  Pct Was Added %.1f Pct Found False+ %.1f  Pct Not Found %1.f\n",
 			total, pctWasMissing, pctFoundFalse, pctFoundNot)
 	} else {
-		fmt.Println("No Added Word test results")
+		_, _ = fmt.Fprintf(outFile, "No Added Word test results\n")
 	}
 }
 
@@ -261,6 +261,7 @@ func (a *AccuracyTest) SelectScriptLine(scriptId int64) string {
 	return text
 }
 
+/*
 func TestDisplayDifferences(t *testing.T) {
 	ctx := context.Background()
 	// Set this path to database created by accuracy_test
@@ -311,3 +312,5 @@ func diffSample(refText string, asrText string) {
 		fmt.Println()
 	}
 }
+
+*/
