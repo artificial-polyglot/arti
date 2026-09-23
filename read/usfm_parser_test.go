@@ -22,9 +22,9 @@ import (
 
 func TestUSFMParser(t *testing.T) {
 	ctx := context.Background()
-	var directory = "test_data"
+	var directory = filepath.Join(os.Getenv("HOME"), "arti2", "fcbh_data", "Kangri N2XNRPMS", "SFM Text")
 	var files []generic.InputFile
-	file1 := generic.InputFile{BookId: "LUK", Directory: directory, Filename: "43LUKCFM.SFM", MediaType: "text/plain"}
+	file1 := generic.InputFile{BookId: "1CO", Directory: directory, Filename: "471COxnr.SFM", MediaType: "text/plain"}
 	//file2 := generic.InputFile{BookId: "LUK", Directory: directory, Filename: "43LUKDWK.SFM", MediaType: "text/plain"}
 	files = append(files, file1)
 	var database = directory + "/usfm_test.db"
