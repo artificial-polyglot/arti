@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
@@ -177,7 +178,7 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament) []proofi
 func computeTwoRandoms(random *rand.Rand, words []proofing_rpt.Word2) wordSwitch {
 	wordCnt := len(words)
 	first := random.IntN(wordCnt)
-	for len(words[first].Text) < 3 {
+	for utf8.RuneCountInString(words[first].Text) < 3 {
 		first = random.IntN(wordCnt)
 	}
 	second := random.IntN(wordCnt)
