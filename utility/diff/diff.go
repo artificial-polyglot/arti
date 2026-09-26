@@ -144,3 +144,19 @@ func DiffMatchPatch(refText string, asrText string) []diffmatchpatch.Diff {
 	//diffs = diffMatch.DiffCleanupMerge(diffs)
 	return diffs
 }
+
+func DiffPrettyHtml(diffs []diffmatchpatch.Diff) string {
+	diffMatch := diffmatchpatch.New()
+	return diffMatch.DiffPrettyHtml(diffs)
+}
+
+func IsMatch(diffs []diffmatchpatch.Diff) bool {
+	for _, diff := range diffs {
+		if diff.Type == diffmatchpatch.DiffInsert || diff.Type == diffmatchpatch.DiffDelete {
+			if len(strings.TrimSpace(diff.Text)) > 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
