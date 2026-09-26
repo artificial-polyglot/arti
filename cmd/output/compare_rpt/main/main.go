@@ -31,8 +31,8 @@ func run(args []string) *log.Status {
 	if status != nil {
 		return status
 	}
-	if len(output) > 0 {
-		log.Info(context.Background(), output[0])
+	for _, out := range output {
+		log.Info(context.Background(), out.Component, out.Report, out.FilePath)
 	}
 	component.FinishComponent(output, status)
 	return nil

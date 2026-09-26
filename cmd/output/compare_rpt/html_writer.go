@@ -35,34 +35,21 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 
 func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO string, fileMap map[string]generic.AudioFile) (string, *log.Status) {
 	var err error
-	//var model string
 	h.fileMap = fileMap
-	//switch asr {
-	//case request.SpeechToText{MMS: true}:
-	//	model = "Model: MMS"
-	//case request.SpeechToText{MMSAdapter: true}:
-
-	//model = "Model: MMS Adapter"
-	//case request.SpeechToText{Wav2Vec2ASR: true}:
-
-	//model = "Model: Wav2Vec2 Word"
-	//default:
-
-	//model = ""
-	//}
-	h.out, err = os.Create(filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_compare.html"))
+	filePath := filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_compare.html")
+	h.out, err = os.Create(filePath)
 	if err != nil {
 		return "", log.Error(h.ctx, 500, err, `Error creating output file for diff`)
 	}
-	filename := h.WriteHeading(baseDataset, languageISO)
+	h.WriteHeading(baseDataset, languageISO)
 	for _, pair := range records {
 		h.WriteLine(pair)
 	}
 	h.WriteEnd()
-	return filename, nil
+	return filePath, nil
 }
 
-func (h *HTMLWriter) WriteHeading(baseDataset string, languageISO string) string {
+func (h *HTMLWriter) WriteHeading(baseDataset string, languageISO string) {
 	head := `<!DOCTYPE html>
 <html>
  <head>
@@ -72,24 +59,24 @@ func (h *HTMLWriter) WriteHeading(baseDataset string, languageISO string) string
 	_, _ = h.out.WriteString(head)
 	_, _ = h.out.WriteString(`<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.css">`)
 	_, _ = h.out.WriteString("</head><body>\n")
-	_, _ = h.out.WriteString(`<h2 style="text-align:center">Compare `)
-	_, _ = h.out.WriteString(baseDataset)
-	_, _ = h.out.WriteString(` to `)
+	_, _ = h.out.WriteString(`<h2 style="text-align:center">Compare Reference Text to Audio ASR Transcript of `)
+	//_, _ = h.out.WriteString(baseDataset)
+	//_, _ = h.out.WriteString(` to `)
 	_, _ = h.out.WriteString(h.datasetName)
 	_, _ = h.out.WriteString("</h2>\n")
 	_, _ = h.out.WriteString(`<h3 style="text-align:center">`)
 	//_, _ = h.out.WriteString(model)
-	_, _ = h.out.WriteString(`ASR ISO `)
+	_, _ = h.out.WriteString(`Speech to Text ISO `)
 	_, _ = h.out.WriteString(languageISO)
 	_, _ = h.out.WriteString(`</h3>`)
 	_, _ = h.out.WriteString(`<h3 style="text-align:center">`)
 	loc, _ := time.LoadLocation("America/Denver")
 	_, _ = h.out.WriteString(time.Now().In(loc).Format(`Mon Jan 2 2006 03:04:05 pm MST`))
 	_, _ = h.out.WriteString("</h3>\n")
-	_, _ = h.out.WriteString(`<h3 style="text-align:center">RED characters are those in `)
-	_, _ = h.out.WriteString(baseDataset)
-	_, _ = h.out.WriteString(` only, while GREEN characters are in `)
-	_, _ = h.out.WriteString(h.datasetName)
+	_, _ = h.out.WriteString(`<h3 style="text-align:center">RED characters are those in reference text`)
+	//_, _ = h.out.WriteString(baseDataset)
+	_, _ = h.out.WriteString(` only, while GREEN characters are in audio ASR transcript`)
+	//_, _ = h.out.WriteString(h.datasetName)
 	_, _ = h.out.WriteString(" only</h3>\n")
 	controls := `<div style="text-align: center; margin: 10px;">
 		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
@@ -115,7 +102,7 @@ func (h *HTMLWriter) WriteHeading(baseDataset string, languageISO string) string
     <tbody>
 `
 	_, _ = h.out.WriteString(table)
-	return h.out.Name()
+	//return h.out.Name()
 }
 
 func (h *HTMLWriter) WriteLine(verse Pair) {
