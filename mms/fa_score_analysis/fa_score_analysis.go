@@ -1,14 +1,15 @@
 package fa_score_analysis
 
 import (
-	"github.com/artificial-polyglot/arti/db"
-	log "github.com/artificial-polyglot/arti/logger"
-	"gonum.org/v1/gonum/stat"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+
+	"github.com/artificial-polyglot/arti/db"
+	log "github.com/artificial-polyglot/arti/logger"
+	"gonum.org/v1/gonum/stat"
 )
 
 func FAScoreAnalysis(conn db.DBAdapter) (string, *log.Status) {
@@ -82,7 +83,7 @@ func FAScoreAnalysis(conn db.DBAdapter) (string, *log.Status) {
 func getFAErrors(conn db.DBAdapter) ([]float64, *log.Status) {
 	var faErrors []float64
 	var status *log.Status
-	chars, status := conn.SelectFACharTimestamps()
+	chars, status := conn.SelectFACharTimestamps(1.0)
 	if status != nil {
 		return faErrors, status
 	}
