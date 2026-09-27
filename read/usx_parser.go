@@ -1,6 +1,8 @@
 package read
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/xml"
 	"errors"
@@ -72,7 +74,13 @@ func (p *USXParser) decode(ctx context.Context, filename string) ([]db.Script, t
 	var verseNum int
 	var verseStr = `0`
 	var usfmStyle string
-	decoder := xml.NewDecoder(xmlFile)
+	// encoding/xml rejects invalid UTF-8 itself, but a leading byte order mark is not
+	// skipped, so drop it here.
+	reader := bufio.NewReader(xmlFile)
+	if bom, _ := reader.Peek(3); bytes.Equal(bom, []byte("\xEF\xBB\xBF")) {
+		_, _ = reader.Discard(3)
+	}
+	decoder := xml.NewDecoder(reader)
 	for {
 		var token xml.Token
 		token, err = decoder.Token()

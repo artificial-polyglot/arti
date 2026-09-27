@@ -1,13 +1,15 @@
 package read
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
@@ -97,6 +99,12 @@ func (p *USFMParser) decode(filename string, bookId string) ([]db.Script, titleD
 	if err != nil {
 		return nil, p.titleDesc, log.Error(p.ctx, 500, err, "Failed to read USFM file")
 	}
+	// Invalid UTF-8 would otherwise become U+FFFD when ranging over the string below
+	// and end up as a "letter" in the words table and the MMS vocabulary.
+	if !utf8.Valid(content) {
+		return nil, p.titleDesc, log.ErrorNoErr(p.ctx, 500, "USFM file is not valid UTF-8:", filename)
+	}
+	content = bytes.TrimPrefix(content, []byte("\xEF\xBB\xBF")) // byte order mark
 	const BEGIN = 1
 	const SLASH = 2
 	const STYLE = 3
@@ -209,7 +217,6 @@ func (p *USFMParser) flushPendingVerse() {
 }
 
 func (p *USFMParser) storeRecord(text []rune) error {
-	var err error
 	fullStyle, ok := p.stack.Pop()
 	if !ok {
 		if p.skipUntil == "" {
@@ -228,26 +235,33 @@ func (p *USFMParser) storeRecord(text []rune) error {
 		return nil
 	case "chapter":
 		p.flushPendingVerse()
-		p.chapterNum, err = strconv.Atoi(strings.TrimSpace(string(text)))
-		if err != nil {
-			return err
+		chapterNum, ok := parseDigits(strings.TrimSpace(string(text)))
+		if !ok {
+			return fmt.Errorf("invalid chapter number %q", string(text))
 		}
+		p.chapterNum = chapterNum
 		p.verseStr = "0"
 	case "verse":
 		p.flushPendingVerse()
-		var wsRegEx = regexp.MustCompile(`\s+`)
+		// Split at the first Unicode space (regexp's \s is ASCII only, so it would
+		// miss NBSP, U+2008, U+3000 and the like after the verse number).
 		whole := strings.TrimSpace(string(text))
-		parts := wsRegEx.Split(whole, 2)
-		p.verseStr = parts[0]
+		verseText := ""
+		if i := strings.IndexFunc(whole, unicode.IsSpace); i >= 0 {
+			verseText = strings.TrimLeftFunc(whole[i:], unicode.IsSpace)
+			whole = whole[:i]
+		}
+		p.verseStr = whole
 		p.text = nil
-		if len(parts) > 1 {
-			p.text = []string{parts[1]}
+		if verseText != "" {
+			p.text = []string{verseText}
 		}
 		startVerse := strings.Split(p.verseStr, "-")
-		p.verseNum, err = strconv.Atoi(startVerse[0])
-		if err != nil {
-			return err
+		verseNum, ok := parseDigits(startVerse[0])
+		if !ok {
+			return fmt.Errorf("invalid verse number %q", p.verseStr)
 		}
+		p.verseNum = verseNum
 	default:
 		if style == "h" {
 			p.titleDesc.heading = strings.TrimSpace(string(text))
