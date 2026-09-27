@@ -8,6 +8,7 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
 	sa "github.com/artificial-polyglot/arti/utility/sequence_align"
+	"golang.org/x/text/unicode/norm"
 )
 
 // CharResult holds the per-character forced alignment output from Python.
@@ -80,7 +81,8 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 		scriptScore = scriptErrorSum / float64(scriptCharCount)
 	}
 
-	status = insertScript(conn, request.ScriptId, alignResult.Transcript, scriptBegin, scriptEnd, scriptScore)
+	normTranscript := norm.NFC.String(alignResult.Transcript)
+	status = insertScript(conn, request.ScriptId, normTranscript, scriptBegin, scriptEnd, scriptScore)
 	if status != nil {
 		return status
 	}
