@@ -1,4 +1,4 @@
-package proofing_rpt
+package timestamps_rpt
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
 )
 
@@ -15,7 +16,7 @@ func TestTimestampWriter(t *testing.T) {
 	dbPath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), "GaryNTest", "N1SKNSEC.db")
 	conn := db.NewDBAdapter(ctx, dbPath)
 	_ = conn.Database
-	verses, status := SelectCharData(conn)
+	verses, status := proofing_rpt.SelectCharData(conn)
 	if status != nil {
 		t.Fatal(status)
 	}
