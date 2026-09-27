@@ -208,11 +208,20 @@ func (c *Controller) processSteps() *log.Status {
 		if c.req.Training.MMSAdapter.NumEpochs != 0 {
 			trainer := adapter.NewTrainAdapter(c.ctx, c.database, c.ident.LanguageISO, c.req.Training.MMSAdapter)
 			if c.req.Training.RedoTraining || !trainer.HasModel() {
+				trainStart := time.Now()
 				status = trainer.Train(audioFiles)
 				if status != nil {
 					return status
 				}
-				c.bucket.AddModel("mms_adapters", c.ident.LanguageISO)
+				status = trainer.VerifyTrained(trainStart)
+				if status != nil {
+					return status
+				}
+				// Upload now, because later steps always download the latest model
+				status = c.bucket.PersistModel("mms_adapters", c.ident.LanguageISO)
+				if status != nil {
+					return status
+				}
 			}
 		}
 		if c.req.Training.Wav2Vec2Word.NumEpochs != 0 {

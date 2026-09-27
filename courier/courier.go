@@ -19,11 +19,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-type model struct {
-	modelType   string
-	languageISO string
-}
-
 type Courier struct {
 	ctx         context.Context
 	start       time.Time
@@ -37,7 +32,6 @@ type Courier struct {
 	databases   []string
 	outputs     []string
 	outputKeys  []string
-	models      []model
 }
 
 var IsCourierTest = false
@@ -91,8 +85,23 @@ func (b *Courier) AddJson(records any, filePath string) {
 	}
 }
 
-func (b *Courier) AddModel(modelType string, languageISO string) {
-	b.models = append(b.models, model{modelType: modelType, languageISO: languageISO})
+// PersistModel uploads a newly trained model to the models bucket as the next model run.
+// It is called as soon as training completes, so that later steps, which always download
+// the latest model, get the one just trained.
+func (b *Courier) PersistModel(modelType string, languageISO string) *log.Status {
+	client, status := s3_datastore.NewS3Client(b.ctx)
+	if status != nil {
+		return status
+	}
+	bucket := os.Getenv("FCBH_MODELS_BUCKET")
+	prefix := filepath.Join(modelType, languageISO)
+	localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+	lastModelRun, status := b.findLastModelRun(client, bucket, prefix)
+	if status != nil {
+		return status
+	}
+	remotePrefix := filepath.Join(prefix, fmt.Sprintf("%05d", lastModelRun+1))
+	return client.PutDirectory(bucket, remotePrefix, localDir)
 }
 
 func (b *Courier) GetOutputPaths() []string {
@@ -149,19 +158,6 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 			allStatus = append(allStatus, status2)
 			b.outputKeys = append(b.outputKeys, outputKey)
 		}
-		//if runStatus == nil {
-		bucket := os.Getenv("FCBH_MODELS_BUCKET")
-		for _, modl := range b.models {
-			prefix := filepath.Join(modl.modelType, modl.languageISO)
-			localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
-			lastModelRun, status3 := b.findLastModelRun(client, bucket, prefix)
-			allStatus = append(allStatus, status3)
-			modelRunStr := fmt.Sprintf("%05d", lastModelRun+1)
-			remotePrefix := filepath.Join(prefix, modelRunStr)
-			status3 = client.PutDirectory(bucket, remotePrefix, localDir)
-			allStatus = append(allStatus, status3)
-		}
-		//}
 		if runStatus != nil {
 			_, status = b.uploadString(client, run, "status", "Error", runStatus.String())
 		}
