@@ -1,21 +1,37 @@
 package safe
 
 import (
-	"strconv"
 	"unicode"
 )
 
-// SafeVerseNum returns a numeric value for a string by ignoring alpha characters without error
+// DigitValue returns the value 0-9 of a decimal digit (Unicode category Nd) in any
+// script, e.g. Arabic-Indic, Devanagari or Bengali digits. Nd digits come in
+// contiguous runs of ten starting at zero, so the value is the distance back to
+// the start of the run. (Runs that directly abut another run, as in the
+// mathematical digits U+1D7CE onward, are not distinguished; they are never used
+// for verse numbers.)
+func DigitValue(r rune) (int, bool) {
+	if !unicode.IsDigit(r) {
+		return 0, false
+	}
+	v := 0
+	for v < 9 && unicode.IsDigit(r-rune(v)-1) {
+		v++
+	}
+	return v, true
+}
+
+// SafeVerseNum returns the numeric value of the leading decimal digits of a string,
+// in any script, ignoring everything from the first non-digit on, without error.
 func SafeVerseNum(number string) int {
-	var result []rune
+	num := 0
 	for _, chr := range number {
-		if chr >= '0' && chr <= '9' {
-			result = append(result, chr)
-		} else {
+		d, ok := DigitValue(chr)
+		if !ok {
 			break
 		}
+		num = num*10 + d
 	}
-	num, _ := strconv.Atoi(string(result))
 	return num
 }
 
