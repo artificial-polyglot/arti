@@ -1,4 +1,4 @@
-package timestamps_rpt
+package timestamp_rpt
 
 import (
 	"context"
