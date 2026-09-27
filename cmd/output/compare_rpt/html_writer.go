@@ -11,13 +11,11 @@ import (
 	audioplayer "github.com/artificial-polyglot/arti/cmd/output"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 type HTMLWriter struct {
 	ctx         context.Context
 	datasetName string
-	diffMatch   *diffmatchpatch.DiffMatchPatch
 	out         *os.File
 	fileMap     map[string]generic.AudioFile
 	diffCount   int
@@ -29,11 +27,10 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	var h HTMLWriter
 	h.ctx = ctx
 	h.datasetName = datasetName
-	h.diffMatch = diffmatchpatch.New()
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO string, fileMap map[string]generic.AudioFile) (string, *log.Status) {
+func (h *HTMLWriter) WriteReport(records []Pair, languageISO string, fileMap map[string]generic.AudioFile) (string, *log.Status) {
 	var err error
 	h.fileMap = fileMap
 	filePath := filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_compare.html")
@@ -41,7 +38,7 @@ func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO
 	if err != nil {
 		return "", log.Error(h.ctx, 500, err, `Error creating output file for diff`)
 	}
-	h.WriteHeading(baseDataset, languageISO)
+	h.WriteHeading(languageISO)
 	for _, pair := range records {
 		h.WriteLine(pair)
 	}
@@ -49,7 +46,7 @@ func (h *HTMLWriter) WriteReport(baseDataset string, records []Pair, languageISO
 	return filePath, nil
 }
 
-func (h *HTMLWriter) WriteHeading(baseDataset string, languageISO string) {
+func (h *HTMLWriter) WriteHeading(languageISO string) {
 	head := `<!DOCTYPE html>
 <html>
  <head>
@@ -113,26 +110,20 @@ func (h *HTMLWriter) WriteLine(verse Pair) {
 		h.insertSum += inserts
 		deletes := verse.Deletes()
 		h.deleteSum += deletes
-		//errPct := verse.ErrorPct(inserts, deletes)
 		_, _ = h.out.WriteString("<tr>\n")
 		if verse.ScriptNum != "" {
 			h.writeCell(verse.ScriptNum)
 		} else {
 			h.writeCell(strconv.Itoa(verse.Base.ScriptId))
 		}
-		//h.writeCell(strconv.FormatFloat(errPct, 'f', 0, 64))
-		//h.writeCell(strconv.Itoa(inserts + deletes))
-		//h.writeCell(strconv.Itoa(int(math.Abs(float64(inserts - deletes)))))
 		h.writeCell(strconv.Itoa(largest))
-		//h.writeCell(h.minSecFormat(verse.beginTS))
 		var params []string
 		params = append(params, "this")
 		audioFile := h.fileMap[verse.Ref.BookId+strconv.Itoa(verse.Ref.ChapterNum)]
-		params = append(params, "'"+audioFile.UnsignedURL+"'")
+		params = append(params, "'"+audioFile.SignedURL+"'") // Change to Unsigned for production
 		params = append(params, strconv.FormatFloat(verse.BeginTS, 'f', 4, 64))
 		params = append(params, strconv.FormatFloat(verse.EndTS, 'f', 4, 64))
 		h.writeCell("<button title=\"" + h.minSecFormat(verse.BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
-		//h.writeCell(`+` + strconv.Itoa(inserts) + ` -` + strconv.Itoa(deletes))
 		h.writeCell(verse.Ref.Description())
 		h.writeCell(verse.HTML)
 		_, _ = h.out.WriteString("</tr>\n")

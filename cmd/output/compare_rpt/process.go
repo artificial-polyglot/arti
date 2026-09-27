@@ -9,14 +9,22 @@ import (
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
 
 func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
 	var output []db.Output
+	ctx := database.Ctx
 
 	records, fileMap, status := CompareReport(database)
 	if status != nil {
 		return output, status
+	}
+	s3, status := s3_datastore.NewS3Client(ctx)
+	if status != nil {
+		log.Warn(ctx, "Could not obtain s3 client to sign URL")
+	} else {
+		s3.SignAudioFiles(fileMap)
 	}
 
 	jsonBytes, err := json.MarshalIndent(records, "", " ")
@@ -39,7 +47,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	output = append(output, out)
 
 	report := NewHTMLWriter(database.Ctx, req.DatasetName)
-	filePath, status1 := report.WriteReport("baseDataset", records, req.LanguageISO, fileMap)
+	filePath, status1 := report.WriteReport(records, req.LanguageISO, fileMap)
 	if status1 != nil {
 		return output, status
 	}

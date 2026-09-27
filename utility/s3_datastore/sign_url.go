@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -43,4 +44,11 @@ func (t S3Client) SignS3AudioURL(bucket string, objectKey string) string {
 		log.Warn(t.ctx, "Unable to create presigned URL for", bucket, objectKey)
 	}
 	return signed.URL
+}
+
+func (t S3Client) SignAudioFiles(files map[string]generic.AudioFile) {
+	for key, file := range files {
+		file.SignedURL = t.SignS3AudioURL(file.Bucket, file.ObjectKey)
+		files[key] = file
+	}
 }
