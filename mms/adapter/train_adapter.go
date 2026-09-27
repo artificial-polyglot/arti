@@ -3,6 +3,11 @@ package adapter
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -10,9 +15,6 @@ import (
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 type TrainAdapter struct {
@@ -50,6 +52,27 @@ func (t *TrainAdapter) HasModel() bool {
 		return false
 	}
 	return has
+}
+
+// VerifyTrained checks that Train really produced an adapter: the adapter file must exist, be
+// larger than 1 MB, and have been written at or after since (the time Train was started).
+// Train returns nil without training when there are no audio files, and a stale adapter
+// left in the local directory must never be published as a newly trained model.
+func (t *TrainAdapter) VerifyTrained(since time.Time) *log.Status {
+	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "mms_adapters", t.langISO)
+	path := filepath.Join(dir, "adapter."+t.langISO+".safetensors")
+	info, err := os.Stat(path)
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "MMS adapter training did not produce an adapter file", path)
+	}
+	if info.Size() <= 1000000 { // must be GT 1Meg, like mms.HasLocalAdapter
+		return log.ErrorNoErr(t.ctx, 500, "MMS adapter file is too small to be a trained adapter", path, info.Size())
+	}
+	if info.ModTime().Before(since) {
+		return log.ErrorNoErr(t.ctx, 500, "MMS adapter training did not write a new adapter; file is older than this run",
+			path, info.ModTime())
+	}
+	return nil
 }
 
 func (t *TrainAdapter) Train(files []generic.InputFile) *log.Status {
