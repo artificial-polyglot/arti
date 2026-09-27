@@ -8,6 +8,7 @@ from transformers import Wav2Vec2Processor
 from io import BytesIO
 from sqlite_utility import *
 from data_pruner import dataPruner
+from tokenizer import normalizeText
 import time
 
 
@@ -42,6 +43,10 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
         ORDER BY s.script_end_ts - s.script_begin_ts
         """
     index = -1
+    vocab = processor.tokenizer.get_vocab()
+    unkId = processor.tokenizer.unk_token_id
+    numUnk = 0
+    missingChars = set()
     data = scriptsDB.select(query,())
     for (reference, audioFile, beginTS, endTS, text) in data:
         if endTS == 0.0:
@@ -75,7 +80,10 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
             print(reference, audioFile, "Has Zero Length input_values", file=sys.stderr, flush=True)
             sys.exit(1)
 
-        labels = processor(text=text.lower()).input_ids
+        normalized = normalizeText(text)
+        labels = processor(text=normalized).input_ids
+        numUnk += labels.count(unkId)
+        missingChars.update(ch for ch in normalized if ch != ' ' and ch not in vocab)
         labelsTensor = torch.tensor(labels, dtype=torch.long)
 
         buffer = BytesIO()
@@ -87,6 +95,12 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
         labelsBlob = buffer.getvalue()
         insert = 'INSERT INTO samples (idx, input_values, labels, text, reference, memory_mb) VALUES (?,?,?,?,?,?)'
         samplesDB.execute(insert, (index, inputValuesBlob, labelsBlob, text, reference, memoryMB))
+    if numUnk > 0:
+        # Labels containing [UNK] teach the model to output [UNK]; this should never happen
+        # because the vocabulary is built from the same text with the same normalizeText.
+        chars = ' '.join(f"{ch!r} U+{ord(ch):04X}" for ch in sorted(missingChars))
+        print(f"WARNING: {numUnk} [UNK] tokens in training labels. Characters not in vocab: {chars}",
+              file=sys.stderr, flush=True)
     return index + 1
 
 

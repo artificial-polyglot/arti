@@ -8,13 +8,26 @@ from sqlite_utility import *
 # https://huggingface.co/blog/mms_adapters
 #
 
+def normalizeText(text):
+    """
+    The one place where text is prepared for the vocabulary and the training labels.
+    Both must go through this function; otherwise a character that NFC changes (for
+    example the Devanagari nukta letters U+0958-095F) is in the vocabulary in one form
+    and in the labels in another, and the labels get [UNK] for it.
+    The ASR and forced alignment code must call it too.
+    """
+    return unicodedata.normalize("NFC", text.lower())
+
+
 def createTokenizer(database, targetLang):
     chars = set()
     texts = database.select("SELECT word FROM words WHERE ttype='W'", ())
     for vs in texts:
-        line = unicodedata.normalize("NFC", vs[0].lower())
-        for ch in line:
+        for ch in normalizeText(vs[0]):
             chars.add(ch)
+    if "|" in chars:
+        # "|" is the word delimiter token, so a "|" in the text would be ambiguous
+        raise ValueError("The text contains the character '|', which is reserved as the word delimiter")
     #### Possibly excluding or including hyphens should be a language option.
     #chars.discard('\u002d') # hyphen
     #chars.discard('\u2014') # another hyphen
