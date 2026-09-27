@@ -2,8 +2,9 @@ package read
 
 import (
 	"context"
-	"strconv"
 	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -118,7 +119,12 @@ func isCombiningMark(r rune) bool {
 
 // tokenizeScriptText splits text into a sequence of W/S/P/V tokens. It is a pure
 // function of its input so it can be tested directly, without a database.
+//
+// The text is first stripped of invisible format characters (isIgnorable) and
+// normalized to NFC, so the words table holds exactly one spelling of each word.
+// The MMS adapter's vocabulary and training labels are built from these words.
 func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Status) {
+	text = norm.NFC.String(stripIgnorable(text))
 	const (
 		begin = iota
 		space
@@ -136,6 +142,16 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 	var verseDigits []rune
 	var verseValue int
 	var state = begin
+
+	// setVerseValue converts the digits collected so far, in any script, to verseValue.
+	setVerseValue := func() *log.Status {
+		v, ok := parseDigits(string(verseDigits))
+		if !ok {
+			return log.ErrorNoErr(ctx, 500, "Invalid verse number", string(verseDigits), "in", text)
+		}
+		verseValue = v
+		return nil
+	}
 
 	flushWord := func() {
 		if len(term) > 0 {
@@ -164,7 +180,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 	// and by the verseNum state's fallback when '{' turns out not to open a
 	// verse marker.
 	beginToken := func(tok rune) int {
-		if unicode.IsSpace(tok) {
+		if isSpace(tok) {
 			term = append(term, tok)
 			return space
 		} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
@@ -214,7 +230,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 		case begin:
 			state = beginToken(tok)
 		case space:
-			if unicode.IsSpace(tok) {
+			if isSpace(tok) {
 				term = append(term, tok)
 			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
 				flushSpace()
@@ -230,7 +246,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				state = begin
 			}
 		case word:
-			if unicode.IsSpace(tok) {
+			if isSpace(tok) {
 				flushWord()
 				term = append(term, tok)
 				state = space
@@ -245,7 +261,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				state = wordPunct
 			}
 		case wordPunct:
-			if unicode.IsSpace(tok) {
+			if isSpace(tok) {
 				flushWord()
 				emitPunct(punct)
 				punct = 0
@@ -287,7 +303,9 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				verseDigits = append(verseDigits, tok)
 			} else if tok == '}' {
 				term = append(term, tok)
-				verseValue, _ = strconv.Atoi(string(verseDigits))
+				if status := setVerseValue(); status != nil {
+					return nil, status
+				}
 				verseDigits = nil
 				state = endVerseNum
 			} else if tok == '-' || tok == '_' {
@@ -298,7 +316,9 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 			} else if unicode.IsLetter(tok) {
 				// a split-verse suffix, e.g. {6a} or the Kangri script's {31ख}:
 				// the letter doesn't change verseValue, just tags along in term
-				verseValue, _ = strconv.Atoi(string(verseDigits))
+				if status := setVerseValue(); status != nil {
+					return nil, status
+				}
 				term = append(term, tok)
 				state = verseSuffix
 			} else {
@@ -317,7 +337,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 			if tok == '-' || tok == '_' {
 				term = append(term, tok)
 				state = nextVerseNum
-			} else if unicode.IsSpace(tok) {
+			} else if isSpace(tok) {
 				flushVerse()
 				term = append(term, tok)
 				state = space

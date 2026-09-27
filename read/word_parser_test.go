@@ -17,10 +17,11 @@ import (
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestWordParser(t *testing.T) {
-	tests := []string{`ATIWBT_USXEDIT.db`}
+	tests := []string{"/Users/gary/FCBH2024/tmp/GaryNTest/N2CCPBBS.db"}
 	for _, database := range tests {
 		ctx := context.Background()
 		conn := db.NewDBAdapter(ctx, database)
@@ -204,8 +205,9 @@ func compareScriptAndWordsForConn(conn db.DBAdapter, label string, t *testing.T)
 		if err != nil {
 			t.Fatal(label, err)
 		}
+		refText := norm.NFC.String(stripIgnorable(rec.ScriptText))
 		wordText := strings.Join(words, ``)
-		diffs := diffMatch.DiffMain(rec.ScriptText, wordText, false)
+		diffs := diffMatch.DiffMain(refText, wordText, false)
 		if !isMatch(diffs) {
 			ref := rec.BookId + " " + strconv.Itoa(rec.ChapterNum) + ":" + strconv.Itoa(rec.VerseNum)
 			fmt.Println(label, ref, diffMatch.DiffPrettyText(diffs))
@@ -282,5 +284,54 @@ func TestSymmetricTest1(t *testing.T) {
 		}
 		compareScriptAndWordsForConn(conn, tst, t)
 		conn.Close()
+	}
+}
+
+func TestTokenizeNormalizesToNFC(t *testing.T) {
+	// U+0958 DEVANAGARI LETTER QA is a composition exclusion: NFC turns it into
+	// U+0915 U+093C, which is what the MMS vocabulary contains.
+	assertTokens(t, "क़", [][2]string{
+		{`W`, "क़"},
+	})
+}
+
+func TestTokenizeJoinersStayInWord(t *testing.T) {
+	// ZWNJ mid-word, and ZWJ as the last rune of a word (Malayalam chillu style)
+	assertTokens(t, "a‌b c‍ d", [][2]string{
+		{`W`, "a‌b"}, {`S`, ` `}, {`W`, "c‍"}, {`S`, ` `}, {`W`, `d`},
+	})
+}
+
+func TestTokenizeZeroWidthSpaceSeparatesWords(t *testing.T) {
+	assertTokens(t, "ab​cd", [][2]string{
+		{`W`, `ab`}, {`S`, "​"}, {`W`, `cd`},
+	})
+}
+
+func TestTokenizeIgnorableFormatCharsDropped(t *testing.T) {
+	// LRM, soft hyphen and BOM disappear; they must not split or enter a word
+	assertTokens(t, "\uFEFFab‎­cd", [][2]string{
+		{`W`, `abcd`},
+	})
+}
+
+func TestTokenizeVerseNumberNativeDigits(t *testing.T) {
+	// Arabic-Indic digits 1 2 and Devanagari digits 3 4
+	tokens := tokensOf(t, "{١٢} x {३४} y")
+	if tokens[0].ttype != `V` || tokens[0].verseNum != 12 {
+		t.Errorf("got %+v, want V token with verseNum 12", tokens[0])
+	}
+	if tokens[4].ttype != `V` || tokens[4].verseNum != 34 {
+		t.Errorf("got %+v, want V token with verseNum 34", tokens[4])
+	}
+}
+
+func TestParseDigits(t *testing.T) {
+	cases := map[string]int{"7": 7, "042": 42, "১৯": 19, "࿩": -1, "": -1, "6a": -1}
+	for in, want := range cases {
+		got, ok := parseDigits(in)
+		if want < 0 && ok || want >= 0 && (!ok || got != want) {
+			t.Errorf("parseDigits(%q) = %d, %v; want %d", in, got, ok, want)
+		}
 	}
 }
