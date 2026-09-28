@@ -47,11 +47,11 @@ type wordSwitch struct {
 func CasesForTest() []testCase {
 	testament := req.Testament{NT: true}
 	var tests []testCase
-	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N1SKNSEC", RunNum: "00019", MediaName: "Kolibugan N1SKNSEC",
+	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N1SKNSEC", RunNum: "00028", MediaName: "Kolibugan N1SKNSEC",
 		LanguageISO: "skn", Testament: testament, AudioFilesKey: "N1SKNSEC Chapter mp3/*.mp3"})
-	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2ATGMLT", RunNum: "00003", MediaName: "Arhe N2ATGMLT",
+	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2ATGMLT", RunNum: "00007", MediaName: "Arhe N2ATGMLT",
 		LanguageISO: "atg", Testament: testament, AudioFilesKey: "N2ATGMLT Chapter mp3/*.mp3"})
-	tests = append(tests, testCase{On: false, ErrorRateMax: 0.15, MediaId: "N2CCPBBS", RunNum: "00007", MediaName: "Chakma N2CCPBBS",
+	tests = append(tests, testCase{On: true, ErrorRateMax: 0.15, MediaId: "N2CCPBBS", RunNum: "00016", MediaName: "Chakma N2CCPBBS",
 		LanguageISO: "ccp", Testament: testament, AudioFilesKey: "N2CCPBBS Chapter mp3/*.mp3"})
 	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2MGUPNG", RunNum: "00005", MediaName: "Magi N2MGUPNG",
 		LanguageISO: "mgu", Testament: testament, AudioFilesKey: "N2MGUPNG Chapter VOX/*.mp3"})
@@ -61,7 +61,7 @@ func CasesForTest() []testCase {
 		LanguageISO: "shn", Testament: testament, AudioFilesKey: "N2SHNOMF Chapter VOX/*.mp3"})
 	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2XNRPMS", RunNum: "00010", MediaName: "Kangri N2XNRPMS",
 		LanguageISO: "xnr", Testament: testament, AudioFilesKey: "N2XNRPMS Chapter mp3/*.mp3"})
-	tests = append(tests, testCase{On: true, ErrorRateMax: 0.0, MediaId: "P2LBEBTI", RunNum: "00004", MediaName: "Lak P2LBEBTI (Mat-Act, Rev)",
+	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "P2LBEBTI", RunNum: "00004", MediaName: "Lak P2LBEBTI (Mat-Act, Rev)",
 		LanguageISO: "lbe", Testament: testament, AudioFilesKey: "P2LBEBTI Chapter mp3/*.mp3"})
 	BuildPaths(tests)
 	return tests
