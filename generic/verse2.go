@@ -1,10 +1,8 @@
-package proofing_rpt
-
-import "github.com/artificial-polyglot/arti/generic"
+package generic
 
 type Verse2 struct {
 	ScriptId int64
-	LineRef  generic.VerseRef
+	LineRef  VerseRef
 	BeginTS  float64 // Used in report to play audio
 	EndTS    float64 // Used in report to play audio
 	Duration float64 // Displayed in audio

@@ -4,14 +4,15 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/diff"
 	"github.com/artificial-polyglot/arti/utility/fa"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status) {
-	var result []Verse2
+func (a *AlignSilence) CompareLines2ASR(verses []generic.Verse2) ([]generic.Verse2, *log.Status) {
+	var result []generic.Verse2
 	var status *log.Status
 	for _, verse := range verses {
 		if false {
@@ -35,7 +36,7 @@ func (a *AlignSilence) CompareLines2ASR(verses []Verse2) ([]Verse2, *log.Status)
 	return result, status
 }
 
-func (a *AlignSilence) HasSilence(verse Verse2) bool {
+func (a *AlignSilence) HasSilence(verse generic.Verse2) bool {
 	for _, wd := range verse.Words {
 		for _, char := range wd.Chars {
 			if char.SilenceLong > 0 {
@@ -46,7 +47,7 @@ func (a *AlignSilence) HasSilence(verse Verse2) bool {
 	return false
 }
 
-func (a *AlignSilence) GetOriginalText(verse Verse2) string {
+func (a *AlignSilence) GetOriginalText(verse generic.Verse2) string {
 	var text []string
 	for _, wd := range verse.Words {
 		text = append(text, wd.Text)
@@ -54,8 +55,8 @@ func (a *AlignSilence) GetOriginalText(verse Verse2) string {
 	return strings.ToLower(strings.Join(text, " "))
 }
 
-func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []diff.CDiff) Verse2 {
-	newWords := make([]Word2, 0, len(verse.Words)+10)
+func (a *AlignSilence) InsertASRSilenceChars(verse generic.Verse2, cDiffs []diff.CDiff) generic.Verse2 {
+	newWords := make([]generic.Word2, 0, len(verse.Words)+10)
 	// ASR text inserted before the very first reference char has no preceding
 	// word to follow, so the per-char scan below (which only looks forward
 	// from a matched reference char) can never reach it. Handle it once,
@@ -67,7 +68,7 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []diff.CDiff) 
 	}
 	position := -1
 	for _, wd := range verse.Words {
-		var pendingASR []Word2
+		var pendingASR []generic.Word2
 		for _, ch := range wd.Chars {
 			position++
 			//if ch.SilenceLong > 0 {
@@ -92,11 +93,11 @@ func (a *AlignSilence) InsertASRSilenceChars(verse Verse2, cDiffs []diff.CDiff) 
 // buildASRWordFromInserts consumes the run of consecutive DiffInsert entries
 // in cDiffs starting at idx, returning the resulting ASR word (zero value,
 // with no Chars, if idx isn't the start of an insert run).
-func (a *AlignSilence) buildASRWordFromInserts(cDiffs []diff.CDiff, idx int) Word2 {
-	var newWord Word2
+func (a *AlignSilence) buildASRWordFromInserts(cDiffs []diff.CDiff, idx int) generic.Word2 {
+	var newWord generic.Word2
 	var text []rune
 	for i := idx; i < len(cDiffs) && cDiffs[i].Type == diff.OpInsert; i++ {
-		newChar := Char2{
+		newChar := generic.Char2{
 			Char:    cDiffs[i].Char,
 			BeginTS: -1,
 			EndTS:   -1,
@@ -120,7 +121,7 @@ func (a *AlignSilence) buildASRWordFromInserts(cDiffs []diff.CDiff, idx int) Wor
 // is itself defined as the first word's begin, i.e. the first char's begin,
 // so this gap is 0 in practice and the leading case degrades to the -1
 // "unknown timestamp" fallback in interpolateASRTimestamps.
-func firstCharBeginTS(verse Verse2) float64 {
+func firstCharBeginTS(verse generic.Verse2) float64 {
 	for _, wd := range verse.Words {
 		if len(wd.Chars) > 0 {
 			return wd.Chars[0].BeginTS
@@ -135,7 +136,7 @@ func firstCharBeginTS(verse Verse2) float64 {
 // asrText, meaning the ASR transcript never produced it - sets that char's
 // FAScore to 0.0. It repeats its own DiffMatchPatch call rather than sharing
 // cDiffs with InsertASRSilenceChars, so the two can be tried independently.
-func (a *AlignSilence) MarkDeletedChars(verse Verse2, cDiffs []diff.CDiff) Verse2 {
+func (a *AlignSilence) MarkDeletedChars(verse generic.Verse2, cDiffs []diff.CDiff) generic.Verse2 {
 	position := -1
 	for wi := range verse.Words {
 		chars := verse.Words[wi].Chars
@@ -155,7 +156,7 @@ func (a *AlignSilence) MarkDeletedChars(verse Verse2, cDiffs []diff.CDiff) Verse
 // evenly across them, and sets newWord's own BeginTS/EndTS from the result.
 // When there's no usable gap (span <= 0), every timestamp falls back to the
 // -1 "unknown" sentinel instead.
-func (a *AlignSilence) interpolateASRTimestamps(newWord *Word2, start, span float64) {
+func (a *AlignSilence) interpolateASRTimestamps(newWord *generic.Word2, start, span float64) {
 	n := len(newWord.Chars)
 	if span > 0 {
 		slice := span / float64(n)
@@ -207,7 +208,7 @@ func (a *AlignSilence) SelectTranscript(scriptId int64) (string, *log.Status) {
 	}
 }
 
-func ComputeFAWordError(verses []Verse2) {
+func ComputeFAWordError(verses []generic.Verse2) {
 	for i, vs := range verses {
 		for j, wd := range vs.Words {
 			var faChars []fa.FAChar
@@ -229,7 +230,7 @@ func ComputeFAWordError(verses []Verse2) {
 	}
 }
 
-func ComputeMinWordError(verses []Verse2) {
+func ComputeMinWordError(verses []generic.Verse2) {
 	for i, vs := range verses {
 		for j, wd := range vs.Words {
 			var minimum = 1.0

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	req "github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/diff"
@@ -92,7 +92,7 @@ func downloadAndOpenDatabase(s3Path string, localPath string) db.DBAdapter {
 	return conn
 }
 
-func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.Verse2, errorRateMax float64) []proofing_rpt.Verse2 {
+func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []generic.Verse2, errorRateMax float64) []generic.Verse2 {
 	var goodOnes = make(map[int64]bool)
 	var query = `SELECT s.script_id, GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS script_text, q.transcript
 			FROM scripts s JOIN scripts_qa_align q ON s.script_id = q.script_id
@@ -120,7 +120,7 @@ func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.V
 			goodOnes[scriptId] = true
 		}
 	}
-	var result []proofing_rpt.Verse2
+	var result []generic.Verse2
 	for _, vs := range verses {
 		_, ok := goodOnes[vs.ScriptId]
 		if ok {
@@ -134,8 +134,8 @@ func pruneOutVersesWithASRDifferences(conn db.DBAdapter, verses []proofing_rpt.V
 // verses that might contain errors, so they can be eliminated from the test.  This query
 // does not use FAScore from any of the qa_aline tables because these have sometimes been modified in
 // the qa_align process. ?? Should I be using an additional field to prevent modifying FAScore??
-func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament) []proofing_rpt.Verse2 {
-	var result []proofing_rpt.Verse2
+func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament) []generic.Verse2 {
+	var result []generic.Verse2
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str,
           w.word_id, w.word, q.fa_score
           FROM words_qa_align q JOIN words w ON q.word_id = w.word_id
@@ -151,8 +151,8 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament) []proofi
 	defer rows.Close()
 
 	for rows.Next() {
-		var vs proofing_rpt.Verse2
-		var wd proofing_rpt.Word2
+		var vs generic.Verse2
+		var wd generic.Word2
 		err = rows.Scan(&vs.ScriptId, &vs.LineRef.BookId, &vs.LineRef.ChapterNum,
 			&vs.LineRef.VerseStr, &wd.WordId, &wd.Text, &wd.FAScore)
 		if err != nil {
@@ -175,7 +175,7 @@ func selectVersesWithoutFAError(conn db.DBAdapter, books req.Testament) []proofi
 	return result
 }
 
-func computeTwoRandoms(random *rand.Rand, words []proofing_rpt.Word2) wordSwitch {
+func computeTwoRandoms(random *rand.Rand, words []generic.Word2) wordSwitch {
 	wordCnt := len(words)
 	first := random.IntN(wordCnt)
 	for utf8.RuneCountInString(words[first].Text) < 3 {
@@ -188,7 +188,7 @@ func computeTwoRandoms(random *rand.Rand, words []proofing_rpt.Word2) wordSwitch
 	return wordSwitch{FromWord: first, ToWord: second}
 }
 
-func moveFirstToSecond(verse proofing_rpt.Verse2, tWds *wordSwitch) {
+func moveFirstToSecond(verse generic.Verse2, tWds *wordSwitch) {
 	tWds.Word = verse.Words[tWds.FromWord].Text
 	//	if tWds.FromWord < tWds.ToWord {
 	//		tWds.ToWord -= 1
@@ -232,7 +232,7 @@ func retrieveWordSwitches(mediaId string) map[int64]wordSwitch {
 	return result
 }
 
-func storeAlteredData(conn db.DBAdapter, verses []proofing_rpt.Verse2, origWordIds map[int64][]int64) *log.Status {
+func storeAlteredData(conn db.DBAdapter, verses []generic.Verse2, origWordIds map[int64][]int64) *log.Status {
 	query := `UPDATE words SET word_id = ? WHERE word_id = ?`
 	tx, err := conn.DB.Begin()
 	if err != nil {

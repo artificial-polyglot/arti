@@ -49,7 +49,7 @@ func NewAlignSilence(conn db.DBAdapter) AlignSilence {
 // silencePositionOf classifies the gap between the char at (prevVi, prevWi)
 // and the char at (vi, wi) - both are indices into verses - as within a word,
 // between words, between verses, or between chapters.
-func silencePositionOf(verses []Verse2, prevVi, prevWi, vi, wi int) SilencePosition {
+func silencePositionOf(verses []generic.Verse2, prevVi, prevWi, vi, wi int) SilencePosition {
 	switch {
 	case prevVi == vi && prevWi == wi:
 		return betweenChars
@@ -62,14 +62,14 @@ func silencePositionOf(verses []Verse2, prevVi, prevWi, vi, wi int) SilencePosit
 	}
 }
 
-func (a *AlignSilence) Process() ([]Verse2, map[string]generic.AudioFile, *log.Status) {
+func (a *AlignSilence) Process() ([]generic.Verse2, map[string]generic.AudioFile, *log.Status) {
 	var audioURLs map[string]generic.AudioFile
 	verses, status := SelectCharData(a.conn)
 	if status != nil {
 		return verses, audioURLs, status
 	}
 	var charSilence, wordSilence, verseSilence, chapterSilence []float64
-	var prev *Char2
+	var prev *generic.Char2
 	var prevVi, prevWi int
 	for vi := range verses {
 		for wi := range verses[vi].Words {
@@ -135,8 +135,8 @@ func (a *AlignSilence) analyzeData(data []float64) (mean, stddev float64) {
 	return mean, stddev
 }
 
-func (a *AlignSilence) markSilenceOutliers(verses []Verse2, charLimit, wordLimit, verseLimit, chapLimit float64) {
-	var prev *Char2
+func (a *AlignSilence) markSilenceOutliers(verses []generic.Verse2, charLimit, wordLimit, verseLimit, chapLimit float64) {
+	var prev *generic.Char2
 	var prevVi, prevWi int
 	for vi := range verses {
 		for wi := range verses[vi].Words {
@@ -209,7 +209,7 @@ func (a *AlignSilence) SelectDuration(scriptId int64) (float64, *log.Status) {
 	return timestamp, nil
 }
 
-func (p *AlignSilence) ComputeOpacity(verses []Verse2, opacityCutoff float64) {
+func (p *AlignSilence) ComputeOpacity(verses []generic.Verse2, opacityCutoff float64) {
 	for i := range verses {
 		for j := range verses[i].Words {
 			if verses[i].Words[j].FAScore < opacityCutoff {

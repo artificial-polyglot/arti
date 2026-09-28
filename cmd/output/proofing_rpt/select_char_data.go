@@ -13,8 +13,8 @@ import (
 // fa_scores - at the script, word, and char level - from scripts_qa_align,
 // words_qa_align, and chars_qa_align, the result of forced alignment done in
 // the qa_align module using a model for the language, not MMS.
-func SelectCharData(conn db.DBAdapter) ([]Verse2, *log.Status) {
-	var verses []Verse2
+func SelectCharData(conn db.DBAdapter) ([]generic.Verse2, *log.Status) {
+	var verses []generic.Verse2
 	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, qs.begin_ts, qs.end_ts,
 				w.word_id, w.word, w.word_punct, w.uroman, qw.begin_ts, qw.end_ts, qw.fa_score,
 				qc.seq, qc.char, qc.begin_ts, qc.end_ts, qc.fa_score
@@ -34,9 +34,9 @@ func SelectCharData(conn db.DBAdapter) ([]Verse2, *log.Status) {
 		}
 	}()
 
-	var verse Verse2
-	var words []Word2
-	var word Word2
+	var verse generic.Verse2
+	var words []generic.Word2
+	var word generic.Word2
 	haveVerse := false
 	haveWord := false
 
@@ -72,7 +72,7 @@ func SelectCharData(conn db.DBAdapter) ([]Verse2, *log.Status) {
 		}
 		if !haveVerse || scriptId != verse.ScriptId {
 			flushVerse()
-			verse = Verse2{ScriptId: scriptId, LineRef: lineRef, BeginTS: scriptBeginTS, EndTS: scriptEndTS}
+			verse = generic.Verse2{ScriptId: scriptId, LineRef: lineRef, BeginTS: scriptBeginTS, EndTS: scriptEndTS}
 			verse.Duration = scriptEndTS - scriptBeginTS
 			words = nil
 			haveVerse = true
@@ -80,12 +80,12 @@ func SelectCharData(conn db.DBAdapter) ([]Verse2, *log.Status) {
 		}
 		if !haveWord || wordId != word.WordId {
 			flushWord()
-			word = Word2{WordId: wordId, Text: wordText, WordPunct: wordPunct, Uroman: wordUroman,
+			word = generic.Word2{WordId: wordId, Text: wordText, WordPunct: wordPunct, Uroman: wordUroman,
 				BeginTS: wordBeginTS, EndTS: wordEndTS, FAScore: wordFAScore}
 			haveWord = true
 		}
 		char, _ := utf8.DecodeRuneInString(chr)
-		word.Chars = append(word.Chars, Char2{Char: char, BeginTS: charBeginTS, EndTS: charEndTS, FAScore: charFAScore})
+		word.Chars = append(word.Chars, generic.Char2{Char: char, BeginTS: charBeginTS, EndTS: charEndTS, FAScore: charFAScore})
 	}
 	flushVerse()
 	err = rows.Err()

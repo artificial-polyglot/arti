@@ -33,7 +33,7 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(verses []Verse2, audioURLs map[string]generic.AudioFile,
+func (h *HTMLWriter) WriteReport(verses []generic.Verse2, audioURLs map[string]generic.AudioFile,
 	languageISO string, asr request.SpeechToText) (string, *log.Status) {
 	var err error
 	var model string
@@ -117,7 +117,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string, model string) string {
 	return h.out.Name()
 }
 
-func (h *HTMLWriter) WriteLine(verse Verse2, audioURL generic.AudioFile) {
+func (h *HTMLWriter) WriteLine(verse generic.Verse2, audioURL generic.AudioFile) {
 	_, _ = h.out.WriteString("<tr>\n")
 	h.writeCell(strconv.FormatInt(verse.ScriptId, 10))
 	h.writeCell(strconv.FormatFloat(ComputeMinimum(verse.Words), 'f', 4, 64))
@@ -326,7 +326,7 @@ func minSecFormat(duration float64) string {
 	return minStr + delim + secStr
 }
 
-func ComputeMinimum(words []Word2) float64 {
+func ComputeMinimum(words []generic.Word2) float64 {
 	var minimum = 1.0
 	for _, w := range words {
 		//if w.Ttype == "W" {
@@ -338,7 +338,7 @@ func ComputeMinimum(words []Word2) float64 {
 	return minimum
 }
 
-func startTime(words []Word2) float64 {
+func startTime(words []generic.Word2) float64 {
 	for _, w := range words {
 		//if w.Ttype == "W" {
 		return w.BeginTS

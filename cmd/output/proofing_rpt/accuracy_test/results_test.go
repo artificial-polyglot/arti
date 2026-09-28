@@ -9,6 +9,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/utility/diff"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 )
@@ -84,7 +85,7 @@ func LoadDatabase(ctx context.Context, resultsDBInput string, resultsDBLocal str
 //     next to another instance of itself, either of the two identical,
 //     adjacent words may end up carrying the low score, so a flagged word
 //     next to the WordId-matching one counts too (see isAdjacentToTargetWord).
-func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofing_rpt.Verse2) {
+func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []generic.Verse2) {
 	testCases := retrieveWordSwitches(a.test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
@@ -110,8 +111,8 @@ func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofi
 			}
 			if !isFound {
 				foundNot++
-				a.displayMissingError(os.Stdout, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
-				a.displayMissingError(outFile, "NOT FOUND MISS", vs, proofing_rpt.Word2{}, testWords)
+				a.displayMissingError(os.Stdout, "NOT FOUND MISS", vs, generic.Word2{}, testWords)
+				a.displayMissingError(outFile, "NOT FOUND MISS", vs, generic.Word2{}, testWords)
 			}
 		}
 	}
@@ -131,7 +132,7 @@ func (a *AccuracyTest) checkMissingWordResults(outFile *os.File, verses []proofi
 // happens, it's ambiguous which of the two identical, adjacent words the
 // alignment should flag as low-scoring, so a flagged word is also accepted
 // when its neighbor carries the expected WordId and has the same text.
-func isAdjacentToTargetWord(words []proofing_rpt.Word2, idx int, targetWordId int64) bool {
+func isAdjacentToTargetWord(words []generic.Word2, idx int, targetWordId int64) bool {
 	wd := words[idx]
 	text := strings.ToLower(strings.TrimSpace(wd.Text))
 	if idx > 0 {
@@ -149,7 +150,7 @@ func isAdjacentToTargetWord(words []proofing_rpt.Word2, idx int, targetWordId in
 	return false
 }
 
-func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult string, vs generic.Verse2, wd generic.Word2, tst wordSwitch) {
 	var text []string
 	for _, wd2 := range vs.Words {
 		text = append(text, wd2.Text)
@@ -175,7 +176,7 @@ func (a *AccuracyTest) displayMissingError(outFile *os.File, missingResult strin
 	}
 }
 
-func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing_rpt.Verse2) {
+func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []generic.Verse2) {
 	testCases := retrieveWordSwitches(a.test.MediaId)
 	var foundMissing, foundFalse, foundNot, total float64
 	for _, vs := range verses {
@@ -205,8 +206,8 @@ func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing
 				}
 			}
 			if !verseHasResult {
-				a.displayAdded(os.Stdout, nonInserted, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
-				a.displayAdded(outFile, nonInserted, "NOTHING ADDED", vs, proofing_rpt.Word2{}, testWords)
+				a.displayAdded(os.Stdout, nonInserted, "NOTHING ADDED", vs, generic.Word2{}, testWords)
+				a.displayAdded(outFile, nonInserted, "NOTHING ADDED", vs, generic.Word2{}, testWords)
 			}
 		}
 	}
@@ -221,7 +222,7 @@ func (a *AccuracyTest) checkAddedWordResults(outFile *os.File, verses []proofing
 	}
 }
 
-func (a *AccuracyTest) displayAdded(outFile *os.File, nonInserted []int, addedResult string, vs proofing_rpt.Verse2, wd proofing_rpt.Word2, tst wordSwitch) {
+func (a *AccuracyTest) displayAdded(outFile *os.File, nonInserted []int, addedResult string, vs generic.Verse2, wd generic.Word2, tst wordSwitch) {
 	var text []string
 	for _, wd2 := range vs.Words {
 		text = append(text, wd2.Text)

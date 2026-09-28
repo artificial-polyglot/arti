@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"unicode/utf8"
 
-	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/generic"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -18,7 +17,7 @@ type Pair struct {
 	Base      PairText              `json:"base"`
 	Comp      PairText              `json:"comp"`
 	Diffs     []diffmatchpatch.Diff `json:"diffs"`
-	HTML      string                `json:"html""`
+	HTML      string                `json:"html"`
 }
 
 type PairText struct {
@@ -27,7 +26,7 @@ type PairText struct {
 	Uroman   string `json:"uroman"`
 }
 
-func NewPair(vs proofing_rpt.Verse2, refText string, asrText string) Pair {
+func NewPair(vs generic.Verse2, refText string, asrText string) Pair {
 	var p Pair
 	p.Ref.BookId = vs.LineRef.BookId
 	p.Ref.ChapterNum = vs.LineRef.ChapterNum

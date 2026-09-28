@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
-func TimestampWriters(ctx context.Context, verses []proofing_rpt.Verse2) []db.Output {
+func TimestampWriters(ctx context.Context, verses []generic.Verse2) []db.Output {
 	var reports []db.Output
 	dir, err := os.MkdirTemp("", "arti-rpt-*")
 	if err != nil {
@@ -32,7 +32,7 @@ func TimestampWriters(ctx context.Context, verses []proofing_rpt.Verse2) []db.Ou
 	return reports
 }
 
-func JSONTimestampHierachyRpt(ctx context.Context, dir string, verses []proofing_rpt.Verse2) db.Output {
+func JSONTimestampHierachyRpt(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
 	var output = db.Output{Component: "proofing_rpt", Report: "all_timestamps_json"}
 	bytes, err := json.MarshalIndent(verses, "", "  ")
 	if err != nil {
@@ -49,7 +49,7 @@ func JSONTimestampHierachyRpt(ctx context.Context, dir string, verses []proofing
 	return output
 }
 
-func CSVScripts(ctx context.Context, dir string, verses []proofing_rpt.Verse2) db.Output {
+func CSVScripts(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
 	var output = db.Output{Component: "proofing_rpt", Report: "script_timestamps_csv"}
 	filePath := filepath.Join(dir, "script_timestamps.csv")
 	file, err := os.Create(filePath)
@@ -88,7 +88,7 @@ func CSVScripts(ctx context.Context, dir string, verses []proofing_rpt.Verse2) d
 	return output
 }
 
-func CSVWords(ctx context.Context, dir string, verses []proofing_rpt.Verse2) db.Output {
+func CSVWords(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
 	var output = db.Output{Component: "proofing_rpt", Report: "word_timestamps_csv"}
 	filePath := filepath.Join(dir, "word_timestamps.csv")
 	file, err := os.Create(filePath)
@@ -126,7 +126,7 @@ func CSVWords(ctx context.Context, dir string, verses []proofing_rpt.Verse2) db.
 	return output
 }
 
-func CSVChars(ctx context.Context, dir string, verses []proofing_rpt.Verse2) db.Output {
+func CSVChars(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
 	var output = db.Output{Component: "proofing_rpt", Report: "char_timestamps_csv"}
 	filePath := filepath.Join(dir, "char_timestamps.csv")
 	file, err := os.Create(filePath)
