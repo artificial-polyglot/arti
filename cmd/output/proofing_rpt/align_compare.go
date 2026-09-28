@@ -2,7 +2,6 @@ package proofing_rpt
 
 import (
 	"database/sql"
-	"strings"
 
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -24,8 +23,7 @@ func (a *AlignSilence) CompareLines2ASR(verses []generic.Verse2) ([]generic.Vers
 			if status != nil {
 				return result, status
 			}
-			refText := a.GetOriginalText(verse)
-			cDiffs := diff.CharDiff(refText, asrText)
+			cDiffs := diff.CharDiff(verse.Text(), asrText)
 			newLine := a.MarkDeletedChars(verse, cDiffs)
 			newLine = a.InsertASRSilenceChars(newLine, cDiffs)
 			result = append(result, newLine)
@@ -45,14 +43,6 @@ func (a *AlignSilence) HasSilence(verse generic.Verse2) bool {
 		}
 	}
 	return false
-}
-
-func (a *AlignSilence) GetOriginalText(verse generic.Verse2) string {
-	var text []string
-	for _, wd := range verse.Words {
-		text = append(text, wd.Text)
-	}
-	return strings.ToLower(strings.Join(text, " "))
 }
 
 func (a *AlignSilence) InsertASRSilenceChars(verse generic.Verse2, cDiffs []diff.CDiff) generic.Verse2 {

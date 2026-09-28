@@ -1,15 +1,14 @@
-package compare_rpt
+package generic
 
 import (
 	"database/sql"
 	"unicode/utf8"
 
-	"github.com/artificial-polyglot/arti/generic"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 type Pair struct {
-	Ref       generic.VerseRef      `json:"ref"`
+	Ref       VerseRef              `json:"ref"`
 	ScriptNum string                `json:"script_num"`
 	AudioFile string                `json:"audio_file"`
 	BeginTS   float64               `json:"begin_ts"`
@@ -21,28 +20,9 @@ type Pair struct {
 }
 
 type PairText struct {
-	ScriptId int    `json:"script_id"`
+	ScriptId int64  `json:"script_id"`
 	Text     string `json:"text"`
 	Uroman   string `json:"uroman"`
-}
-
-func NewPair(vs generic.Verse2, refText string, asrText string) Pair {
-	var p Pair
-	p.Ref.BookId = vs.LineRef.BookId
-	p.Ref.ChapterNum = vs.LineRef.ChapterNum
-	//p.Ref.ChapterEnd = base.chapterEnd
-	p.Ref.VerseStr = vs.LineRef.VerseStr
-	//p.Ref.VerseEnd = base.verseEnd
-	//p.ScriptNum = base.ScriptNum
-	p.BeginTS = vs.BeginTS
-	p.EndTS = vs.EndTS
-	p.Base.ScriptId = int(vs.ScriptId)
-	p.Comp.ScriptId = int(vs.ScriptId)
-	p.Base.Text = refText
-	p.Base.Uroman = "" //TBD
-	p.Comp.Text = asrText
-	p.Comp.Uroman = "" //TBD
-	return p
 }
 
 func (p *Pair) Text(isLatin sql.NullBool) (string, string) {

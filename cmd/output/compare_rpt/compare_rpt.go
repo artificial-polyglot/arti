@@ -8,8 +8,8 @@ import (
 	"github.com/artificial-polyglot/arti/utility/diff"
 )
 
-func CompareReport(conn db.DBAdapter) ([]Pair, map[string]generic.AudioFile, *log.Status) {
-	var records []Pair
+func CompareReport(conn db.DBAdapter) ([]generic.Pair, map[string]generic.AudioFile, *log.Status) {
+	var records []generic.Pair
 	var fileMap map[string]generic.AudioFile
 	align := proofing_rpt.NewAlignSilence(conn)
 	verses, status := proofing_rpt.SelectCharData(conn)
@@ -17,14 +17,14 @@ func CompareReport(conn db.DBAdapter) ([]Pair, map[string]generic.AudioFile, *lo
 		return records, fileMap, status
 	}
 	for _, vs := range verses {
-		refText := align.GetOriginalText(vs)
+		refText := vs.Text()
 		asrText, status1 := align.SelectTranscript(vs.ScriptId)
 		if status1 != nil {
 			return records, fileMap, status1
 		}
 		diffs := diff.DiffMatchPatch(refText, asrText)
 		if !diff.IsMatch(diffs) {
-			pair := NewPair(vs, refText, asrText)
+			pair := vs.ToPair(vs.ScriptId, asrText)
 			pair.Diffs = diffs
 			pair.HTML = diff.DiffPrettyHtml(diffs)
 			records = append(records, pair)

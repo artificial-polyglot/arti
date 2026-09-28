@@ -1,5 +1,7 @@
 package generic
 
+import "strings"
+
 type Verse2 struct {
 	ScriptId int64
 	LineRef  VerseRef
@@ -34,4 +36,29 @@ type Char2 struct {
 	Silence     float64 // Computed in align_silence
 	SilenceLong int
 	IsASR       bool
+}
+
+// ToPair builds a Pair whose Base is this verse's lowercased word text and
+// whose Comp is compText, attributed to compScriptId.
+func (v Verse2) ToPair(compScriptId int64, compText string) Pair {
+	var p Pair
+	p.Ref.BookId = v.LineRef.BookId
+	p.Ref.ChapterNum = v.LineRef.ChapterNum
+	p.Ref.VerseStr = v.LineRef.VerseStr
+	p.BeginTS = v.BeginTS
+	p.EndTS = v.EndTS
+	p.Base.ScriptId = v.ScriptId
+	p.Base.Text = v.Text()
+	p.Comp.ScriptId = compScriptId
+	p.Comp.Text = compText
+	return p
+}
+
+// Text returns the verse's words joined by spaces, lowercased.
+func (v Verse2) Text() string {
+	var text []string
+	for _, wd := range v.Words {
+		text = append(text, wd.Text)
+	}
+	return strings.ToLower(strings.Join(text, " "))
 }

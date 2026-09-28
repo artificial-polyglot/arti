@@ -2,9 +2,10 @@ package diff
 
 import (
 	"database/sql"
+	"unicode/utf8"
+
 	"github.com/artificial-polyglot/arti/generic"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"unicode/utf8"
 )
 
 type Pair struct {
@@ -16,7 +17,7 @@ type Pair struct {
 	Base      PairText              `json:"base"`
 	Comp      PairText              `json:"comp"`
 	Diffs     []diffmatchpatch.Diff `json:"diffs"`
-	HTML      string                `json:"html""`
+	HTML      string                `json:"html"`
 }
 
 type PairText struct {

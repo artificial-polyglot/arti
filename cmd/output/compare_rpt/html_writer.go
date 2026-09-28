@@ -30,7 +30,7 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 	return h
 }
 
-func (h *HTMLWriter) WriteReport(records []Pair, languageISO string, fileMap map[string]generic.AudioFile) (string, *log.Status) {
+func (h *HTMLWriter) WriteReport(records []generic.Pair, languageISO string, fileMap map[string]generic.AudioFile) (string, *log.Status) {
 	var err error
 	h.fileMap = fileMap
 	filePath := filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_compare.html")
@@ -102,7 +102,7 @@ func (h *HTMLWriter) WriteHeading(languageISO string) {
 	//return h.out.Name()
 }
 
-func (h *HTMLWriter) WriteLine(verse Pair) {
+func (h *HTMLWriter) WriteLine(verse generic.Pair) {
 	largest := verse.LargestLength()
 	if largest > 2 {
 		h.diffCount++
@@ -114,7 +114,7 @@ func (h *HTMLWriter) WriteLine(verse Pair) {
 		if verse.ScriptNum != "" {
 			h.writeCell(verse.ScriptNum)
 		} else {
-			h.writeCell(strconv.Itoa(verse.Base.ScriptId))
+			h.writeCell(strconv.FormatInt(verse.Base.ScriptId, 10))
 		}
 		h.writeCell(strconv.Itoa(largest))
 		var params []string
