@@ -49,6 +49,7 @@ func (v Verse2) ToPair(compScriptId int64, compText string) Pair {
 	p.EndTS = v.EndTS
 	p.Base.ScriptId = v.ScriptId
 	p.Base.Text = v.Text()
+	p.Base.Uroman = v.Uroman()
 	p.Comp.ScriptId = compScriptId
 	p.Comp.Text = compText
 	return p
@@ -59,6 +60,14 @@ func (v Verse2) Text() string {
 	var text []string
 	for _, wd := range v.Words {
 		text = append(text, wd.Text)
+	}
+	return strings.ToLower(strings.Join(text, " "))
+}
+
+func (v Verse2) Uroman() string {
+	var text []string
+	for _, wd := range v.Words {
+		text = append(text, wd.Uroman)
 	}
 	return strings.ToLower(strings.Join(text, " "))
 }

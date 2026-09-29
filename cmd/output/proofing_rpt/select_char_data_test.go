@@ -29,7 +29,7 @@ func TestSelectCharData(t *testing.T) {
 	var combined = make(map[rune]int)
 	var misMatchCount int
 	for _, vs := range verses {
-		refText := align.GetOriginalText(vs)
+		refText := vs.Text()
 		asrText, status1 := align.SelectTranscript(vs.ScriptId)
 		if status1 != nil {
 			t.Fatal(status1)
