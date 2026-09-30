@@ -12,34 +12,32 @@ import (
 	"github.com/artificial-polyglot/arti/utility/diff"
 )
 
-func CreatePairs(conn db.DBAdapter, verses []generic.Verse2) ([]generic.Pair, *log.Status) {
-	var records []generic.Pair
+func AddASRTranscript(conn db.DBAdapter, verses []generic.Verse2) *log.Status {
 	align := NewAlignSilence(conn)
-	for _, vs := range verses {
-		asrText, status := align.SelectTranscript(vs.ScriptId)
+	for i := range verses {
+		asrText, status := align.SelectTranscript(verses[i].ScriptId)
 		if status != nil {
-			return records, status
+			return status
 		}
-		pair := vs.ToPair(vs.ScriptId, asrText)
-		records = append(records, pair)
+		verses[i].ASRText = asrText
 	}
-	return records, nil
+	return nil
 }
 
-func CountCharOccurances(pairs []generic.Pair) map[rune]int {
+func CountCharOccurances(verses []generic.Verse2) map[rune]int {
 	var countChars = make(map[rune]int)
-	for _, p := range pairs {
-		for _, r := range p.Base.Text {
+	for _, vs := range verses {
+		for _, r := range vs.Text() {
 			countChars[r]++
 		}
 	}
 	return countChars
 }
 
-func FindSimilarChars(pairs []generic.Pair) map[diff.CDiff]int {
+func FindSimilarChars(verses []generic.Verse2) map[diff.CDiff]int {
 	var countReplace = make(map[diff.CDiff]int)
-	for _, p := range pairs {
-		cdiff := diff.CharLevenshtein(p.Base.Text, p.Comp.Text)
+	for _, vs := range verses {
+		cdiff := diff.CharLevenshtein(vs.Text(), vs.ASRText)
 		for _, d := range cdiff {
 			if d.Type == diff.OpReplace {
 				countReplace[d]++
@@ -130,19 +128,19 @@ func CreateCharReplaceMap(replace []ReplaceCount, minRank float64) map[rune]map[
 	return result
 }
 
-func PairsCompare(pairs []generic.Pair, replaceMap map[rune]map[rune]float64) [][]diff.Diff {
+func PairsCompare(verses []generic.Verse2, replaceMap map[rune]map[rune]float64) [][]diff.Diff {
 	var result [][]diff.Diff
-	for _, pair := range pairs {
-		difSlice := LineCompare(pair, replaceMap)
+	for _, vs := range verses {
+		difSlice := LineCompare(vs, replaceMap)
 		result = append(result, difSlice)
 	}
 	return result
 }
 
-func LineCompare(pair generic.Pair, replaceMap map[rune]map[rune]float64) []diff.Diff {
+func LineCompare(verse generic.Verse2, replaceMap map[rune]map[rune]float64) []diff.Diff {
 	var result []diff.Diff
-	refText := strings.ReplaceAll(pair.Base.Text, "-", " ")
-	asrText := strings.ReplaceAll(pair.Comp.Text, "-", " ")
+	refText := strings.ReplaceAll(verse.Text(), "-", " ")
+	asrText := strings.ReplaceAll(verse.ASRText, "-", " ")
 	wDiff := diff.WordLevenshtein(refText, asrText)
 	for _, w := range wDiff {
 		if w.Type == diff.OpReplace {

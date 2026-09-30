@@ -5,6 +5,7 @@ import "strings"
 type Verse2 struct {
 	ScriptId int64
 	LineRef  VerseRef
+	ASRText  string  // Transcript
 	BeginTS  float64 // Used in report to play audio
 	EndTS    float64 // Used in report to play audio
 	Duration float64 // Displayed in audio
@@ -40,7 +41,7 @@ type Char2 struct {
 
 // ToPair builds a Pair whose Base is this verse's lowercased word text and
 // whose Comp is compText, attributed to compScriptId.
-func (v Verse2) ToPair(compScriptId int64, compText string) Pair {
+func (v Verse2) ToPair() Pair {
 	var p Pair
 	p.Ref.BookId = v.LineRef.BookId
 	p.Ref.ChapterNum = v.LineRef.ChapterNum
@@ -50,8 +51,8 @@ func (v Verse2) ToPair(compScriptId int64, compText string) Pair {
 	p.Base.ScriptId = v.ScriptId
 	p.Base.Text = v.Text()
 	p.Base.Uroman = v.Uroman()
-	p.Comp.ScriptId = compScriptId
-	p.Comp.Text = compText
+	p.Comp.ScriptId = v.ScriptId
+	p.Comp.Text = v.ASRText
 	return p
 }
 

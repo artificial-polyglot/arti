@@ -17,16 +17,16 @@ func TestStudyAlignDiff(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	pairs, status1 := CreatePairs(conn, verses)
+	status1 := AddASRTranscript(conn, verses)
 	if status1 != nil {
 		t.Fatal(status1)
 	}
-	testDiff := PairsCompare(pairs, nil)
+	testDiff := PairsCompare(verses, nil)
 	startingCER := DiffError(testDiff)
 	fmt.Println("Starting CER", startingCER)
 	// production starts about here
-	charCount := CountCharOccurances(pairs)
-	countReplace := FindSimilarChars(pairs)
+	charCount := CountCharOccurances(verses)
+	countReplace := FindSimilarChars(verses)
 	minCount := 3
 	ranked := CreateReplaceCounts(charCount, countReplace, minCount)
 	RankReplaceCounts(ranked)
@@ -36,7 +36,7 @@ func TestStudyAlignDiff(t *testing.T) {
 			fmt.Println("From:", string(c), "To:", string(r), val)
 		}
 	}
-	newDiff := PairsCompare(pairs, charReplaceMap)
+	newDiff := PairsCompare(verses, charReplaceMap)
 	diffErr := DiffError(newDiff)
 	fmt.Println("Final CER", diffErr)
 }
