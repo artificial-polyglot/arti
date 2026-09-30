@@ -3,6 +3,8 @@ package proofing_rpt
 import (
 	"fmt"
 	"sort"
+	"strings"
+	"unicode"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
@@ -64,6 +66,9 @@ func CreateReplaceCounts(charCounts map[rune]int, diffCounts map[diff.CDiff]int,
 		charCnt := charCounts[d.Char]
 		if cnt < minCount || charCnt == 0 {
 			continue // too rare to trust the rate
+		}
+		if unicode.IsDigit(d.Char) || unicode.IsDigit(d.Replace) {
+			continue // numeric substitution should be handled by word not char
 		}
 		counts = append(counts, ReplaceCount{
 			Diff:      d,
@@ -136,7 +141,9 @@ func PairsCompare(pairs []generic.Pair, replaceMap map[rune]map[rune]float64) []
 
 func LineCompare(pair generic.Pair, replaceMap map[rune]map[rune]float64) []diff.Diff {
 	var result []diff.Diff
-	wDiff := diff.WordLevenshtein(pair.Base.Text, pair.Comp.Text)
+	refText := strings.ReplaceAll(pair.Base.Text, "-", " ")
+	asrText := strings.ReplaceAll(pair.Comp.Text, "-", " ")
+	wDiff := diff.WordLevenshtein(refText, asrText)
 	for _, w := range wDiff {
 		if w.Type == diff.OpReplace {
 			w = WordCompare(w, replaceMap)
@@ -152,6 +159,9 @@ func WordCompare(word diff.Diff, replaceMap map[rune]map[rune]float64) diff.Diff
 			continue
 		}
 		if ch.Type == diff.OpReplace && CharCompare(ch, replaceMap).Type == diff.OpEqual {
+			continue
+		}
+		if (ch.Type == diff.OpInsert || ch.Type == diff.OpDelete) && IsDiffIgnorable(ch.Char) {
 			continue
 		}
 		return word // at least one difference is not an allowed replacement
