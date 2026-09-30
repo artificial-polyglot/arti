@@ -193,8 +193,20 @@ func IsDiffIgnorable(c rune) bool {
 	return c == 0x09CD // BENGALI SIGN VIRAMA, Claude really recommended dropping this from end
 }
 
-func HasHastha(c []rune) bool {
-	return c[len(c)-1] == 0x09CD
+func IsDDiffDigits(dif diff.Diff) bool {
+	if !IsWordDigits(dif.Text) {
+		return false
+	}
+	return IsWordDigits(dif.Replace)
+}
+
+func IsWordDigits(str string) bool {
+	for _, ch := range str {
+		if !unicode.IsDigit(ch) {
+			return false
+		}
+	}
+	return true
 }
 
 /*

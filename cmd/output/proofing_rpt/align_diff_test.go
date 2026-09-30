@@ -24,6 +24,7 @@ func TestStudyAlignDiff(t *testing.T) {
 	testDiff := PairsCompare(pairs, nil)
 	startingCER := DiffError(testDiff)
 	fmt.Println("Starting CER", startingCER)
+	// production starts about here
 	charCount := CountCharOccurances(pairs)
 	countReplace := FindSimilarChars(pairs)
 	minCount := 3
