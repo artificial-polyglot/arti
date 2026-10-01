@@ -9,7 +9,7 @@ import (
 	"github.com/artificial-polyglot/arti/utility/diff"
 )
 
-func TestStudyAlignDiff(t *testing.T) {
+func TestCharFilter1(t *testing.T) {
 	ctx := context.Background()
 	dbPath := "/Users/gary/Downloads/arti-output_GaryNTest_N2CCPBBS_arti_00016_database_N2CCPBBS.db"
 	conn := db.NewDBAdapter(ctx, dbPath)
@@ -21,22 +21,10 @@ func TestStudyAlignDiff(t *testing.T) {
 	if status1 != nil {
 		t.Fatal(status1)
 	}
-	testDiff := PairsCompare(verses, nil)
-	startingCER := DiffError(testDiff)
-	fmt.Println("Starting CER", startingCER)
-	// production starts about here
-	charCount := CountCharOccurances(verses)
-	countReplace := FindSimilarChars(verses)
-	minCount := 3
-	ranked := CreateReplaceCounts(charCount, countReplace, minCount)
-	RankReplaceCounts(ranked)
-	charReplaceMap := CreateCharReplaceMap(ranked, 5.0)
-	for c, m := range charReplaceMap {
-		for r, val := range m {
-			fmt.Println("From:", string(c), "To:", string(r), val)
-		}
-	}
-	newDiff := PairsCompare(verses, charReplaceMap)
+	diffFilter := diff.NewCharFilter1(verses)
+	diffFilter.RankReplaceCounts()
+	diffFilter.DisplayCharFilter()
+	newDiff := diffFilter.VerseSliceCompare(verses)
 	diffErr := DiffError(newDiff)
 	fmt.Println("Final CER", diffErr)
 }

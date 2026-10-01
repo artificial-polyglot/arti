@@ -160,3 +160,22 @@ func IsMatch(diffs []diffmatchpatch.Diff) bool {
 	}
 	return true
 }
+
+func Diff2CDiff(diffs []Diff) []CDiff {
+	var result []CDiff
+	for _, df := range diffs {
+		text := []rune(df.Text)
+		replace := []rune(df.Replace)
+		for i := range text {
+			if text[i] == ' ' && df.Type != OpInsert {
+				continue // spaces aren't in wd.Chars, so they must not count as reference positions
+			}
+			cdiff := CDiff{Type: df.Type, Char: text[i]}
+			if df.Type == OpReplace && i < len(replace) {
+				cdiff.Replace = replace[i]
+			}
+			result = append(result, cdiff)
+		}
+	}
+	return result
+}

@@ -13,17 +13,21 @@ import (
 func (a *AlignSilence) CompareLines2ASR(verses []generic.Verse2) ([]generic.Verse2, *log.Status) {
 	var result []generic.Verse2
 	var status *log.Status
+	status = AddASRTranscript(a.conn, verses)
+	if status != nil {
+		return result, status
+	}
+	charFilter := diff.NewCharFilter1(verses)
 	for _, verse := range verses {
 		if false {
 			//if !a.HasSilence(verse) {
 			result = append(result, verse)
 		} else {
-			var asrText string
-			asrText, status = a.SelectTranscript(verse.ScriptId)
-			if status != nil {
-				return result, status
-			}
-			cDiffs := diff.CharDiff(verse.Text(), asrText)
+			//cDiffs := diff.CharDiff(verse.Text(), verse.ASRText)
+			diffs := diff.DiffReplace(verse.Text(), verse.ASRText)
+			//diffs := charFilter.VerseCompare(verse)
+			diffs = charFilter.DiffFilter(diffs)
+			cDiffs := diff.Diff2CDiff(diffs)
 			newLine := a.MarkDeletedChars(verse, cDiffs)
 			newLine = a.InsertASRSilenceChars(newLine, cDiffs)
 			result = append(result, newLine)

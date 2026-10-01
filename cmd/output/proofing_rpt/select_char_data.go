@@ -94,3 +94,15 @@ func SelectCharData(conn db.DBAdapter) ([]generic.Verse2, *log.Status) {
 	}
 	return verses, nil
 }
+
+func AddASRTranscript(conn db.DBAdapter, verses []generic.Verse2) *log.Status {
+	align := NewAlignSilence(conn)
+	for i := range verses {
+		asrText, status := align.SelectTranscript(verses[i].ScriptId)
+		if status != nil {
+			return status
+		}
+		verses[i].ASRText = asrText
+	}
+	return nil
+}
