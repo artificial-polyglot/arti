@@ -3,7 +3,9 @@ package read
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -81,7 +83,15 @@ func TempTestTempLoadLaobible(t *testing.T) {
 		if len(parts) > 2 {
 			t.Fatal("Verses has too many parts", vs.VerseStr)
 		}
-		rec.Text = strings.TrimSpace(vs.ScriptText)
+		//rec.Text = strings.TrimSpace(vs.ScriptText)
+		cleaned, removed, review := RemoveFootnotes(vs.ScriptText)
+		rec.Text = cleaned
+		if len(removed) > 0 {
+			fmt.Println("** Removed:", vs.BookId, vs.ChapterNum, vs.VerseStr, removed)
+		}
+		if len(review) > 0 {
+			fmt.Println("Review:", vs.BookId, vs.ChapterNum, vs.VerseStr, review)
+		}
 		result.Data = append(result.Data, rec)
 	}
 	bytes, err1 := json.MarshalIndent(result, "", "  ")
@@ -116,4 +126,22 @@ func SelectISANScript(conn db.DBAdapter) ([]db.Script, *log.Status) {
 		log.Warn(conn.Ctx, err, query)
 	}
 	return results, nil
+}
+
+var footnoteRE = regexp.MustCompile(`[\s\x{00A0}]*\((?:ให้)?[\s\x{00A0}]*ดู[^()]*\d+:\d+[^()]*\)`)
+var parenRE = regexp.MustCompile(`\([^()]*\)`)
+
+// RemoveFootnotes deletes "(ให้ดู ...)" / "(ดู...)" cross-references and returns
+// the cleaned text, the removed footnotes, and anything else in parentheses
+// (including unmatched "(" or ")" from passages that span verses) for review.
+func RemoveFootnotes(text string) (cleaned string, removed []string, review []string) {
+	for _, fn := range footnoteRE.FindAllString(text, -1) {
+		removed = append(removed, strings.TrimSpace(fn))
+	}
+	cleaned = strings.TrimSpace(footnoteRE.ReplaceAllString(text, ""))
+	review = parenRE.FindAllString(cleaned, -1)
+	if rest := parenRE.ReplaceAllString(cleaned, ""); strings.ContainsAny(rest, "()") {
+		review = append(review, "UNMATCHED: "+cleaned)
+	}
+	return cleaned, removed, review
 }
