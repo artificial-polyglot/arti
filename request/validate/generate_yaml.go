@@ -142,21 +142,8 @@ func appendSpeechToText(w *yamlBuilder, depth int, s request.SpeechToText) {
 	w.boolean(depth, "mms_asr", s.MMS, true)
 	w.boolean(depth, "adapter_asr", s.MMSAdapter, true)
 	w.boolean(depth, "wav2vec2_asr", s.Wav2Vec2ASR, true)
-	w.nested(depth, "whisper", func(sub *yamlBuilder, d int) { appendWhisper(sub, d, s.Whisper) })
 	w.boolean(depth, "mms_asr_align", s.MMSASRAlign, true)
 	w.boolean(depth, "no_speech_to_text", s.NoSpeechToText, true)
-}
-
-func appendWhisper(w *yamlBuilder, depth int, wh request.Whisper) {
-	w.nested(depth, "model", func(sub *yamlBuilder, d int) { appendWhisperModel(sub, d, wh.Model) })
-}
-
-func appendWhisperModel(w *yamlBuilder, depth int, m request.WhisperModel) {
-	w.boolean(depth, "large", m.Large, true)
-	w.boolean(depth, "medium", m.Medium, true)
-	w.boolean(depth, "small", m.Small, true)
-	w.boolean(depth, "base", m.Base, true)
-	w.boolean(depth, "tiny", m.Tiny, true)
 }
 
 func appendSTTDecoder(w *yamlBuilder, depth int, s request.STTDecoder) {

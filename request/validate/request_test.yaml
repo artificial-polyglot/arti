@@ -74,13 +74,6 @@ training: # Include if training in a language is required
 speech_to_text: # If STT is source Yes by desired type
   mms_asr: # This is Meta's MMS Speech to Text model
   adapter_asr: # This is to use an mms_adapter for speech to text
-  whisper: # This is OpenAI’s Speech to Text model
-    model: # If using Whisper, choose one of the model sizes by marking it Yes
-      large:
-      medium:
-      small:
-      base:
-      tiny:
   no_speech_to_text: #
 # Default: no_speech_to_text
 

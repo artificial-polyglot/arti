@@ -241,12 +241,11 @@ type Wav2Vec2 struct {
 }
 
 type SpeechToText struct {
-	MMS            bool    `yaml:"mms_asr,omitempty" json:"mms_asr,omitempty"`
-	MMSAdapter     bool    `yaml:"adapter_asr,omitempty" json:"adapter_asr,omitempty"`
-	Wav2Vec2ASR    bool    `yaml:"wav2vec2_asr,omitempty" json:"wav2vec2_asr,omitempty"`
-	Whisper        Whisper `yaml:"whisper,omitempty" json:"whisper,omitempty"`
-	MMSASRAlign    bool    `yaml:"mms_asr_align,omitempty" json:"mms_asr_align,omitempty"`
-	NoSpeechToText bool    `yaml:"no_speech_to_text,omitempty" json:"no_speech_to_text,omitempty"`
+	MMS            bool `yaml:"mms_asr,omitempty" json:"mms_asr,omitempty"`
+	MMSAdapter     bool `yaml:"adapter_asr,omitempty" json:"adapter_asr,omitempty"`
+	Wav2Vec2ASR    bool `yaml:"wav2vec2_asr,omitempty" json:"wav2vec2_asr,omitempty"`
+	MMSASRAlign    bool `yaml:"mms_asr_align,omitempty" json:"mms_asr_align,omitempty"`
+	NoSpeechToText bool `yaml:"no_speech_to_text,omitempty" json:"no_speech_to_text,omitempty"`
 }
 
 type STTDecoder struct {
@@ -269,33 +268,6 @@ func (d STTDecoder) String() string {
 	} else {
 		return "greedy"
 	}
-}
-
-type Whisper struct {
-	Model WhisperModel `yaml:"model,omitempty" json:"model,omitempty"`
-}
-type WhisperModel struct {
-	Large  bool `yaml:"large,omitempty" json:"large,omitempty"`
-	Medium bool `yaml:"medium,omitempty" json:"medium,omitempty"`
-	Small  bool `yaml:"small,omitempty" json:"small,omitempty"`
-	Base   bool `yaml:"base,omitempty" json:"base,omitempty"`
-	Tiny   bool `yaml:"tiny,omitempty" json:"tiny,omitempty"`
-}
-
-func (w WhisperModel) String() string {
-	var result string
-	if w.Large {
-		result = `large`
-	} else if w.Medium {
-		result = `medium`
-	} else if w.Small {
-		result = `small`
-	} else if w.Base {
-		result = `base`
-	} else if w.Tiny {
-		result = `tiny`
-	}
-	return result
 }
 
 type Detail struct {

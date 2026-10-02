@@ -29,7 +29,6 @@ func buildTestRequest() request.Request {
 	req.Training.MMSAdapter.WarmupPct = 12
 	req.Training.MMSAdapter.GradNormMax = 0.4
 	req.SpeechToText.MMSAdapter = true
-	req.SpeechToText.Whisper.Model.Large = true
 	req.Timestamps.MMSAlign = true
 	req.AudioProof.HTMLReport = true
 	req.Compare.HTMLReport = true

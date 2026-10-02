@@ -114,21 +114,6 @@ func (r *RequestValidator) checkSpeechToText(req *request.SpeechToText) {
 	if req.Wav2Vec2ASR {
 		count += 1
 	}
-	if req.Whisper.Model.Large {
-		count += 1
-	}
-	if req.Whisper.Model.Medium {
-		count += 1
-	}
-	if req.Whisper.Model.Small {
-		count += 1
-	}
-	if req.Whisper.Model.Base {
-		count += 1
-	}
-	if req.Whisper.Model.Tiny {
-		count += 1
-	}
 	if req.MMSASRAlign {
 		count += 1
 	}

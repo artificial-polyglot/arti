@@ -28,7 +28,6 @@ import (
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
-	"github.com/artificial-polyglot/arti/speech_to_text"
 	"github.com/artificial-polyglot/arti/timestamp"
 	asr2 "github.com/artificial-polyglot/arti/wav2vec2/asr"
 	"github.com/artificial-polyglot/arti/wav2vec2/train"
@@ -465,7 +464,6 @@ func (c *Controller) timestamps(audioFiles []generic.InputFile) *log.Status {
 
 func (c *Controller) speechToText(audioFiles []generic.InputFile) *log.Status {
 	var status *log.Status
-	bibleId := c.req.BibleId
 	if c.req.SpeechToText.MMS {
 		var asr mms_asr.MMSASR
 		asr = mms_asr.NewMMSASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, false,
@@ -485,23 +483,7 @@ func (c *Controller) speechToText(audioFiles []generic.InputFile) *log.Status {
 		asr = asr_align.NewASRAlign(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, false)
 		status = asr.ProcessFiles(audioFiles)
 	} else {
-		var whisperModel = c.req.SpeechToText.Whisper.Model.String()
-		if whisperModel != `` {
-			var lang2 = c.req.AltLanguage
-			var whisper = speech_to_text.NewWhisper(bibleId, c.database, whisperModel, lang2)
-			status = whisper.ProcessFiles(audioFiles)
-			if status != nil {
-				return status
-			}
-			c.ident.TextSource = request.TextSTT
-			if len(c.ident.AudioOTId) >= 10 {
-				c.ident.TextOTId = c.ident.AudioOTId[:7] + `_TT`
-			}
-			if len(c.ident.AudioNTId) >= 10 {
-				c.ident.TextNTId = c.ident.AudioNTId[:7] + `_TT`
-			}
-			_ = c.database.UpdateIdent(c.ident)
-		}
+		log.Warn(c.ctx, "No Training Module Identified.")
 	}
 	return status
 }
