@@ -556,11 +556,6 @@ audio_data:
 text_data:
   post: {mediaId}_{A/Bseq}_{book}_{chapter}_{verse}-{chapter_end}_{verse_end}
 
-speech_to_text:
-  whisper:
-    model:
-      tiny: yes
-
 output:
   directory: /output
   json: yes
