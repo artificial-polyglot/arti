@@ -1,30 +1,28 @@
 package request
 
 type Request struct {
-	IsNew         bool          `yaml:"is_new" json:"is_new"`
-	DatasetName   string        `yaml:"dataset_name" json:"dataset_name"`
-	Username      string        `yaml:"username" json:"username"`
-	BibleId       string        `yaml:"bible_id" json:"bible_id"`
-	LanguageISO   string        `yaml:"language_iso" json:"language_iso"`
-	AltLanguage   string        `yaml:"alt_language,omitempty" json:"alt_language,omitempty"`
-	Priority      int           `yaml:"priority,omitempty" json:"priority,omitempty"`
-	NotifyOk      []string      `yaml:"notify_ok" json:"notify_ok"`
-	NotifyErr     []string      `yaml:"notify_err" json:"notify_err"`
-	Output        Output        `yaml:"output,omitempty" json:"output,omitempty"`
-	Testament     Testament     `yaml:"testament,omitempty" json:"testament,omitempty"`
-	Database      Database      `yaml:"database,omitempty" json:"database,omitempty"`
-	AudioData     AudioData     `yaml:"audio_data,omitempty" json:"audio_data,omitempty"`
-	TextData      TextData      `yaml:"text_data,omitempty" json:"text_data,omitempty"`
-	SheetColumns  SheetColumns  `yaml:"sheet_columns,omitempty" json:"sheet_columns,omitempty"`
-	Timestamps    Timestamps    `yaml:"timestamps,omitempty" json:"timestamps,omitempty"`
-	Training      Training      `yaml:"training,omitempty" json:"training,omitempty"`
-	SpeechToText  SpeechToText  `yaml:"speech_to_text,omitempty" json:"speech_to_text,omitempty"`
-	STTDecoder    STTDecoder    `yaml:"stt_decoder,omitempty" json:"stt_decoder,omitempty"`
-	Detail        Detail        `yaml:"detail,omitempty" json:"detail,omitempty"`
-	AudioEncoding AudioEncoding `yaml:"audio_encoding,omitempty" json:"audio_encoding,omitempty"`
-	TextEncoding  TextEncoding  `yaml:"text_encoding,omitempty" json:"text_encoding,omitempty"`
-	AudioProof    AudioProof    `yaml:"audio_proof,omitempty" json:"audio_proof,omitempty"`
-	Compare       Compare       `yaml:"compare,omitempty" json:"compare,omitempty"`
+	IsNew        bool         `yaml:"is_new" json:"is_new"`
+	DatasetName  string       `yaml:"dataset_name" json:"dataset_name"`
+	Username     string       `yaml:"username" json:"username"`
+	BibleId      string       `yaml:"bible_id" json:"bible_id"`
+	LanguageISO  string       `yaml:"language_iso" json:"language_iso"`
+	AltLanguage  string       `yaml:"alt_language,omitempty" json:"alt_language,omitempty"`
+	Priority     int          `yaml:"priority,omitempty" json:"priority,omitempty"`
+	NotifyOk     []string     `yaml:"notify_ok" json:"notify_ok"`
+	NotifyErr    []string     `yaml:"notify_err" json:"notify_err"`
+	Output       Output       `yaml:"output,omitempty" json:"output,omitempty"`
+	Testament    Testament    `yaml:"testament,omitempty" json:"testament,omitempty"`
+	Database     Database     `yaml:"database,omitempty" json:"database,omitempty"`
+	AudioData    AudioData    `yaml:"audio_data,omitempty" json:"audio_data,omitempty"`
+	TextData     TextData     `yaml:"text_data,omitempty" json:"text_data,omitempty"`
+	SheetColumns SheetColumns `yaml:"sheet_columns,omitempty" json:"sheet_columns,omitempty"`
+	Timestamps   Timestamps   `yaml:"timestamps,omitempty" json:"timestamps,omitempty"`
+	Training     Training     `yaml:"training,omitempty" json:"training,omitempty"`
+	SpeechToText SpeechToText `yaml:"speech_to_text,omitempty" json:"speech_to_text,omitempty"`
+	STTDecoder   STTDecoder   `yaml:"stt_decoder,omitempty" json:"stt_decoder,omitempty"`
+	Detail       Detail       `yaml:"detail,omitempty" json:"detail,omitempty"`
+	AudioProof   AudioProof   `yaml:"audio_proof,omitempty" json:"audio_proof,omitempty"`
+	Compare      Compare      `yaml:"compare,omitempty" json:"compare,omitempty"`
 	//	UpdateDBP     UpdateDBP     `yaml:"update_dbp,omitempty" json:"update_dbp,omitempty"`
 }
 
@@ -308,21 +306,10 @@ type Detail struct {
 
 type Timestamps struct {
 	BibleBrain   bool `yaml:"bible_brain,omitempty" json:"bible_brain,omitempty"`
-	Aeneas       bool `yaml:"aeneas,omitempty" json:"aeneas,omitempty"`
 	TSBucket     bool `yaml:"ts_bucket,omitempty" json:"ts_bucket,omitempty"`
 	MMSFAVerse   bool `yaml:"mms_fa_verse,omitempty" json:"mms_fa_verse,omitempty"`
 	MMSAlign     bool `yaml:"mms_align,omitempty" json:"mms_align,omitempty"`
 	NoTimestamps bool `yaml:"no_timestamps,omitempty" json:"no_timestamps,omitempty"`
-}
-
-type AudioEncoding struct {
-	MFCC       bool `yaml:"mfcc,omitempty" json:"mfcc,omitempty"`
-	NoEncoding bool `yaml:"no_encoding,omitempty" json:"no_encoding,omitempty"`
-}
-
-type TextEncoding struct {
-	FastText   bool `yaml:"fast_text,omitempty" json:"fast_text,omitempty"`
-	NoEncoding bool `yaml:"no_encoding,omitempty" json:"no_encoding,omitempty"`
 }
 
 type AudioProof struct {
@@ -358,9 +345,3 @@ type DiacriticalChoice struct {
 	NormalizeNFKC bool `yaml:"normalize_nfkc,omitempty" json:"normalize_nfkc,omitempty"`
 	NormalizeNFKD bool `yaml:"normalize_nfkd,omitempty" json:"normalize_nfkd,omitempty"`
 }
-
-//type UpdateDBP struct {
-//	Timestamps         string `yaml:"timestamps,omitempty" json:"timestamps,omitempty"`
-//	HLS                string `yaml:"hls,omitempty" json:"hls,omitempty"`
-//	CopyTimestampsFrom string `yaml:"copy_timestamps_from,omitempty" json:"copy_timestamps_from,omitempty"`
-//}

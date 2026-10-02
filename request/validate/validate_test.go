@@ -32,8 +32,6 @@ func TestValidate(t *testing.T) {
 	//req.Timestamps.MMSFAWord = true
 	//req.SpeechToText.Whisper.Model.Medium = true
 	req.SpeechToText.MMS = true
-	req.AudioEncoding.MFCC = true
-	req.AudioEncoding.NoEncoding = false
 	req.Compare.CompareSettings.Apostrophe.Normalize = true
 	req.Compare.CompareSettings.Apostrophe.Remove = false
 	d.Validate(&req)

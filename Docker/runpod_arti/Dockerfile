@@ -104,9 +104,6 @@ ENV FCBH_DATASET_DB=${BASE}/data
 ENV FCBH_DATASET_FILES=${BASE}/data/download
 ENV FCBH_DATASET_TMP=${BASE}/data/tmp
 # Conda ENVs
-ENV FCBH_AENEAS_PYTHON=${BASE}/miniforge3/envs/aeneas/bin/python
-ENV FCBH_FASTTEXT_EXE=${BASE}/miniforge3/envs/fasttext/fastText/fasttext
-ENV FCBH_LIBROSA_PYTHON=${BASE}/miniforge3/envs/librosa/bin/python
 ENV FCBH_MMS_ASR_PYTHON=${BASE}/miniforge3/envs/mms_asr/bin/python
 ENV FCBH_MMS_FA_PYTHON=${BASE}/miniforge3/envs/mms_fa/bin/python
 ENV FCBH_MMS_ADAPTER_PYTHON=${BASE}/miniforge3/envs/mms_adapter/bin/python

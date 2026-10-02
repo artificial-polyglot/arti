@@ -11,7 +11,6 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
 	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/encode"
 	"github.com/artificial-polyglot/arti/fetch"
 	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input"
@@ -265,22 +264,6 @@ func (c *Controller) processSteps() *log.Status {
 			return status
 		}
 	}
-	// Encode Audio
-	if !c.req.AudioEncoding.NoEncoding {
-		log.Info(c.ctx, "Perform audio encoding.")
-		status = c.encodeAudio(audioFiles)
-		if status != nil {
-			return status
-		}
-	}
-	// Encode Text
-	if !c.req.TextEncoding.NoEncoding {
-		log.Info(c.ctx, "Perform text encoding.")
-		status = c.encodeText()
-		if status != nil {
-			return status
-		}
-	}
 	// Compare
 	if c.req.Compare.HTMLReport {
 		log.Info(c.ctx, "Perform text comparison.")
@@ -460,10 +443,6 @@ func (c *Controller) timestamps(audioFiles []generic.InputFile) *log.Status {
 				}
 			}
 		}
-	} else if c.req.Timestamps.Aeneas {
-		bibleId := c.req.BibleId
-		aeneas := encode.NewAeneas(c.ctx, c.database, bibleId, c.ident.LanguageISO, c.req.Detail)
-		status = aeneas.ProcessFiles(audioFiles)
 	} else if c.req.Timestamps.TSBucket {
 		var ts timestamp.TSBucket
 		ts, status = timestamp.NewTSBucket(c.ctx, c.database)
@@ -529,28 +508,6 @@ func (c *Controller) speechToText(audioFiles []generic.InputFile) *log.Status {
 			}
 			_ = c.database.UpdateIdent(c.ident)
 		}
-	}
-	return status
-}
-
-func (c *Controller) encodeAudio(audioFiles []generic.InputFile) *log.Status {
-	var status *log.Status
-	bibleId := c.req.BibleId
-	if c.req.AudioEncoding.MFCC {
-		mfcc := encode.NewMFCC(c.ctx, c.database, bibleId, c.req.Detail, 7)
-		status = mfcc.ProcessFiles(audioFiles)
-		if status != nil {
-			return status
-		}
-	}
-	return status
-}
-
-func (c *Controller) encodeText() *log.Status {
-	var status *log.Status
-	if c.req.TextEncoding.FastText {
-		fast := encode.NewFastText(c.ctx, c.database)
-		status = fast.Process()
 	}
 	return status
 }

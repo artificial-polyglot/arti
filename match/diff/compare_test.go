@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 )
@@ -39,9 +40,9 @@ func TestCompare(t *testing.T) {
 	}
 }
 
-func runCompareTest(tst compareTest) ([]Pair, map[string]string, string, *log.Status) {
+func runCompareTest(tst compareTest) ([]Pair, map[string]generic.AudioFile, string, *log.Status) {
 	var records []Pair
-	var fileMap map[string]string
+	var fileMap map[string]generic.AudioFile
 	var languageISO string
 	ctx := context.Background()
 	user := `GaryNTest`

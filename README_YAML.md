@@ -17,8 +17,6 @@ This document provides comprehensive documentation for all available configurati
   - [Audio Proofing](#audio-proofing)
   - [Text Comparison](#text-comparison)
   - [Training Configuration](#training-configuration)
-  - [Audio Encoding](#audio-encoding)
-  - [Text Encoding](#text-encoding)
   - [Database Configuration](#database-configuration)
   - [Update DBP (Planned Feature)](#update-dbp-planned-feature)
 - [Validation Rules](#validation-rules)
@@ -287,7 +285,6 @@ Choose timestamp generation method (only one can be selected):
 ```yaml
 timestamps:
   bible_brain: yes             # Use Bible Brain timestamps (not recommended - last verse has no ending timestamp)
-  aeneas: yes                  # Compute timestamps using Aeneas forced alignment (requires audio and text)
   ts_bucket: yes               # Pull timestamp data from Sandeep's bucket
   mms_fa_verse: yes            # Compute timestamps using MMS forced alignment
   mms_align: yes               # Second method for computing timestamps with word/verse scores
@@ -468,17 +465,13 @@ The system enforces several validation rules:
 
 ### Timestamp Rules
 - Timestamps require both audio and text data
-- Aeneas, MMS forced alignment methods require text data
+- MMS forced alignment methods require text data
 - `mms_align` automatically enables word-level processing
 
 ### Speech-to-Text Rules
 - Speech-to-text requires audio data
 - Audio proofing requires MMS ASR and MMS align for new datasets
 - Audio proofing requires `base_dataset` for existing datasets
-
-### Encoding Rules
-- MFCC encoding requires timestamps
-- Text encoding requires text data
 
 ### Mutual Exclusivity
 - Only one option can be selected from each category (audio_data, text_data, timestamps, etc.)
@@ -494,8 +487,6 @@ When options are not specified, the following defaults apply:
 - `training.no_training: yes`
 - `speech_to_text.no_speech_to_text: yes`
 - `detail.lines: yes`
-- `audio_encoding.no_encoding: yes`
-- `text_encoding.no_encoding: yes`
 
 ## Additional Notes
 

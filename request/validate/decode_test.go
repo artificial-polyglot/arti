@@ -117,9 +117,6 @@ compare:
 	if status != nil {
 		t.Fatal(status)
 	}
-	if !req.TextEncoding.FastText {
-		t.Error("FastText should be true")
-	}
 	_, _ = decode.Encode(context.Background(), "yaml", req)
 	var boolTests = []bool{
 		req.Output.CSV,
@@ -136,7 +133,6 @@ compare:
 		req.TextData.BibleBrain.TextPlain,
 		req.TextData.NoText,
 		req.Timestamps.BibleBrain,
-		req.Timestamps.Aeneas,
 		req.Timestamps.TSBucket,
 		req.Timestamps.MMSFAVerse,
 		req.Timestamps.MMSAlign,
@@ -150,10 +146,6 @@ compare:
 		req.SpeechToText.NoSpeechToText,
 		req.Detail.Lines,
 		req.Detail.Words,
-		req.AudioEncoding.MFCC,
-		req.AudioEncoding.NoEncoding,
-		req.TextEncoding.FastText,
-		req.TextEncoding.NoEncoding,
 		req.AudioProof.HTMLReport,
 		req.Compare.HTMLReport,
 		req.Compare.CompareSettings.LowerCase,

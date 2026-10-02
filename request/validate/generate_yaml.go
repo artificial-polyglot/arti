@@ -44,8 +44,6 @@ func Marshal(req request.Request) ([]byte, error) {
 	w.nested(0, "speech_to_text", func(sub *yamlBuilder, d int) { appendSpeechToText(sub, d, req.SpeechToText) })
 	w.nested(0, "stt_decoder", func(sub *yamlBuilder, d int) { appendSTTDecoder(sub, d, req.STTDecoder) })
 	w.nested(0, "detail", func(sub *yamlBuilder, d int) { appendDetail(sub, d, req.Detail) })
-	w.nested(0, "audio_encoding", func(sub *yamlBuilder, d int) { appendAudioEncoding(sub, d, req.AudioEncoding) })
-	w.nested(0, "text_encoding", func(sub *yamlBuilder, d int) { appendTextEncoding(sub, d, req.TextEncoding) })
 	w.nested(0, "audio_proof", func(sub *yamlBuilder, d int) { appendAudioProof(sub, d, req.AudioProof) })
 	w.nested(0, "compare", func(sub *yamlBuilder, d int) { appendCompare(sub, d, req.Compare) })
 	return []byte(w.sb.String()), nil
@@ -111,7 +109,6 @@ func appendSheetColumns(w *yamlBuilder, depth int, s request.SheetColumns) {
 
 func appendTimestamps(w *yamlBuilder, depth int, t request.Timestamps) {
 	w.boolean(depth, "bible_brain", t.BibleBrain, true)
-	w.boolean(depth, "aeneas", t.Aeneas, true)
 	w.boolean(depth, "ts_bucket", t.TSBucket, true)
 	w.boolean(depth, "mms_fa_verse", t.MMSFAVerse, true)
 	w.boolean(depth, "mms_align", t.MMSAlign, true)
@@ -175,16 +172,6 @@ func appendDetail(w *yamlBuilder, depth int, d request.Detail) {
 	w.boolean(depth, "lines", d.Lines, true)
 	w.boolean(depth, "verses", d.Verses, true)
 	w.boolean(depth, "words", d.Words, true)
-}
-
-func appendAudioEncoding(w *yamlBuilder, depth int, a request.AudioEncoding) {
-	w.boolean(depth, "mfcc", a.MFCC, true)
-	w.boolean(depth, "no_encoding", a.NoEncoding, true)
-}
-
-func appendTextEncoding(w *yamlBuilder, depth int, t request.TextEncoding) {
-	w.boolean(depth, "fast_text", t.FastText, true)
-	w.boolean(depth, "no_encoding", t.NoEncoding, true)
 }
 
 func appendAudioProof(w *yamlBuilder, depth int, a request.AudioProof) {
