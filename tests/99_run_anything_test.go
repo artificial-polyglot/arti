@@ -6,27 +6,38 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
-const runAnything = `is_new: yes
-dataset_name: N2QAEBSP
-username: Tests
-language_iso: qae
-notify_ok: [ntfy/artificial-polyglot]
-notify_err: [ntfy/artificial-polyglot,gary@shortsands.com]
-text_data:
-  file: /Users/gary/arti2/fcbh_data/Dawasamu N2QAEBSP (Gospels)/Text Files/SFM Text/*.SFM
+const runAnything = `is_new: true 
+dataset_name: N2TTS
+username: GaryNTest
+bible_id: ""
+language_iso: tts 
+priority: 3
+notify_ok:
+    - ntfy/arti2
+notify_err:
+    - ntfy/arti2
+testament:
+    nt: true
+    ot: true
+#database:
+#    aws_s3: s3://arti-output/GaryNTest/N1SKNSEC/arti/00003/database/N1SKNSEC.db
 audio_data:
-  file: /Users/gary/arti2/fcbh_data/Dawasamu N2QAEBSP (Gospels)/N2QAEBSP Chapter VOX/*.mp3
+    aws_s3: s3://arti-input/N2TTS_ISan/*.mp3
+text_data:
+    file: /Users/gary/arti2/laobible/LAO_BIBLE.json
+#    aws_s3: s3://arti-input/N2TTS_ISan/*.json
 timestamps:
-  mms_fa_verse: yes
-  mms_align: no
+    mms_align: true
 training:
-  redo_training: yes
-  mms_adapter:
-    batch_mb: 4
-    num_epochs: 1
-    learning_rate: 1e-3
-    warmup_pct: 12.0
-    grad_norm_max: 0.4
+    redo_training: true 
+    mms_adapter:
+        batch_mb: 4
+        num_epochs: 16
+        learning_rate: 0.001
+        warmup_pct: 12
+        grad_norm_max: 0.4
+audio_proof:
+    html_report: true
 `
 
 func TestRunAnything(t *testing.T) {

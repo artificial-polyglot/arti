@@ -251,6 +251,8 @@ func setMediaType(ctx context.Context, file *generic.InputFile) *log.Status {
 	fNLower := strings.ToLower(fN)
 	if strings.HasSuffix(fN, `_ET`) || strings.HasSuffix(fN, `_ET.json`) {
 		file.MediaType = request.TextPlainEdit
+	} else if strings.HasSuffix(fNLower, `.json`) {
+		file.MediaType = request.TextPlain
 	} else if strings.HasSuffix(fNLower, `usx`) {
 		file.MediaType = request.TextUSXEdit
 	} else if strings.HasSuffix(fNLower, `.sfm`) || strings.HasSuffix(fNLower, `.usfm`) {
