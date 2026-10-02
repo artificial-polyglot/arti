@@ -297,6 +297,7 @@ func (m *MMSAlign) processPyOutput(file generic.InputFile, wordRefs []Word, resp
 		word.Chars = faWd
 		words = append(words, word)
 	}
+	m.fillEmptyWords(words)
 	var wordsByLine [][]db.Audio
 	wordsByLine = m.groupByLine(words)
 	var verses []db.Audio
@@ -386,4 +387,31 @@ func (m *MMSAlign) midPoint(parts []db.Audio) []db.Audio {
 		}
 	}
 	return parts
+}
+
+// fillEmptyWords gives each word that received no characters from forced alignment
+// (e.g. a footnote reference like "12:13", which uroman reduces to nothing) a
+// zero-length timestamp at the end of the previous word, so verse rollups and
+// midPoint never see the default 0 timestamps.
+func (m *MMSAlign) fillEmptyWords(words []db.Audio) {
+	for i := range words {
+		if len(words[i].Chars) > 0 {
+			continue
+		}
+		var ts float64
+		if i > 0 {
+			ts = words[i-1].EndTS
+		} else {
+			// No previous word: use the start of the first word that has characters
+			for j := 1; j < len(words); j++ {
+				if len(words[j].Chars) > 0 {
+					ts = words[j].BeginTS
+					break
+				}
+			}
+		}
+		words[i].BeginTS = ts
+		words[i].EndTS = ts
+		log.Warn(m.ctx, "No FA chars for word", words[i].Text, "in script", words[i].ScriptId, "- using", ts)
+	}
 }

@@ -67,10 +67,10 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 			return status
 		}
 
-		scriptText = append(scriptText, wordText)
-		if i == 0 {
+		if len(scriptText) == 0 {
 			scriptBegin = wordBegin
 		}
+		scriptText = append(scriptText, wordText)
 		scriptEnd = wordEnd
 		scriptErrorSum += wordErrorSum
 		scriptCharCount += len(wChars)
