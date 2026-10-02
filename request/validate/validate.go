@@ -171,9 +171,6 @@ func (r *RequestValidator) checkTimestamps(req *request.Timestamps) {
 	if req.BibleBrain {
 		count += 1
 	}
-	if req.TSBucket {
-		count += 1
-	}
 	if req.MMSFAVerse {
 		count += 1
 	}

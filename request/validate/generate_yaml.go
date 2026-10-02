@@ -109,7 +109,6 @@ func appendSheetColumns(w *yamlBuilder, depth int, s request.SheetColumns) {
 
 func appendTimestamps(w *yamlBuilder, depth int, t request.Timestamps) {
 	w.boolean(depth, "bible_brain", t.BibleBrain, true)
-	w.boolean(depth, "ts_bucket", t.TSBucket, true)
 	w.boolean(depth, "mms_fa_verse", t.MMSFAVerse, true)
 	w.boolean(depth, "mms_align", t.MMSAlign, true)
 	w.boolean(depth, "no_timestamps", t.NoTimestamps, true)

@@ -133,7 +133,6 @@ compare:
 		req.TextData.BibleBrain.TextPlain,
 		req.TextData.NoText,
 		req.Timestamps.BibleBrain,
-		req.Timestamps.TSBucket,
 		req.Timestamps.MMSFAVerse,
 		req.Timestamps.MMSAlign,
 		req.Timestamps.NoTimestamps,

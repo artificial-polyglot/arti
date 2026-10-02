@@ -285,7 +285,6 @@ Choose timestamp generation method (only one can be selected):
 ```yaml
 timestamps:
   bible_brain: yes             # Use Bible Brain timestamps (not recommended - last verse has no ending timestamp)
-  ts_bucket: yes               # Pull timestamp data from Sandeep's bucket
   mms_fa_verse: yes            # Compute timestamps using MMS forced alignment
   mms_align: yes               # Second method for computing timestamps with word/verse scores
   no_timestamps: yes           # If timestamps are not needed

@@ -56,7 +56,6 @@ text_data: # Choose one of the following
 
 timestamps: # If timestamps are needed, mark Yes by source
   bible_brain: # Use is not recommended, because the last verse has no ending timestamp.
-  ts_bucket: # This will pull timestamp data from Sandeep's bucket
   mms_fa_verse: # This will compute timestamps using mms forced alignment
   mms_align: # This is a second method for computing timestamps.  It also provides a score for each word and verse.
   no_timestamps: # If time stamps are not needed

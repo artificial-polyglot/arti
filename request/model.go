@@ -306,7 +306,6 @@ type Detail struct {
 
 type Timestamps struct {
 	BibleBrain   bool `yaml:"bible_brain,omitempty" json:"bible_brain,omitempty"`
-	TSBucket     bool `yaml:"ts_bucket,omitempty" json:"ts_bucket,omitempty"`
 	MMSFAVerse   bool `yaml:"mms_fa_verse,omitempty" json:"mms_fa_verse,omitempty"`
 	MMSAlign     bool `yaml:"mms_align,omitempty" json:"mms_align,omitempty"`
 	NoTimestamps bool `yaml:"no_timestamps,omitempty" json:"no_timestamps,omitempty"`

@@ -443,12 +443,6 @@ func (c *Controller) timestamps(audioFiles []generic.InputFile) *log.Status {
 				}
 			}
 		}
-	} else if c.req.Timestamps.TSBucket {
-		var ts timestamp.TSBucket
-		ts, status = timestamp.NewTSBucket(c.ctx, c.database)
-		if status == nil {
-			status = ts.ProcessFiles(audioFiles)
-		}
 	} else if c.req.Timestamps.MMSFAVerse {
 		var ts mms.ForcedAlign
 		ts = mms.NewForcedAlign(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage)
