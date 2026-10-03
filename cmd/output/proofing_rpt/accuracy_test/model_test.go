@@ -47,11 +47,13 @@ type wordSwitch struct {
 func CasesForTest() []testCase {
 	testament := req.Testament{NT: true}
 	var tests []testCase
+	tests = append(tests, testCase{On: true, ErrorRateMax: 0.6, MediaId: "N2TTS", RunNum: "00005", MediaName: "Isan N2TTSXXX",
+		LanguageISO: "tts", Testament: testament, AudioFilesKey: "*.mp3"})
 	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N1SKNSEC", RunNum: "00028", MediaName: "Kolibugan N1SKNSEC",
 		LanguageISO: "skn", Testament: testament, AudioFilesKey: "N1SKNSEC Chapter mp3/*.mp3"})
 	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2ATGMLT", RunNum: "00007", MediaName: "Arhe N2ATGMLT",
 		LanguageISO: "atg", Testament: testament, AudioFilesKey: "N2ATGMLT Chapter mp3/*.mp3"})
-	tests = append(tests, testCase{On: true, ErrorRateMax: 0.15, MediaId: "N2CCPBBS", RunNum: "00016", MediaName: "Chakma N2CCPBBS",
+	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2CCPBBS", RunNum: "00016", MediaName: "Chakma N2CCPBBS",
 		LanguageISO: "ccp", Testament: testament, AudioFilesKey: "N2CCPBBS Chapter mp3/*.mp3"})
 	tests = append(tests, testCase{On: false, ErrorRateMax: 0.0, MediaId: "N2MGUPNG", RunNum: "00005", MediaName: "Magi N2MGUPNG",
 		LanguageISO: "mgu", Testament: testament, AudioFilesKey: "N2MGUPNG Chapter VOX/*.mp3"})
