@@ -9,11 +9,11 @@ import (
 
 const proofing_rpt_yaml = `
 is_new: false 
-dataset_name: N2CCPBBS
+dataset_name: N2SKNSEC
 username: GaryNTest
-language_iso: ccp
+language_iso: skn
 database:
-    aws_s3: s3://arti-output/GaryNTest/N2CCPBBS/arti/00016/database/N2CCPBBS.db
+    aws_s3: s3://arti-output/GaryNTest/N1SKNSEC/arti/00028/database/N1SKNSEC.db
 audio_proof:
     html_report: true
 `
