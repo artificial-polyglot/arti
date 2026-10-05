@@ -21,7 +21,7 @@ func TestCharFilter1(t *testing.T) {
 	if status1 != nil {
 		t.Fatal(status1)
 	}
-	diffFilter := diff.NewCharFilter1(verses)
+	diffFilter := NewCharFilter1(verses)
 	diffFilter.RankReplaceCounts()
 	diffFilter.DisplayCharFilter()
 	newDiff := diffFilter.VerseSliceCompare(verses)

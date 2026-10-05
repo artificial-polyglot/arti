@@ -1,4 +1,4 @@
-package diff
+package proofing_rpt
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/utility/diff"
 )
 
 const minCharCount = 3
@@ -28,16 +29,16 @@ func NewCharFilter1(verses []generic.Verse2) CharFilter1 {
 	return f
 }
 
-func (f *CharFilter1) DiffFilter(diffs []Diff) []Diff {
+func (f *CharFilter1) DiffFilter(diffs []diff.Diff) []diff.Diff {
 	for i := range diffs {
 		df := diffs[i]
-		if df.Type == OpReplace {
+		if df.Type == diff.OpReplace {
 			diffs[i] = f.WordCompare(df)
-		} else if df.Type == OpInsert || df.Type == OpDelete {
+		} else if df.Type == diff.OpInsert || df.Type == diff.OpDelete {
 			if utf8.RuneCountInString(df.Text) == 1 {
 				run, _ := utf8.DecodeRuneInString(df.Text)
 				if IsDiffIgnorable(run) {
-					diffs[i].Type = OpEqual
+					diffs[i].Type = diff.OpEqual
 				}
 			}
 		}
@@ -45,8 +46,8 @@ func (f *CharFilter1) DiffFilter(diffs []Diff) []Diff {
 	return diffs
 }
 
-func (f *CharFilter1) VerseSliceCompare(verses []generic.Verse2) [][]Diff {
-	var result [][]Diff
+func (f *CharFilter1) VerseSliceCompare(verses []generic.Verse2) [][]diff.Diff {
+	var result [][]diff.Diff
 	for _, vs := range verses {
 		difSlice := f.VerseCompare(vs)
 		result = append(result, difSlice)
@@ -54,13 +55,13 @@ func (f *CharFilter1) VerseSliceCompare(verses []generic.Verse2) [][]Diff {
 	return result
 }
 
-func (f *CharFilter1) VerseCompare(verse generic.Verse2) []Diff {
-	var result []Diff
+func (f *CharFilter1) VerseCompare(verse generic.Verse2) []diff.Diff {
+	var result []diff.Diff
 	refText := strings.ReplaceAll(verse.Text(), "-", " ")
 	asrText := strings.ReplaceAll(verse.ASRText, "-", " ")
-	wDiff := WordLevenshtein(refText, asrText)
+	wDiff := diff.WordLevenshtein(refText, asrText)
 	for _, w := range wDiff {
-		if w.Type == OpReplace {
+		if w.Type == diff.OpReplace {
 			w = f.WordCompare(w)
 		}
 		result = append(result, w)
@@ -68,26 +69,26 @@ func (f *CharFilter1) VerseCompare(verse generic.Verse2) []Diff {
 	return result
 }
 
-func (f *CharFilter1) WordCompare(word Diff) Diff {
-	for _, ch := range CharLevenshtein(word.Text, word.Replace) {
-		if ch.Type == OpEqual {
+func (f *CharFilter1) WordCompare(word diff.Diff) diff.Diff {
+	for _, ch := range diff.CharLevenshtein(word.Text, word.Replace) {
+		if ch.Type == diff.OpEqual {
 			continue
 		}
-		if ch.Type == OpReplace && f.CharCompare(ch).Type == OpEqual {
+		if ch.Type == diff.OpReplace && f.CharCompare(ch).Type == diff.OpEqual {
 			continue
 		}
-		if (ch.Type == OpInsert || ch.Type == OpDelete) && IsDiffIgnorable(ch.Char) {
+		if (ch.Type == diff.OpInsert || ch.Type == diff.OpDelete) && IsDiffIgnorable(ch.Char) {
 			continue
 		}
 		return word // at least one difference is not an allowed replacement
 	}
-	return Diff{Type: OpEqual, Text: word.Text}
+	return diff.Diff{Type: diff.OpEqual, Text: word.Text}
 }
 
-func (f *CharFilter1) CharCompare(ch CDiff) CDiff {
+func (f *CharFilter1) CharCompare(ch diff.CDiff) diff.CDiff {
 	_, ok := f.charReplaceMap[ch.Char][ch.Replace]
 	if ok {
-		return CDiff{Type: OpEqual, Char: ch.Char}
+		return diff.CDiff{Type: diff.OpEqual, Char: ch.Char}
 	}
 	return ch
 }
@@ -145,12 +146,12 @@ func CountCharOccurances(verses []generic.Verse2) map[rune]int {
 	return countChars
 }
 
-func FindSimilarChars(verses []generic.Verse2) map[CDiff]int {
-	var countReplace = make(map[CDiff]int)
+func FindSimilarChars(verses []generic.Verse2) map[diff.CDiff]int {
+	var countReplace = make(map[diff.CDiff]int)
 	for _, vs := range verses {
-		cdiff := CharLevenshtein(vs.Text(), vs.ASRText)
+		cdiff := diff.CharLevenshtein(vs.Text(), vs.ASRText)
 		for _, d := range cdiff {
-			if d.Type == OpReplace {
+			if d.Type == diff.OpReplace {
 				countReplace[d]++
 			}
 		}
@@ -159,7 +160,7 @@ func FindSimilarChars(verses []generic.Verse2) map[CDiff]int {
 }
 
 type ReplaceCount struct {
-	Diff       CDiff
+	Diff       diff.CDiff
 	Count      int     // times Char was replaced by Replace
 	CharCount  int     // times Char occurs in the reference text
 	Rate       float64 // % of Char occurrences replaced by Replace
@@ -167,7 +168,7 @@ type ReplaceCount struct {
 	//CumShare   float64 // % of all replacements covered by this pair and all above it
 }
 
-func CreateReplaceCounts(charCounts map[rune]int, diffCounts map[CDiff]int, minCount int) []ReplaceCount {
+func CreateReplaceCounts(charCounts map[rune]int, diffCounts map[diff.CDiff]int, minCount int) []ReplaceCount {
 	var counts []ReplaceCount
 	var total int
 	for d, cnt := range diffCounts {
