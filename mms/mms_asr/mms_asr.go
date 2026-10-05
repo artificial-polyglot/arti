@@ -133,11 +133,14 @@ func (a *MMSASR) processFile(file generic.InputFile, tempDir string) *log.Status
 		audioFiles = append(audioFiles, audioFile)
 	} else {
 		log.Info(a.ctx, "MMS ASR", file.BookId, file.Chapter)
-		audioFiles, status = a.conn.SelectFAScriptTimestamps(file.BookId, file.Chapter)
+		audioFiles, status = a.SelectFAScriptTimestamps(file.BookId, file.Chapter)
 		if status != nil {
 			return status
 		}
 		audioFiles, status = ffmpeg.ChopByTimestamp(a.ctx, tempDir, wavFile, audioFiles)
+		if status != nil {
+			return status
+		}
 	}
 	for i, ts := range audioFiles {
 		audioFiles[i].AudioFile = file.Filename
@@ -173,4 +176,33 @@ func (a *MMSASR) selectScriptLine(scriptLine string) (db.Audio, *log.Status) {
 		return rec, log.Error(a.ctx, 500, err, "Error during SelectScriptLine.")
 	}
 	return rec, nil
+}
+
+func (d *MMSASR) SelectFAScriptTimestamps(bookId string, chapter int) ([]db.Audio, *log.Status) {
+	var results []db.Audio
+	var query = `SELECT script_id, audio_file, verse_str, verse_end, verse_num,
+			script_begin_ts, script_end_ts, fa_score
+			FROM scripts WHERE book_id = ? AND chapter_num = ?
+			ORDER BY script_id`
+	rows, err := d.conn.DB.Query(query, bookId, chapter)
+	if err != nil {
+		return results, log.Error(d.ctx, 500, err, "Error during SelectFAScriptTimestamps By Book Chapter.")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var rec db.Audio
+		rec.BookId = bookId
+		rec.ChapterNum = chapter
+		err = rows.Scan(&rec.ScriptId, &rec.AudioFile, &rec.VerseStr, &rec.VerseEnd, &rec.VerseSeq,
+			&rec.BeginTS, &rec.EndTS, &rec.FAScore)
+		if err != nil {
+			return results, log.Error(d.ctx, 500, err, "Error during SelectFAScriptTimestamps By Book Chapter.")
+		}
+		results = append(results, rec)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Warn(d.ctx, err, query)
+	}
+	return results, nil
 }
