@@ -3,6 +3,7 @@ package proofing_rpt
 import (
 	"context"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -134,26 +135,28 @@ func (h *HTMLWriter) WriteLine(verse generic.Verse2, audioURL generic.AudioFile)
 	_, _ = h.out.WriteString(`<td>`)
 	var span string
 	for _, wd := range verse.Words {
-		if wd.IsASR {
+		wordPunct := html.EscapeString(wd.WordPunct)
+		uroman := html.EscapeString(wd.Uroman)
+		if wd.IsASR && false { // I don't know why this is here, so I added false
 			span = wd.Text
 		} else if wd.IsASR && wd.Text == wd.Uroman {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgb(255, 193, 84);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wordPunct)
 		} else if wd.IsASR {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgb(255, 193, 84);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.WordPunct)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wordPunct, uroman, wordPunct)
 		} else if wd.Text == wd.Uroman && wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f>%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wordPunct)
 		} else if wd.Text == wd.Uroman {
-			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Opacity, wd.WordPunct)
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f style="background-color:rgba(255,0,0,%.2f);">%s</span>`,
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.Opacity, wordPunct)
 		} else if wd.Opacity == 0 {
 			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.WordPunct)
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wordPunct, uroman, wordPunct)
 		} else {
-			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%f2);">%s</span>`,
-				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wd.WordPunct, wd.Uroman, wd.Opacity, wd.WordPunct)
+			span = fmt.Sprintf(`<span id="w-%d" title="%.3f" data-begin=%.3f data-end=%.3f data-word="%s" data-uroman="%s" style="background-color:rgba(255,0,0,%.2f);">%s</span>`,
+				wd.WordId, wd.FAScore, wd.BeginTS, wd.EndTS, wordPunct, uroman, wd.Opacity, wordPunct)
 		}
 		_, _ = h.out.WriteString(span)
 		_, _ = h.out.WriteString(" ")
@@ -222,14 +225,13 @@ func (h *HTMLWriter) WriteEnd() {
 		$('#hideVerse0').on('change', function() {
 			table.draw();
 		});
-		function applyUroman() {
-			var showU = $('#showUroman').prop('checked');
-			document.querySelectorAll('span[data-word]').forEach(function(sp) {
-				sp.textContent = showU ? sp.dataset.uroman : sp.dataset.word;
+		$('#showUroman').prop('checked', false);
+		$('#showUroman').on('change', function() {
+			var key = this.checked ? 'uroman' : 'word';
+			$(table.rows().nodes()).find('span[data-uroman]').each(function() {
+				this.textContent = this.dataset[key];
 			});
-		}
-		$('#showUroman').on('change', applyUroman);   // user toggles
-		table.on('draw', applyUroman);
+		});
 		$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
 			var cutoff = parseFloat($('#scoreCutoff').val());
 			if (isNaN(cutoff)) return true;       // empty/invalid → show all
@@ -329,20 +331,16 @@ func minSecFormat(duration float64) string {
 func ComputeMinimum(words []generic.Word2) float64 {
 	var minimum = 1.0
 	for _, w := range words {
-		//if w.Ttype == "W" {
 		if w.FAScore < minimum {
 			minimum = w.FAScore
 		}
-		//}
 	}
 	return minimum
 }
 
 func startTime(words []generic.Word2) float64 {
 	for _, w := range words {
-		//if w.Ttype == "W" {
 		return w.BeginTS
-		//}
 	}
 	return 0.0
 }

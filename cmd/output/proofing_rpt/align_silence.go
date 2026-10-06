@@ -9,6 +9,7 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/uroman"
 	"gonum.org/v1/gonum/stat"
 )
 
@@ -36,8 +37,9 @@ const (
 const OPACITY_CUTOFF = 0.1
 
 type AlignSilence struct {
-	ctx  context.Context
-	conn db.DBAdapter
+	ctx      context.Context
+	conn     db.DBAdapter
+	uromExec uroman.UromanExec
 }
 
 func NewAlignSilence(conn db.DBAdapter) AlignSilence {
@@ -63,9 +65,13 @@ func silencePositionOf(verses []generic.Verse2, prevVi, prevWi, vi, wi int) Sile
 	}
 }
 
-func (a *AlignSilence) Process() ([]generic.Verse2, map[string]generic.AudioFile, *log.Status) {
+func (a *AlignSilence) Process(langISO string) ([]generic.Verse2, map[string]generic.AudioFile, *log.Status) {
 	var audioURLs map[string]generic.AudioFile
 	verses, status := SelectCharData(a.conn)
+	if status != nil {
+		return verses, audioURLs, status
+	}
+	a.uromExec, status = uroman.NewUromanExec(a.ctx, langISO, true)
 	if status != nil {
 		return verses, audioURLs, status
 	}

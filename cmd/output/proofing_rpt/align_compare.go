@@ -104,6 +104,8 @@ func (a *AlignSilence) buildASRWordFromInserts(cDiffs []diff.CDiff, idx int) gen
 	if len(newWord.Chars) > 0 {
 		newWord.IsASR = true
 		newWord.Text = string(text)
+		newWord.WordPunct = newWord.Text
+		newWord.Uroman, _ = a.uromExec.Transliterate(newWord.Text) // error status was discarded
 		newWord.FAScore = 1.1
 	}
 	return newWord

@@ -10,7 +10,7 @@ import (
 func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
 	var output []db.Output
 	calc := NewAlignSilence(database)
-	faLines, audioURLs, status := calc.Process()
+	faLines, audioURLs, status := calc.Process(req.LanguageISO)
 	if status != nil {
 		return output, status
 	}
