@@ -75,9 +75,10 @@ func (h *HTMLWriter) WriteHeading(languageISO string) {
 	_, _ = h.out.WriteString(` only, while GREEN characters are in audio ASR transcript`)
 	//_, _ = h.out.WriteString(h.datasetName)
 	_, _ = h.out.WriteString(" only</h3>\n")
-	controls := `<div style="text-align: center; margin: 10px;">
+	controls := `<div style="display: flex; justify-content: space-evenly; align-items: center; margin: 30px; width=90%">
 		<span><input type="checkbox" id="hideVerse0" checked><label for="hideVerse0">Hide Headings</label></span>
-		<span style="margin-left: 20px;"><select id="playSpeed">
+		<span><input type="checkbox" id="showUroman"><label for="showUroman">Show Uroman</label></span>
+		<span><select id="playSpeed">
         	<option value="1">Normal</option>
         	<option value="0.75">Slower (0.75×)</option>
         	<option value="0.5">Slowest (0.5×)</option>
@@ -125,7 +126,7 @@ func (h *HTMLWriter) WriteLine(verse generic.Pair) {
 		params = append(params, strconv.FormatFloat(verse.EndTS, 'f', 4, 64))
 		h.writeCell("<button title=\"" + h.minSecFormat(verse.BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
 		h.writeCell(verse.Ref.Description())
-		h.writeCell(verse.HTML)
+		h.writeCell(`<span class="txt">` + verse.Text.HTML + `</span><span class="uro">` + verse.Uroman.HTML + `</span>`)
 		_, _ = h.out.WriteString("</tr>\n")
 	}
 }
@@ -173,6 +174,9 @@ func (h *HTMLWriter) WriteEnd() {
 	.dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter {
 		margin-bottom: 20px;
 	}
+	#diffTable .uro { display: none; }
+	#diffTable.show-uroman .txt { display: none; }
+	#diffTable.show-uroman .uro { display: inline; }
 	</style>
 `
 	_, _ = h.out.WriteString(style)
@@ -197,6 +201,10 @@ func (h *HTMLWriter) WriteEnd() {
     	$('#hideVerse0').on('change', function() {
         	table.draw();
     	});
+		$('#showUroman').prop('checked', false);
+		$('#showUroman').on('change', function() {
+    		$('#diffTable').toggleClass('show-uroman', this.checked);
+		});
     });
     </script>
 `
