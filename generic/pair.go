@@ -1,22 +1,21 @@
 package generic
 
 import (
-	"database/sql"
 	"unicode/utf8"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
+	"github.com/artificial-polyglot/arti/utility/diff"
 )
 
 type Pair struct {
-	Ref       VerseRef              `json:"ref"`
-	ScriptNum string                `json:"script_num"`
-	AudioFile string                `json:"audio_file"`
-	BeginTS   float64               `json:"begin_ts"`
-	EndTS     float64               `json:"end_ts"`
-	Base      PairText              `json:"base"`
-	Comp      PairText              `json:"comp"`
-	Diffs     []diffmatchpatch.Diff `json:"diffs"`
-	HTML      string                `json:"html"`
+	Ref       VerseRef `json:"ref"`
+	ScriptNum string   `json:"script_num"`
+	AudioFile string   `json:"audio_file"`
+	BeginTS   float64  `json:"begin_ts"`
+	EndTS     float64  `json:"end_ts"`
+	Base      PairText `json:"base"`
+	Comp      PairText `json:"comp"`
+	Text      PairDiff `json:"text"`
+	Uroman    PairDiff `json:"uroman"`
 }
 
 type PairText struct {
@@ -25,19 +24,16 @@ type PairText struct {
 	Uroman   string `json:"uroman"`
 }
 
-func (p *Pair) Text(isLatin sql.NullBool) (string, string) {
-	if isLatin.Bool {
-		return p.Base.Text, p.Comp.Text
-	} else {
-		return p.Base.Uroman, p.Comp.Uroman
-	}
+type PairDiff struct {
+	Diffs []diff.Diff `json:"diffs"`
+	HTML  string      `json:"html"`
 }
 
 func (p *Pair) Inserts() int {
 	var inserts int
-	for _, diff := range p.Diffs {
-		if diff.Type == diffmatchpatch.DiffInsert {
-			inserts += utf8.RuneCountInString(diff.Text)
+	for _, df := range p.Text.Diffs {
+		if df.Type == diff.OpInsert {
+			inserts += utf8.RuneCountInString(df.Text)
 		}
 	}
 	return inserts
@@ -45,9 +41,9 @@ func (p *Pair) Inserts() int {
 
 func (p *Pair) Deletes() int {
 	var deletes int
-	for _, diff := range p.Diffs {
-		if diff.Type == diffmatchpatch.DiffDelete {
-			deletes += utf8.RuneCountInString(diff.Text)
+	for _, df := range p.Text.Diffs {
+		if df.Type == diff.OpDelete {
+			deletes += utf8.RuneCountInString(df.Text)
 		}
 	}
 	return deletes
@@ -56,9 +52,9 @@ func (p *Pair) Deletes() int {
 func (p *Pair) LargestLength() int {
 	var result int
 	var length int
-	for _, diff := range p.Diffs {
-		if diff.Type != diffmatchpatch.DiffEqual {
-			length += utf8.RuneCountInString(diff.Text)
+	for _, df := range p.Text.Diffs {
+		if df.Type != diff.OpEqual {
+			length += utf8.RuneCountInString(df.Text)
 		} else {
 			if length > result {
 				result = length

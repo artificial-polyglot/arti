@@ -16,7 +16,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	var output []db.Output
 	ctx := database.Ctx
 
-	records, fileMap, status := CompareReport(database)
+	records, fileMap, status := CompareReport(database, req.LanguageISO)
 	if status != nil {
 		return output, status
 	}

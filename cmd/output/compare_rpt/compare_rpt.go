@@ -6,9 +6,10 @@ import (
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/diff"
+	"github.com/artificial-polyglot/arti/utility/uroman"
 )
 
-func CompareReport(conn db.DBAdapter) ([]generic.Pair, map[string]generic.AudioFile, *log.Status) {
+func CompareReport(conn db.DBAdapter, langISO string) ([]generic.Pair, map[string]generic.AudioFile, *log.Status) {
 	var records []generic.Pair
 	var fileMap map[string]generic.AudioFile
 	verses, status := proofing_rpt.SelectCharData(conn)
@@ -19,12 +20,23 @@ func CompareReport(conn db.DBAdapter) ([]generic.Pair, map[string]generic.AudioF
 	if status != nil {
 		return records, fileMap, status
 	}
+	urExec, status1 := uroman.NewUromanExec(conn.Ctx, langISO, true)
+	if status1 != nil {
+		return records, fileMap, status1
+	}
 	for _, vs := range verses {
 		diffs := diff.DiffMatchPatch(vs.Text(), vs.ASRText)
 		if !diff.IsMatch(diffs) {
 			pair := vs.ToPair()
-			pair.Diffs = diffs
-			pair.HTML = diff.DiffPrettyHtml(diffs)
+			pair.Text.Diffs = diff.Convert2Diff(diffs)
+			pair.Text.HTML = diff.DiffPrettyHtml(diffs)
+			asrUroman, status2 := urExec.Transliterate(vs.ASRText)
+			if status2 != nil {
+				return records, fileMap, status2
+			}
+			diffs = diff.DiffMatchPatch(vs.Uroman(), asrUroman)
+			pair.Uroman.Diffs = diff.Convert2Diff(diffs)
+			pair.Uroman.HTML = diff.DiffPrettyHtml(diffs)
 			records = append(records, pair)
 		}
 	}

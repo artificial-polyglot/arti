@@ -73,8 +73,12 @@ func CharDiff(refText string, asrText string) []CDiff {
 
 // DiffConvert converts diffmatchpathch tree to a diff.Diff tree without modifying it.
 func DiffConvert(refText string, asrText string) []Diff {
-	var result []Diff
 	diffs := DiffMatchPatch(refText, asrText)
+	return Convert2Diff(diffs)
+}
+
+func Convert2Diff(diffs []diffmatchpatch.Diff) []Diff {
+	var result []Diff
 	for _, diff := range diffs {
 		switch diff.Type {
 		case diffmatchpatch.DiffEqual:
