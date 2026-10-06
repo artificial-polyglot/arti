@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
@@ -32,7 +33,7 @@ const (
 	betweenChapters
 )
 
-const OPACITY_CUTOFF = 0.5
+const OPACITY_CUTOFF = 0.1
 
 type AlignSilence struct {
 	ctx  context.Context
@@ -212,9 +213,17 @@ func (a *AlignSilence) SelectDuration(scriptId int64) (float64, *log.Status) {
 func (p *AlignSilence) ComputeOpacity(verses []generic.Verse2, opacityCutoff float64) {
 	for i := range verses {
 		for j := range verses[i].Words {
-			if verses[i].Words[j].FAScore < opacityCutoff {
-				verses[i].Words[j].Opacity = 1.0 - verses[i].Words[j].FAScore/opacityCutoff
-			}
+			verses[i].Words[j].Opacity = Opacity(verses[i].Words[j].FAScore)
 		}
+	}
+}
+
+func Opacity(faScore float64) float64 {
+	if faScore <= 0.0 {
+		return 0.9
+	} else if faScore < 0.1 {
+		return math.Max(0, math.Min(0.4, 0.4-4*faScore))
+	} else {
+		return 0
 	}
 }
