@@ -17,7 +17,7 @@ func (a *AlignSilence) CompareLines2ASR(verses []generic.Verse2) ([]generic.Vers
 	if status != nil {
 		return result, status
 	}
-	charFilter := diff.NewCharFilter1(verses)
+	charFilter := NewCharFilter1(verses)
 	for _, verse := range verses {
 		if false {
 			//if !a.HasSilence(verse) {
