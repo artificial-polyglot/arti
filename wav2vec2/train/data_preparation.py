@@ -9,7 +9,8 @@ from transformers import Wav2Vec2Processor
 from sqlite_utility import *
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from common import ensureMinimumTensorSize
-from tokenizer import normalizeText
+sys.path.insert(0, os.path.join(os.environ['GOPROJ'], 'utility', 'text_normalize'))
+from text_normalize import normalizeText
 import time
 import blosc
 

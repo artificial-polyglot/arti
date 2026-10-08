@@ -8,7 +8,8 @@ from transformers import Wav2Vec2Processor
 from io import BytesIO
 from sqlite_utility import *
 from data_pruner import dataPruner
-from tokenizer import normalizeText
+sys.path.insert(0, os.path.join(os.environ['GOPROJ'], 'utility', 'text_normalize'))
+from text_normalize import normalizeText
 import time
 
 

@@ -3,20 +3,12 @@ import unicodedata
 import json
 from transformers import Wav2Vec2CTCTokenizer
 from sqlite_utility import *
+sys.path.insert(0, os.path.join(os.environ['GOPROJ'], 'utility', 'text_normalize'))
+from text_normalize import normalizeText
 
 #
 # https://huggingface.co/blog/mms_adapters
 #
-
-def normalizeText(text):
-    """
-    The one place where text is prepared for the vocabulary and the training labels.
-    Both must go through this function; otherwise a character that NFC changes (for
-    example the Devanagari nukta letters U+0958-095F) is in the vocabulary in one form
-    and in the labels in another, and the labels get [UNK] for it.
-    The ASR and forced alignment code must call it too.
-    """
-    return unicodedata.normalize("NFC", text.lower())
 
 def createTokenizer(database, targetLang):
     chars = set()
