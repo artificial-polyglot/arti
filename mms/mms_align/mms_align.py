@@ -1,5 +1,6 @@
 import sys
 import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import json
 import torch
 import torchaudio
@@ -27,7 +28,12 @@ from error_handler import setup_error_handler
 #    sys.exit(1)
 #lang = sys.argv[1]
 setup_error_handler()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
 model = bundle.get_model(with_star=False)
 model.to(device)
 tokenizer = bundle.get_tokenizer()

@@ -1,4 +1,5 @@
 import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import sys
 import torch
 import torchaudio
@@ -22,12 +23,17 @@ import torchaudio.functional as F
 
 SAMPLING_FREQ = 16000
 EMISSION_INTERVAL = 30
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # MPS is not supported
 setup_error_handler()
 
 def generate_emissions(model, audio_file):
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     waveform, _ = torchaudio.load(audio_file)  # waveform: channels X T
-    waveform = waveform.to(DEVICE)
+    waveform = waveform.to(device)
     total_duration = sox.file_info.duration(audio_file)
 
     audio_sf = sox.file_info.sample_rate(audio_file)

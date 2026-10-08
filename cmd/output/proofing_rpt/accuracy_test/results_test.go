@@ -42,7 +42,7 @@ func NewAccuracyTest(ctx context.Context, test testCase) AccuracyTest {
 }
 
 func (a *AccuracyTest) AccuracyCheck() {
-	verses, _, status := a.silence.Process()
+	verses, _, status := a.silence.Process(a.test.LanguageISO)
 	if status != nil {
 		exit(status)
 	}

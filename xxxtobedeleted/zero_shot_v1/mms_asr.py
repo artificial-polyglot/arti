@@ -1,4 +1,5 @@
 import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import sys
 from datasets import Dataset, Audio
 from transformers import Wav2Vec2ForCTC

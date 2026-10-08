@@ -160,7 +160,7 @@ trainedModel = train_wav2vec2(
         lr = learningRate,
         warmup_steps = warmupSteps,
         max_grad_norm = gradNormMax,
-        log_steps = 1
+        log_steps = 10
 )
 sampleDB.close()
 logger.info("Training completed!")

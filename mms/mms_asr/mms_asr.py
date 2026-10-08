@@ -1,4 +1,5 @@
 import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import sys
 from datasets import Dataset, Audio
 from transformers import Wav2Vec2ForCTC
@@ -51,7 +52,7 @@ adapter = len(sys.argv) > 4 and sys.argv[4].lower() == "adapter"
 if torch.cuda.is_available():
     device = 'cuda'
 elif torch.backends.mps.is_available():
-    device = 'cpu' # mps not supported for this
+    device = 'mps'
 else:
     device = 'cpu'
 modelId = "facebook/mms-1b-all"

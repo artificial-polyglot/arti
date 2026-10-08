@@ -1,10 +1,11 @@
+import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
 import logging
 # from train_adapter
-import os
 import sys
 from transformers import Wav2Vec2FeatureExtractor
 from transformers import Wav2Vec2Processor
