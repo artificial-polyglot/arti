@@ -11,6 +11,8 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE
 from safetensors.torch import load_file
 sys.path.insert(0, os.path.abspath(os.path.join(os.environ['GOPROJ'], 'logger')))
 from error_handler import setup_error_handler
+sys.path.insert(0, os.path.join(os.environ['GOPROJ'], 'utility', 'text_normalize'))
+from text_normalize import normalizeText
 
 
 ## Documentation used to write this program
@@ -41,18 +43,19 @@ def ensureMinimumTensorSize(batch, minTensorLength, padValue):
     return batch
 
 if len(sys.argv) < 2:
-    print("Usage: qa_align.py {iso639-3} [adapter]", file=sys.stderr)
+    print("Usage: qa_align.py {iso639-3} [mms_adapters|wav2vec2ctc]", file=sys.stderr)
     sys.exit(1)
 lang = sys.argv[1]
-adapter = len(sys.argv) > 2 and sys.argv[2].lower() == "adapter"
+model_type = sys.argv[2].lower() if len(sys.argv) > 2 else ""
 if torch.cuda.is_available():
     device = 'cuda'
 elif torch.backends.mps.is_available():
-    device = 'mps'
+    device = 'cpu'
 else:
     device = 'cpu'
-modelId = "facebook/mms-1b-all"
-if adapter:
+
+if model_type == "mms_adapters":
+    modelId = "facebook/mms-1b-all"
     outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), 'mms_adapters', lang)
     processorDir = os.path.join(outputDir, f"processor_{lang}")
     processor = AutoProcessor.from_pretrained(processorDir)
@@ -64,11 +67,17 @@ if adapter:
     adapterFile = os.path.join(outputDir, adapterFile)
     adapter_weights = load_file(adapterFile)
     model.load_state_dict(adapter_weights, strict=False)
+elif model_type == "wav2vec2ctc":
+    modelDir = os.path.join(os.getenv('FCBH_DATASET_DB'), model_type, lang)
+    processor = AutoProcessor.from_pretrained(modelDir)
+    model = Wav2Vec2ForCTC.from_pretrained(modelDir, local_files_only=True)
 else:
+    modelId = "facebook/mms-1b-all"
     if not isSupportedLanguage(modelId, lang):
         print(lang, "is not supported by", modelId, file=sys.stderr)
     processor = AutoProcessor.from_pretrained(modelId, target_lang=lang)
     model = Wav2Vec2ForCTC.from_pretrained(modelId, target_lang=lang, ignore_mismatched_sizes=True)
+model.eval()
 
 model = model.to(device)
 vocab = processor.tokenizer.get_vocab()
@@ -81,6 +90,8 @@ for line in sys.stdin:
     streamData = fromDict.cast_column("audio", Audio(sampling_rate=16000))
     sample = next(iter(streamData))["audio"]["array"]
     inputs = processor(sample, sampling_rate=16_000, return_tensors="pt")
+    if model.config.feat_extract_norm == "group": # Needed for wav2vec2ctc models
+        inputs.pop("attention_mask", None)
     inputs = ensureMinimumTensorSize(inputs, 3200, 0)
     inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
     with torch.no_grad():
@@ -90,7 +101,7 @@ for line in sys.stdin:
     pred_ids = torch.argmax(logits, dim=-1)          # [1, T]
     transcript = processor.batch_decode(pred_ids)[0] # collapses repeats, drops blank, '|' -> space
     # Convert reference text to token indices using your adapter vocab
-    normalized = reference_text.replace(' ', '|').lower()
+    normalized = normalizeText(reference_text)
     tokens = [vocab[c] for c in normalized if c in vocab]
     char_timestamps = []
     if len(tokens) == 0:

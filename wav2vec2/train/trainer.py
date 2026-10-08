@@ -167,8 +167,7 @@ logger.info("Training completed!")
 outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), 'wav2vec2ctc', targetLang)
 os.makedirs(outputDir, exist_ok=True)
 model.save_pretrained(outputDir)
-processorDir = os.path.join(outputDir, "processor_" + targetLang)
-processor.save_pretrained(processorDir)  # Saves both feature extractor and tokenizer
+processor.save_pretrained(outputDir)  # Saves both feature extractor and tokenizer
 logger.info(f"Model and processor saved to {outputDir}")
 
 

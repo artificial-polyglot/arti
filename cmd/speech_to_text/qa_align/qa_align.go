@@ -29,19 +29,19 @@ type QAAlign struct {
 	conn      db.DBAdapter
 	lang      string
 	sttLang   string
-	adapter   bool
+	modelType string
 	testament request.Testament
 	s3Client  s3_datastore.S3Client
 	mmsAsrPy  *stdio_exec.StdioExec
 }
 
-func NewQAAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, adapter bool, testament request.Testament) QAAlign {
+func NewQAAlign(ctx context.Context, conn db.DBAdapter, lang string, sttLang string, modelType string, testament request.Testament) QAAlign {
 	var a QAAlign
 	a.ctx = ctx
 	a.conn = conn
 	a.lang = lang
 	a.sttLang = sttLang
-	a.adapter = adapter
+	a.modelType = modelType // mms_adapters | wav2vec2ctc | mms
 	a.testament = testament
 	return a
 }
@@ -58,7 +58,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	if a.sttLang != "" {
 		lang = a.sttLang
 	}
-	if !a.adapter {
+	if a.modelType == "mms" {
 		lang, status = mms.CheckLanguage(a.ctx, a.lang, a.sttLang, "mms_asr")
 		if status != nil {
 			return status
@@ -70,7 +70,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	}
 
 	bucket := os.Getenv("FCBH_MODELS_BUCKET")
-	prefix := "mms_adapters/" + lang
+	prefix := a.modelType + "/" + lang
 	localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
 	a.s3Client, status = s3_datastore.NewS3Client(a.ctx)
 	if status != nil {
@@ -82,11 +82,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	}
 
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "cmd/speech_to_text/qa_align/qa_align.py")
-	var useAdapter string
-	if a.adapter {
-		useAdapter = "adapter"
-	}
-	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, useAdapter)
+	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, a.modelType)
 	if status != nil {
 		return status
 	}
