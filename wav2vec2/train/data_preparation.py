@@ -3,10 +3,13 @@ import sys
 import torch
 import torchaudio
 import numpy as np
+import soundfile as sf
+from io import BytesIO
 from transformers import Wav2Vec2Processor
 from sqlite_utility import *
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from common import ensureMinimumTensorSize, compress, decompress
+from common import ensureMinimumTensorSize
+from tokenizer import normalizeText
 import time
 import blosc
 
@@ -25,8 +28,7 @@ As of 10/28/75, this model is not being used.  So, I have not bothered to fix it
 # def prepareBatches() creates the actual tensors, and stores them compressed in a sqlite table.
 
 
-def dataPreparation(scriptsDB, scriptsDBPath, audioDir, processor, maxBatchSize, targetMemoryMB, minAudioSec,
-    pctExclude):
+def dataPreparation(scriptsDB, scriptsDBPath, audioDir, processor, maxBatchSize, targetMemoryMB, minAudioSec):
     (minTensorLength, minTensorMB) = calcMinTensor(minAudioSec, torch.float32)
     print("minAudioSec:", minAudioSec, "minTensorLength:", minTensorLength, "minTensorMB:", minTensorMB)
     scriptsDBName = os.path.basename(scriptsDBPath)
@@ -36,9 +38,7 @@ def dataPreparation(scriptsDB, scriptsDBPath, audioDir, processor, maxBatchSize,
     samplesDB = SqliteUtility(samplesDBPath)
     numSamples = prepareDataset(scriptsDB, samplesDB, audioDir, processor) # 22 sec
     print("numSamples", numSamples)
-    faErrorCutoff = dataPruner(scriptsDB, pctExclude)
-    print("faErrorCutoff", faErrorCutoff)
-    numBatches = identifyBatches(samplesDB, maxBatchSize, targetMemoryMB, minTensorMB, faErrorCutoff)
+    numBatches = identifyBatches(samplesDB, maxBatchSize, targetMemoryMB, minTensorMB)
     print("numBatches", numBatches)
     numTensors = prepareBatches(samplesDB, processor, minTensorLength)
     print("numTensors", numTensors)
@@ -53,7 +53,7 @@ def calcMinTensor(minAudioSec, dtype):
 
 
 """
-The fcbh-dataset-io program, also called Artificial Polyglot is being used to proof
+The arti program, also called Artificial Polyglot is being used to proof
 the correctness of audio files, but there is a fundamental problem with this that
 the training might learn the errors, and therefore not be able to identify them as errors.
 To mitigate this problem, this step is using data found during forced alignment to remove
@@ -62,13 +62,6 @@ The forced alignment is returning a pair of timestamps and a probability of corr
 character.  I summarize these probabilities of correctness to an average for each word,
 and each script line.
 """
-
-def dataPruner(database, pctExclude):
-    list = database.select("SELECT fa_score FROM words WHERE ttype='W' ORDER by fa_score",())
-    cutoffPos = int(len(list) * pctExclude)
-    faErrorCutoff = list[cutoffPos][0]
-    return faErrorCutoff
-
 
 def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
     samplesDB.execute('DROP TABLE IF EXISTS samples', ())
@@ -81,17 +74,25 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
         FROM scripts s
         JOIN words w ON w.script_id = s.script_id
         WHERE w.ttype = 'W'
+        AND w.word_id NOT IN (SELECT word_id FROM pruned_silence)
+        AND w.word_id NOT IN (SELECT word_id FROM pruned_data)
         ORDER BY w.word_end_ts - w.word_begin_ts -- sort by size
         """
     index = -1
+    vocab = processor.tokenizer.get_vocab()
+    unkId = processor.tokenizer.unk_token_id
+    numUnk = 0
+    missingChars = set()
     data = scriptsDB.select(query,())
     for (scriptId, wordId, reference, audioFile, beginTS, endTS, faScore, text) in data:
+        if endTS <= beginTS:
+            continue
         index += 1
         audioFile = audioFile.replace(".mp3", ".wav")
         audioPath = os.path.join(audioDir, audioFile)
 
-        info = torchaudio.info(audioPath, format="wav")
-        if info.sample_rate != 16000:
+        sample_rate = sf.info(audioPath).samplerate
+        if sample_rate != 16000:
             print("Audio sample rate must be 16000", file=sys.stderr, flush=True)
             sys.exit(1)
 
@@ -110,29 +111,45 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
             ).input_values
         inputValues = np.array(inputValues)
         inputValuesTensor = torch.tensor(inputValues, dtype=torch.float).squeeze(0)
-        inputValuesBlob = compress(inputValuesTensor)
         memoryMB = inputValuesTensor.element_size() * inputValuesTensor.numel() / (1024 * 1024)
         if memoryMB == 0:
             print(reference, audioFile, "Has Zero Length input_values", file=sys.stderr, flush=True)
             sys.exit(1)
 
-        labels = processor(text=text.lower()).input_ids
+        normalized = normalizeText(text)
+        labels = processor(text=normalized).input_ids
+        numUnk += labels.count(unkId)
+        missingChars.update(ch for ch in normalized if ch != ' ' and ch not in vocab)
         labelsTensor = torch.tensor(labels, dtype=torch.long)
-        labelsBlob = compress(labelsTensor)
+
+        buffer = BytesIO()
+        torch.save(inputValuesTensor, buffer)
+        inputValuesBlob = buffer.getvalue()
+
+        buffer = BytesIO()
+        torch.save(labelsTensor, buffer)
+        labelsBlob = buffer.getvalue()
 
         insert = """INSERT INTO samples (idx, script_id, word_id, input_values, labels, text, reference,
             fa_score, memory_mb) VALUES (?,?,?,?,?,?,?,?,?)"""
         samplesDB.execute(insert, (index, scriptId, wordId, inputValuesBlob, labelsBlob, text, reference, faScore, memoryMB))
+
+    if numUnk > 0:
+        # Labels containing [UNK] teach the model to output [UNK]; this should never happen
+        # because the vocabulary is built from the same text with the same normalizeText.
+        chars = ' '.join(f"{ch!r} U+{ord(ch):04X}" for ch in sorted(missingChars))
+        print(f"WARNING: {numUnk} [UNK] tokens in training labels. Characters not in vocab: {chars}",
+              file=sys.stderr, flush=True)
     return index + 1
 
 
-def identifyBatches(database, maxBatchSize, targetMemoryMB, minTensorMB, faErrorCutoff):
+def identifyBatches(database, maxBatchSize, targetMemoryMB, minTensorMB):
     database.execute('DROP TABLE IF EXISTS batches', ())
     batches = """CREATE TABLE batches (idx INTEGER PRIMARY KEY, num_samples INTEGER, memory_mb FLOAT,
                 padded_mb FLOAT, indexes BLOB)"""
     database.execute(batches,())
-    query = 'SELECT idx, text, reference, memory_mb FROM samples WHERE fa_score > ?'
-    samples = database.select(query, (faErrorCutoff,))
+    query = 'SELECT idx, text, reference, memory_mb FROM samples'
+    samples = database.select(query, ())
     insert = 'INSERT INTO batches (idx, num_samples, memory_mb, padded_mb, indexes) VALUES (?,?,?,?,?)'
     batchNum = 0
     batch = []
@@ -172,14 +189,17 @@ def prepareBatches(database, processor, minTensorLength):
             sampleQuery = """SELECT idx, input_values, labels, text, reference, memory_mb
                             FROM samples WHERE idx = ?"""
             (sampleIdx, inputValues, labels, text, reference, memoryMB) = database.selectOne(sampleQuery, (int(s),))
-            inputTensor = decompress(inputValues, np.float32)
+            buffer = BytesIO(inputValues)
+            inputTensor = torch.load(buffer)
+
             originalLen = len(inputTensor)
             inputTensor, attentionMask = ensureMinimumTensorSize(inputTensor, minTensorLength, 0)
             inputFeatures.append({
                 "input_values": inputTensor,
                 "attention_mask": attentionMask
             })
-            labelsTensor = decompress(labels, np.int64)
+            buffer = BytesIO(labels)
+            labelsTensor = torch.load(buffer)
             labelFeatures.append({"input_ids": labelsTensor})
         batch = processor.pad(
             inputFeatures,
@@ -193,13 +213,16 @@ def prepareBatches(database, processor, minTensorLength):
         )
         # replace padding with -100 to ignore loss correctly
         labels = labelsBatch["input_ids"].masked_fill(labelsBatch.attention_mask.ne(1), -100)
-        inputValuesBlob = compress(batch['input_values'])
-        attentionMaskBlob = compress(batch['attention_mask'])
-        labelsBlob = compress(labels)
         insert = """INSERT INTO tensors (idx, num_samples, memory_mb, input_values,
                             attention_mask, labels) VALUES (?,?,?,?,?,?)"""
-        database.execute(insert, (index, numSamples, paddedMB, inputValuesBlob,
-                attentionMaskBlob, labelsBlob))
+        inputValuesBuffer = BytesIO()
+        torch.save(batch['input_values'], inputValuesBuffer)
+        attentionMaskBuffer = BytesIO()
+        torch.save(batch['attention_mask'], attentionMaskBuffer)
+        labelsBuffer = BytesIO()
+        torch.save(labels, labelsBuffer)
+        database.execute(insert, (index, numSamples, paddedMB, inputValuesBuffer.getvalue(),
+                attentionMaskBuffer.getvalue(), labelsBuffer.getvalue()))
     return len(batches)
 
 
@@ -208,8 +231,10 @@ def displaySamples(database):
     samples = database.select(query, ())
     print("length", len(samples))
     for (index, inputValues, labels, text, reference, memoryMB) in samples:
-        audioTensor = decompress(inputValues, np.float32)
-        labelsTensor = decompress(labels, np.int64)
+        buffer = BytesIO(inputValues)
+        audioTensor = torch.load(buffer)
+        buffer = BytesIO(labels)
+        labelsTensor = torch.load(buffer)
         print("\nIndex", index)
         print("audio", audioTensor.shape, type(audioTensor))
         print("labels", labelsTensor.shape, type(labelsTensor))
@@ -229,9 +254,12 @@ def displayBatches(database):
 def displayTensors(database):
     batches = database.select('SELECT idx, num_samples, memory_mb, input_values, attention_mask, labels FROM tensors', ())
     for (index, numSamples, memoryMB, inputValues, attentionMask, labels) in batches:
-        audioTensor = decompress(inputValues, np.float32)
-        maskTensor = decompress(attentionMask, np.float32)
-        labelsTensor = decompress(labels, np.int64)
+        inputValuesBuffer = BytesIO(inputValues)
+        audioTensor = torch.load(inputValuesBuffer)
+        maskBuffer = BytesIO(attentionMask)
+        maskTensor = torch.load(maskBuffer)
+        labelsBuffer = BytesIO(labels)
+        labelsTensor = torch.load(labelsBuffer)
         print("\nIndex", index)
         print("audio", audioTensor.shape, type(audioTensor), audioTensor.nbytes / (1024**2))
         print("mask", maskTensor.shape, type(maskTensor), maskTensor.nbytes / (1024**2))
@@ -240,7 +268,8 @@ def displayTensors(database):
 
 
 def checkBlob(idx, name, blob, dtype):
-    tensor = decompress(blob, dtype)
+    buffer = BytesIO(blob)
+    tensor = torch.load(buffer)
     if torch.isnan(tensor).any():
         print(f"NaN found in {name} {idx}")
     if torch.isinf(tensor).any():
@@ -270,7 +299,6 @@ if __name__ == "__main__":
     processor = Wav2Vec2Processor(feature_extractor=featureExtractor, tokenizer=tokenizer)
     samplesDB = dataPreparation(database, dbPath, audioPath, processor, 1024, 16, 1.0, 0.1)
     database.close()
-    #sys.exit()
     displaySamples(samplesDB)
     displayBatches(samplesDB)
     displayTensors(samplesDB)

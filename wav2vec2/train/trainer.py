@@ -1,10 +1,11 @@
+import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
 import logging
 # from train_adapter
-import os
 import sys
 from transformers import Wav2Vec2FeatureExtractor
 from transformers import Wav2Vec2Processor
@@ -123,9 +124,9 @@ processor = Wav2Vec2Processor(
     feature_extractor=featureExtractor,
     tokenizer=tokenizer
 )
-sampleDB = dataPreparation(database, databasePath, audioDirectory, processor, 512, batchSizeMB, minAudioSec, 0.1)
-database.close()
 
+sampleDB = dataPreparation(database, databasePath, audioDirectory, processor, 512, batchSizeMB, minAudioSec)
+database.close()
 model = getWav2Vec2ForCTCModel(processor)
 #model = Wav2Vec2ForCTC.from_pretrained(
 #    "facebook/wav2vec2-base",  # or "facebook/wav2vec2-large" for better performance
@@ -138,10 +139,12 @@ model = getWav2Vec2ForCTCModel(processor)
 #    mask_feature_prob = 0.0,       # Disable feature masking
 #)
 
-if torch.backends.mps.is_available():
-    device = torch.device("mps")
-elif torch.cuda.is_available():
+torch.manual_seed(42)
+
+if torch.cuda.is_available():
     device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
 else:
     device = torch.device("cpu")
 print("device", device)

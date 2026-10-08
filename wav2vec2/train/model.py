@@ -32,6 +32,11 @@ def getWav2Vec2ForCTCModel(processor):
         # Additional useful settings
         ctc_loss_reduction="mean",
         apply_spec_augment=True,                       # Enable/disable augmentation
+
+        # Claude suggestions 10/6/26
+        ctc_zero_infinity=True,
+        feat_extract_norm="layer",
+        do_stable_layer_norm=True,
     )
     # Create model from scratch with this config
     model = Wav2Vec2ForCTC(config)

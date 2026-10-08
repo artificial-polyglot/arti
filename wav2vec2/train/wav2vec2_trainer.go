@@ -3,16 +3,22 @@ package train
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	req "github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
+	"github.com/artificial-polyglot/arti/utility/s3_datastore"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
-	"os"
-	"path/filepath"
-	"strconv"
 )
+
+const pctExcludePruneData = 5
+const stdDevOverMeanPruneSilence = 1.5
 
 type Wav2Vec2Trainer struct {
 	ctx     context.Context
@@ -36,16 +42,40 @@ func NewWav2Vec2Trainer(ctx context.Context, conn db.DBAdapter, langISO string, 
 }
 
 func (t *Wav2Vec2Trainer) HasModel() bool {
-	filename := "model.safetensors"
-	model := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "wav2vec2_models", t.langISO, filename)
-	fileInfo, err := os.Stat(model)
-	if os.IsNotExist(err) {
+	client, status := s3_datastore.NewS3Client(t.ctx)
+	if status != nil {
+		log.Warn(t.ctx, status, "Failed to create S3 client checking for existing model")
 		return false
 	}
-	if err != nil {
-		log.Warn(t.ctx, err, "Failed to read model file")
+	bucket := os.Getenv("FCBH_MODELS_BUCKET")
+	prefix := "ctcwav2vec2/" + t.langISO
+	has, status := client.HasModel(bucket, prefix)
+	if status != nil {
+		log.Warn(t.ctx, status, "Failed to check R2 for existing model", prefix)
+		return false
 	}
-	return fileInfo.Size() > 10000000 // must be GT 10Meg
+	return has
+}
+
+// VerifyTrained checks that Train really produced an adapter: the adapter file must exist, be
+// larger than 1 MB, and have been written at or after since (the time Train was started).
+// Train returns nil without training when there are no audio files, and a stale adapter
+// left in the local directory must never be published as a newly trained model.
+func (t *Wav2Vec2Trainer) VerifyTrained(since time.Time) *log.Status {
+	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "mms_adapters", t.langISO)
+	path := filepath.Join(dir, "adapter."+t.langISO+".safetensors")
+	info, err := os.Stat(path)
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Wav2Vec2 training did not produce an adapter file", path)
+	}
+	if info.Size() <= 1000000 { // must be GT 1Meg, like mms.HasLocalAdapter
+		return log.ErrorNoErr(t.ctx, 500, "Wav2Vec2 file is too small to be a trained adapter", path, info.Size())
+	}
+	if info.ModTime().Before(since) {
+		return log.ErrorNoErr(t.ctx, 500, "Wav2Vec2 training did not write a new adapter; file is older than this run",
+			path, info.ModTime())
+	}
+	return nil
 }
 
 func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
@@ -59,9 +89,14 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 			return status
 		}
 	}
+	status := SilencePruner(t.ctx, t.conn, stdDevOverMeanPruneSilence)
+	if status != nil {
+		return status
+	}
+	status = dataPruner(t.conn, pctExcludePruneData)
 	pythonPath := os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`)
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "wav2vec2/train/trainer.py")
-	status := stdio_exec.RunScriptWithLogging(t.ctx, pythonPath, pythonScript,
+	status = stdio_exec.RunScriptWithLogging(t.ctx, pythonPath, pythonScript,
 		t.langISO,
 		t.conn.DatabasePath,
 		`'`+tempDir+`'`,
