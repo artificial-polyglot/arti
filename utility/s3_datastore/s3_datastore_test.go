@@ -53,7 +53,8 @@ func TestPutDirectory(t *testing.T) {
 		t.Error(err)
 	}
 	//err = s3.PutDirectory("arti-input", "Kolibugan N1SKNSEC", "/Users/gary/arti2/fcbh_data/Kolibugan N1SKNSEC")
-	err = s3.PutDirectory("arti-input", "Shan N2SHNOMF", "/Users/gary/arti2/fcbh_data/Shan N2SHNOMF")
+	//err = s3.PutDirectory("arti-input", "Shan N2SHNOMF", "/Users/gary/arti2/fcbh_data/Shan N2SHNOMF")
+	err = s3.PutDirectory("arti-models", "wav2vec2ctc/tts/00001", "/Users/gary/FCBH2024/wav2vec2_models/tts")
 	if err != nil {
 		t.Error(err)
 	}

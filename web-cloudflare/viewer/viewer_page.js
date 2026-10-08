@@ -255,6 +255,9 @@ export const PAGE_HTML = `<!doctype html>
 
   async function showModels() {
     const rows = await getJSON("/api/models");
+    // One row per model_type/lang_iso, so each model type (mms_adapter,
+    // wav2vec2ctc, ...) gets its own run selector.
+    rows.forEach((r) => { r.model = r.modelType + "/" + r.langIso; });
     main.innerHTML = "<h2>Models</h2>";
     const div = document.createElement("div");
     main.append(div);
@@ -285,7 +288,7 @@ export const PAGE_HTML = `<!doctype html>
           return select;
         },
       },
-      { key: "langIso", label: "Lang ISO" },
+      { key: "model", label: "Model" },
       {
         key: "uploaded", label: "Updated", render: (r) => {
           const span = document.createElement("span");
@@ -294,7 +297,7 @@ export const PAGE_HTML = `<!doctype html>
           return span;
         },
       },
-    ], rows, ["langIso"]);
+    ], rows, ["model"]);
   }
 
   async function showModelDetails(modelType, langIso, runNum) {

@@ -19,6 +19,7 @@ import (
 
 const pctExcludePruneData = 5
 const stdDevOverMeanPruneSilence = 1.5
+const modelClass = "wav2vec2ctc"
 
 type Wav2Vec2Trainer struct {
 	ctx     context.Context
@@ -48,7 +49,7 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 		return false
 	}
 	bucket := os.Getenv("FCBH_MODELS_BUCKET")
-	prefix := "ctcwav2vec2/" + t.langISO
+	prefix := modelClass + "/" + t.langISO
 	has, status := client.HasModel(bucket, prefix)
 	if status != nil {
 		log.Warn(t.ctx, status, "Failed to check R2 for existing model", prefix)
@@ -61,21 +62,21 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 // larger than 1 MB, and have been written at or after since (the time Train was started).
 // Train returns nil without training when there are no audio files, and a stale adapter
 // left in the local directory must never be published as a newly trained model.
-func (t *Wav2Vec2Trainer) VerifyTrained(since time.Time) *log.Status {
-	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), "mms_adapters", t.langISO)
+func (t *Wav2Vec2Trainer) VerifyTrained(since time.Time) (string, *log.Status) {
+	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), modelClass, t.langISO)
 	path := filepath.Join(dir, "adapter."+t.langISO+".safetensors")
 	info, err := os.Stat(path)
 	if err != nil {
-		return log.Error(t.ctx, 500, err, "Wav2Vec2 training did not produce an adapter file", path)
+		return modelClass, log.Error(t.ctx, 500, err, modelClass+" training did not produce a safetensor file", path)
 	}
 	if info.Size() <= 1000000 { // must be GT 1Meg, like mms.HasLocalAdapter
-		return log.ErrorNoErr(t.ctx, 500, "Wav2Vec2 file is too small to be a trained adapter", path, info.Size())
+		return modelClass, log.ErrorNoErr(t.ctx, 500, modelClass+" file is too small to be a model", path, info.Size())
 	}
 	if info.ModTime().Before(since) {
-		return log.ErrorNoErr(t.ctx, 500, "Wav2Vec2 training did not write a new adapter; file is older than this run",
+		return modelClass, log.ErrorNoErr(t.ctx, 500, modelClass+" training did not write a new safetensor; file is older than this run",
 			path, info.ModTime())
 	}
-	return nil
+	return modelClass, nil
 }
 
 func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {

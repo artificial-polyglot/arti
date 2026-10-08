@@ -215,7 +215,6 @@ func (c *Controller) processSteps() *log.Status {
 				if status != nil {
 					return status
 				}
-				// Upload now, because later steps always download the latest model
 				status = c.bucket.PersistModel("mms_adapters", c.ident.LanguageISO)
 				if status != nil {
 					return status
@@ -225,7 +224,16 @@ func (c *Controller) processSteps() *log.Status {
 		if c.req.Training.Wav2Vec2Word.NumEpochs != 0 {
 			trainer := train.NewWav2Vec2Trainer(c.ctx, c.database, c.ident.LanguageISO, c.req.Training.Wav2Vec2Word)
 			if c.req.Training.RedoTraining || !trainer.HasModel() {
+				trainStart := time.Now()
 				status = trainer.Train(audioFiles)
+				if status != nil {
+					return status
+				}
+				modelClass, status1 := trainer.VerifyTrained(trainStart)
+				if status1 != nil {
+					return status1
+				}
+				status = c.bucket.PersistModel(modelClass, c.ident.LanguageISO)
 				if status != nil {
 					return status
 				}
