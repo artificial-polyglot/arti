@@ -243,7 +243,6 @@ type Wav2Vec2 struct {
 type SpeechToText struct {
 	MMS            bool `yaml:"mms_asr,omitempty" json:"mms_asr,omitempty"`
 	MMSAdapter     bool `yaml:"adapter_asr,omitempty" json:"adapter_asr,omitempty"`
-	Wav2Vec2ASR    bool `yaml:"wav2vec2_asr,omitempty" json:"wav2vec2_asr,omitempty"`
 	MMSASRAlign    bool `yaml:"mms_asr_align,omitempty" json:"mms_asr_align,omitempty"`
 	NoSpeechToText bool `yaml:"no_speech_to_text,omitempty" json:"no_speech_to_text,omitempty"`
 }

@@ -141,7 +141,6 @@ func appendWav2Vec2(w *yamlBuilder, depth int, v request.Wav2Vec2) {
 func appendSpeechToText(w *yamlBuilder, depth int, s request.SpeechToText) {
 	w.boolean(depth, "mms_asr", s.MMS, true)
 	w.boolean(depth, "adapter_asr", s.MMSAdapter, true)
-	w.boolean(depth, "wav2vec2_asr", s.Wav2Vec2ASR, true)
 	w.boolean(depth, "mms_asr_align", s.MMSASRAlign, true)
 	w.boolean(depth, "no_speech_to_text", s.NoSpeechToText, true)
 }

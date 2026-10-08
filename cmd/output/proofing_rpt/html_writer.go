@@ -43,8 +43,6 @@ func (h *HTMLWriter) WriteReport(verses []generic.Verse2, audioURLs map[string]g
 		model = "Model: MMS"
 	case request.SpeechToText{MMSAdapter: true}:
 		model = "Model: MMS Adapter"
-	case request.SpeechToText{Wav2Vec2ASR: true}:
-		model = "Model: Wav2Vec2 Word"
 	default:
 		model = ""
 	}

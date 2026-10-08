@@ -24,7 +24,7 @@ func TestQAAlign(t *testing.T) {
 	testament.BuildBookMaps()
 	testament.NT = true
 	testament.OT = true
-	asr := NewQAAlign(ctx, conn, "skn", "", true, testament)
+	asr := NewQAAlign(ctx, conn, "skn", "", "mms_adapters", testament)
 	files, status := input.AWSS3Input(ctx, "s3://arti-input/Kolibugan N1SKNSEC/N1SKNSEC Chapter mp3/*MRK_001_VOX.mp3")
 	if status != nil {
 		t.Fatal(status)

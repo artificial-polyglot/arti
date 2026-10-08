@@ -111,9 +111,6 @@ func (r *RequestValidator) checkSpeechToText(req *request.SpeechToText) {
 	if req.MMSAdapter {
 		count += 1
 	}
-	if req.Wav2Vec2ASR {
-		count += 1
-	}
 	if req.MMSASRAlign {
 		count += 1
 	}

@@ -29,7 +29,6 @@ import (
 	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
 	"github.com/artificial-polyglot/arti/timestamp"
-	asr2 "github.com/artificial-polyglot/arti/wav2vec2/asr"
 	"github.com/artificial-polyglot/arti/wav2vec2/train"
 )
 
@@ -481,10 +480,6 @@ func (c *Controller) speechToText(audioFiles []generic.InputFile) *log.Status {
 		var asr mms_asr.MMSASR
 		asr = mms_asr.NewMMSASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, true,
 			c.req.STTDecoder, c.database.DatabasePath)
-		status = asr.ProcessFiles(audioFiles)
-	} else if c.req.SpeechToText.Wav2Vec2ASR { // Experimental
-		var asr asr2.Wav2Vec2ASR
-		asr = asr2.NewWav2Vec2ASR(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage)
 		status = asr.ProcessFiles(audioFiles)
 	} else if c.req.SpeechToText.MMSASRAlign { // Experimental
 		var asr asr_align.ASRAlign
