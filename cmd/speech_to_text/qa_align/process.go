@@ -8,7 +8,9 @@ import (
 
 func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
 	var output []db.Output
-	asr := NewQAAlign(database.Ctx, database, req.LanguageISO, req.AltLanguage, true, req.Testament)
+	modelType := "wav2vec2ctc"
+	//modelType := "mms_adapters"
+	asr := NewQAAlign(database.Ctx, database, req.LanguageISO, req.AltLanguage, modelType, req.Testament)
 	status := asr.ProcessFiles()
 	if status != nil {
 		return output, status

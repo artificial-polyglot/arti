@@ -13,8 +13,8 @@ import (
 
 // CharResult holds the per-character forced alignment output from Python.
 type QAAlignResult struct {
-	Transcript string       `json:"Transcript"`
-	Alignment  []CharResult `json:"Alignment"`
+	Transcript string       `json:"transcript"`
+	Alignment  []CharResult `json:"alignment"`
 }
 type CharResult struct {
 	Char  string  `json:"char"`

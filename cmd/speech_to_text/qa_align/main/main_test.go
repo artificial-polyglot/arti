@@ -11,7 +11,9 @@ import (
 
 func TestRun(t *testing.T) {
 	log.SetOutput("stderr")
-	content, err := os.ReadFile("/Users/gary/arti2/N1SKNSEC_qa.yaml")
+	//file := "/Users/gary/arti2/N1SKNSEC_qa.yaml"
+	file := "/Users/gary/arti2/N2TTS.yaml"
+	content, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
