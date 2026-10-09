@@ -9,7 +9,7 @@
 // Routes:
 //   GET  /                    - the page itself
 //   GET  /api/models          - [{modelType, langIso, highestRunNum, runs: {runNum: uploaded}, uploaded}]
-//   GET  /api/models/details  - [{filename, uploaded, key}] for one model run's processor_<langIso>/ files
+//   GET  /api/models/details  - [{filename, uploaded, key}] for one model run's config/tokenizer .json files
 //   GET  /api/models/download - zip of one model run: <langIso>/<tensor file>, <langIso>/processor_<langIso>/...
 //   GET  /api/input           - [{mediaId, uploaded}]
 //   GET  /api/input/:id       - [{prefix, filename, uploaded, action, key}]

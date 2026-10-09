@@ -74,15 +74,20 @@ export async function getModelsRows(bucket) {
   return rows;
 }
 
-// arti-models processor files for one (model_type, lang_iso, run_num): the
-// tokenizer files under processor_<lang_iso>/, one row per file.
+// arti-models config/tokenizer files for one (model_type, lang_iso, run_num),
+// one row per file. mms_adapters keeps them under processor_<lang_iso>/; every
+// other model type (wav2vec2ctc, and any added later) stores them as .json
+// files directly beside the model weights, so only those are listed.
 export async function getModelDetailRows(bucket, modelType, langIso, runNum) {
-  const prefix = `${modelType}/${langIso}/${padRunNum(runNum)}/processor_${langIso}/`;
+  const runPrefix = `${modelType}/${langIso}/${padRunNum(runNum)}/`;
+  const isAdapter = modelType === "mms_adapters";
+  const prefix = isAdapter ? `${runPrefix}processor_${langIso}/` : runPrefix;
   const objects = await listAllObjects(bucket, prefix);
   const rows = [];
   for (const obj of objects) {
     const filename = obj.key.slice(prefix.length);
     if (!filename) continue; // directory placeholder object, not a real file
+    if (!isAdapter && (filename.includes("/") || !filename.toLowerCase().endsWith(".json"))) continue;
     rows.push({ filename, uploaded: obj.uploaded, key: obj.key });
   }
   rows.sort((a, b) => a.filename.localeCompare(b.filename));
