@@ -34,7 +34,7 @@ sleep 10
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2XNRPMS.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/P2LBEBTI.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2TTS.yaml PROD
-python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2TTS_prod.yaml PROD
+python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2TTS.yaml PROD
 curl -d "run pod ${version} finished" https://ntfy.sh/arti2 \
     -H "Authorization: Bearer ${NTFY_API_TOKEN}"
 
