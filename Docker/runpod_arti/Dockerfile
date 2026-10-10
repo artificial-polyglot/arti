@@ -40,7 +40,7 @@ ENV HF_HOME=${BASE}/miniforge3/hf_cache
 # every weight (transformers prefers safetensors) and skip all 1198 per-language
 # adapter.* files (~10.7GB) since adapters are not baked into this image.
 RUN ${BASE}/miniforge3/bin/hf download facebook/mms-1b-all \
-    --exclude "*.bin" --exclude "adapter.*"
+    --exclude "*.bin" --exclude "adapter.*" --exclude "vocabs/*"
 
 # Create and populate the mms_fa environment
 ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin
@@ -79,6 +79,7 @@ ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-pack
 ARG MMS_ASR=${BASE}/miniforge3/envs/mms_asr/bin
 RUN ${BASE}/miniforge3/bin/conda create -y -n mms_asr python=3.11
 RUN ${BASE}/miniforge3/bin/conda install -y -n mms_asr -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox
+RUN ${MMS_ASR}/pip install --no-cache-dir "numpy >=2,<3"
 RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
@@ -89,10 +90,16 @@ RUN ${MMS_ASR}/pip install --no-cache-dir transformers
 RUN ${MMS_ASR}/pip install --no-cache-dir soundfile
 RUN ${MMS_ASR}/pip install --no-cache-dir librosa
 RUN ${MMS_ASR}/pip install --no-cache-dir uroman
+RUN ${MMS_ASR}/pip check
 RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
 # These two needed by decoder
-RUN ${MMS_ASR}/pip install --no-cache-dir nltk
-RUN ${MMS_ASR}/pip install --no-cache-dir pyctcdecode
+#RUN ${MMS_ASR}/pip install --no-cache-dir nltk "pygtrie>=2.1,<3" "hypothesis>=6.14,<7"
+# pyctcdecode 0.5.0 (latest) declares numpy<2, but only uses APIs NumPy 2 still has.
+# --no-deps stops it downgrading NumPy, which breaks pyarrow (datasets).
+#RUN ${MMS_ASR}/pip install --no-cache-dir --no-deps pyctcdecode
+# Fail the build, not a RunPod job, if the environment can't import its key packages
+#RUN ${MMS_ASR}/python -c "import numpy, pyarrow, datasets, transformers, torchaudio, pyctcdecode; \
+#    assert numpy.__version__.startswith('2'), numpy.__version__"
 
 # Pre-download the MMS_FA model weights so the container never fetches them
 # over the network at runtime.
