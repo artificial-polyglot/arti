@@ -12,7 +12,6 @@ from common import ensureMinimumTensorSize
 sys.path.insert(0, os.path.join(os.environ['GOPROJ'], 'utility', 'text_normalize'))
 from text_normalize import normalizeText
 import time
-import blosc
 
 """
 NOTE: def dataPruner has a bug.  In a recent run it pruned out only 214 verses when it was
@@ -70,21 +69,26 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
             input_values BLOB, labels BLOB, text TEXT, reference TEXT, fa_score FLOAT, memory_mb FLOAT)"""
     samplesDB.execute(samples,())
     query = """
-        SELECT s.script_id, w.word_id, s.book_id || ' ' || s.chapter_num || ':' || s.verse_str || '.' || w.word_seq as ref,
-                s.audio_file, w.word_begin_ts, w.word_end_ts, w.fa_score, w.word AS text
+       SELECT s.script_id, w.word_id, s.book_id || ' ' || s.chapter_num || ':' || s.verse_str || '.' || w.word_seq as ref,
+               s.audio_file, w.word_begin_ts, w.word_end_ts, w.fa_score, w.word AS text,
+               (w.word_id IN (SELECT word_id FROM pruned_silence)
+                OR w.word_id IN (SELECT word_id FROM pruned_data)) AS pruned
         FROM scripts s
         JOIN words w ON w.script_id = s.script_id
         WHERE w.ttype = 'W'
-        AND w.word_id NOT IN (SELECT word_id FROM pruned_silence)
-        AND w.word_id NOT IN (SELECT word_id FROM pruned_data)
-        ORDER BY w.word_end_ts - w.word_begin_ts -- sort by size
+        ORDER BY w.word_id
         """
+    rows = scriptsDB.select(query,())
+    rows = [r for r in rows if r[5] > r[4]]     # drop zero-length words (e.g. footnote references)
+    padded = padWordTimestamps([r[:8] for r in rows])
+    data = [p for p, r in zip(padded, rows) if not r[8]]   # now drop pruned words
+    data.sort(key=lambda row: row[5] - row[4]) # sort by size
+
     index = -1
     vocab = processor.tokenizer.get_vocab()
     unkId = processor.tokenizer.unk_token_id
     numUnk = 0
     missingChars = set()
-    data = scriptsDB.select(query,())
     for (scriptId, wordId, reference, audioFile, beginTS, endTS, faScore, text) in data:
         if endTS <= beginTS:
             continue
@@ -143,6 +147,24 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
               file=sys.stderr, flush=True)
     return index + 1
 
+WORD_PAD = 0.10  # seconds of context added on each side, limited to half the gap to the neighbouring word
+
+def padWordTimestamps(rows):
+    """rows: (scriptId, wordId, reference, audioFile, beginTS, endTS, faScore, text), ordered by
+    word_id and including every word, so each row's neighbours are its real neighbours in the audio."""
+    result = []
+    for i, row in enumerate(rows):
+        audioFile, begin, end = row[3], row[4], row[5]
+        prev = rows[i - 1] if i > 0 and rows[i - 1][3] == audioFile else None
+        nxt = rows[i + 1] if i + 1 < len(rows) and rows[i + 1][3] == audioFile else None
+        newBegin = begin - WORD_PAD
+        if prev is not None:
+            newBegin = max(newBegin, (prev[5] + begin) / 2)
+        newEnd = end + WORD_PAD
+        if nxt is not None:
+            newEnd = min(newEnd, (end + nxt[4]) / 2)
+        result.append(row[:4] + (max(newBegin, 0.0), newEnd) + row[6:])
+    return result
 
 def identifyBatches(database, maxBatchSize, targetMemoryMB, minTensorMB):
     database.execute('DROP TABLE IF EXISTS batches', ())

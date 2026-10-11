@@ -91,20 +91,21 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
     return model
 
 
-if len(sys.argv) < 10:
-    usage = """Usage: python train_adapter.py {iso639-3} {databasePath} {audioDirectory}
+if len(sys.argv) < 11:
+    usage = """Usage: python train_adapter.py {iso639-3} {databasePath} {audioDirectory} {modelBase}
                     {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec}"""
     print(usage, file=sys.stderr)
     sys.exit(1)
 targetLang = sys.argv[1]
 databasePath = sys.argv[2]
 audioDirectory = sys.argv[3].strip("'")
-batchSizeMB = int(sys.argv[4])
-numEpochs = int(sys.argv[5])
-learningRate = float(sys.argv[6])
-warmupPct = float(sys.argv[7])
-gradNormMax = float(sys.argv[8])
-minAudioSec = float(sys.argv[9])
+modelBase = sys.argv[4]
+batchSizeMB = int(sys.argv[5])
+numEpochs = int(sys.argv[6])
+learningRate = float(sys.argv[7])
+warmupPct = float(sys.argv[8])
+gradNormMax = float(sys.argv[9])
+minAudioSec = float(sys.argv[10])
 
 print("BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
     "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec)
@@ -127,17 +128,20 @@ processor = Wav2Vec2Processor(
 
 sampleDB = dataPreparation(database, databasePath, audioDirectory, processor, 512, batchSizeMB, minAudioSec)
 database.close()
-model = getWav2Vec2ForCTCModel(processor)
-#model = Wav2Vec2ForCTC.from_pretrained(
-#    "facebook/wav2vec2-base",  # or "facebook/wav2vec2-large" for better performance
-#    ctc_loss_reduction="mean",
-#    pad_token_id=processor.tokenizer.pad_token_id,
-#    vocab_size=len(processor.tokenizer),
-#    ignore_mismatched_sizes = True,   # accept tokenizer of different size (required)
-#    mask_time_prob = 0.01,         # Reduce masking probability 0.01 to 0.02
-#    mask_time_length = 2,          # Shorter mask length
-#    mask_feature_prob = 0.0,       # Disable feature masking
-#)
+if modelBase == "wav2vec2ctc":
+    model = getWav2Vec2ForCTCModel(processor)
+else: # e.g. facebook/mms-300m, facebook/mms-1b
+    model = Wav2Vec2ForCTC.from_pretrained(
+        baseModel,
+        vocab_size=len(processor.tokenizer),
+        pad_token_id=processor.tokenizer.pad_token_id,
+        ctc_loss_reduction="mean",     # the model's default is "sum"
+        ctc_zero_infinity=True,
+        mask_time_prob=0.05,           # default 0.075
+        mask_time_length=4,            # default 10 frames (200 ms)
+        mask_time_min_masks=0,         # default 2
+    )
+    model.freeze_feature_encoder()
 
 torch.manual_seed(42)
 

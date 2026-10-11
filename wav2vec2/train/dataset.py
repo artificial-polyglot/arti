@@ -1,10 +1,8 @@
 import os
 import sys
 import torch
-#import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from sqlite_utility import *
-#from data_preparation import decompress
 from io import BytesIO
 
 class MyDataset(Dataset):
@@ -25,7 +23,7 @@ class MyDataset(Dataset):
         maskTensor = torch.load(maskBuffer)
         labelsBuffer = BytesIO(labels)
         labelsTensor = torch.load(labelsBuffer)
-        print("tensor", idx, audioTensor.shape, type(audioTensor), audioTensor.nbytes / (1024**2))
+        #print("tensor", idx, audioTensor.shape, type(audioTensor), audioTensor.nbytes / (1024**2))
         return {
             "input_values": audioTensor,
             "attention_mask": maskTensor,

@@ -19,13 +19,16 @@ import (
 
 const pctExcludePruneData = 5
 const stdDevOverMeanPruneSilence = 1.5
-const modelClass = "wav2vec2ctc"
+const Wav2Vec2CTC = "wav2vec2ctc"   // belongs in request
+const MMS300m = "facebook/mms-300m" // belongs in request
+const MMS1b = "facebook/mms-1b"     // belongs in request
 
 type Wav2Vec2Trainer struct {
-	ctx     context.Context
-	conn    db.DBAdapter
-	langISO string
-	args    req.Wav2Vec2
+	ctx       context.Context
+	conn      db.DBAdapter
+	langISO   string
+	modelBase string
+	args      req.Wav2Vec2
 }
 
 func NewWav2Vec2Trainer(ctx context.Context, conn db.DBAdapter, langISO string, train req.Wav2Vec2) Wav2Vec2Trainer {
@@ -38,6 +41,7 @@ func NewWav2Vec2Trainer(ctx context.Context, conn db.DBAdapter, langISO string, 
 	scripts, status := t.conn.SelectScripts()
 	fmt.Println("Status: ", status, "Len Scripts: ", len(scripts))
 	t.langISO = langISO
+	t.modelBase = Wav2Vec2CTC
 	t.args = train
 	return t
 }
@@ -49,7 +53,7 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 		return false
 	}
 	bucket := os.Getenv("FCBH_MODELS_BUCKET")
-	prefix := modelClass + "/" + t.langISO
+	prefix := t.modelBase + "/" + t.langISO
 	has, status := client.HasModel(bucket, prefix)
 	if status != nil {
 		log.Warn(t.ctx, status, "Failed to check R2 for existing model", prefix)
@@ -63,20 +67,20 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 // Train returns nil without training when there are no audio files, and a stale adapter
 // left in the local directory must never be published as a newly trained model.
 func (t *Wav2Vec2Trainer) VerifyTrained(since time.Time) (string, *log.Status) {
-	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), modelClass, t.langISO)
-	path := filepath.Join(dir, "adapter."+t.langISO+".safetensors")
+	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), t.modelBase, t.langISO)
+	path := filepath.Join(dir, t.langISO+".safetensors")
 	info, err := os.Stat(path)
 	if err != nil {
-		return modelClass, log.Error(t.ctx, 500, err, modelClass+" training did not produce a safetensor file", path)
+		return t.modelBase, log.Error(t.ctx, 500, err, t.modelBase+" training did not produce a safetensor file", path)
 	}
 	if info.Size() <= 1000000 { // must be GT 1Meg, like mms.HasLocalAdapter
-		return modelClass, log.ErrorNoErr(t.ctx, 500, modelClass+" file is too small to be a model", path, info.Size())
+		return t.modelBase, log.ErrorNoErr(t.ctx, 500, t.modelBase+" file is too small to be a model", path, info.Size())
 	}
 	if info.ModTime().Before(since) {
-		return modelClass, log.ErrorNoErr(t.ctx, 500, modelClass+" training did not write a new safetensor; file is older than this run",
+		return t.modelBase, log.ErrorNoErr(t.ctx, 500, t.modelBase+" training did not write a new safetensor; file is older than this run",
 			path, info.ModTime())
 	}
-	return modelClass, nil
+	return t.modelBase, nil
 }
 
 func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
@@ -101,6 +105,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		t.langISO,
 		t.conn.DatabasePath,
 		`'`+tempDir+`'`,
+		t.modelBase,
 		strconv.Itoa(t.args.BatchMB),
 		strconv.Itoa(t.args.NumEpochs),
 		strconv.FormatFloat(t.args.LearningRate, 'e', -1, 64),
