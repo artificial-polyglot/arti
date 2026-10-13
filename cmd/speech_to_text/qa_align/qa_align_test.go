@@ -14,7 +14,7 @@ import (
 func TestQAAlign(t *testing.T) {
 	ctx := context.Background()
 	log.SetOutput("stderr")
-	database, status := input.AWSS3Input(ctx, "s3://arti-output/GaryNTest/N1SKNSEC/arti/00010/database/*.db")
+	database, status := input.AWSS3Input(ctx, "s3://arti-output/GaryNTest/N1SKNSEC/arti/00032/database/*.db")
 	if status != nil {
 		t.Fatal(status)
 	}
@@ -24,7 +24,7 @@ func TestQAAlign(t *testing.T) {
 	testament.BuildBookMaps()
 	testament.NT = true
 	testament.OT = true
-	asr := NewQAAlign(ctx, conn, "skn", "", "mms_adapters", testament)
+	asr := NewQAAlign(ctx, conn, "skn", "", "wav2vec2ctc", testament)
 	files, status := input.AWSS3Input(ctx, "s3://arti-input/Kolibugan N1SKNSEC/N1SKNSEC Chapter mp3/*MRK_001_VOX.mp3")
 	if status != nil {
 		t.Fatal(status)

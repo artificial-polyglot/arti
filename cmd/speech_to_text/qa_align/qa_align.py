@@ -50,7 +50,7 @@ model_type = sys.argv[2].lower() if len(sys.argv) > 2 else ""
 if torch.cuda.is_available():
     device = 'cuda'
 elif torch.backends.mps.is_available():
-    device = 'cpu'
+    device = 'mps'
 else:
     device = 'cpu'
 

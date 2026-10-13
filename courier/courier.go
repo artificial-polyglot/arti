@@ -71,6 +71,12 @@ func (b *Courier) AddOutput(outputPath string) {
 	}
 }
 
+func (b *Courier) AddOutputTypes(output []db.Output) {
+	for _, out := range output {
+		b.outputs = append(b.outputs, out.FilePath)
+	}
+}
+
 func (b *Courier) AddJson(records any, filePath string) {
 	jsonData, err := json.MarshalIndent(records, "", "  ")
 	if err != nil {

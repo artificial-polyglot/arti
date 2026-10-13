@@ -32,10 +32,13 @@ func GetTestUser() string {
 }
 
 type Output struct {
-	Directory string `yaml:"directory" json:"directory"`
-	CSV       bool   `yaml:"csv,omitempty" json:"csv,omitempty"`
-	JSON      bool   `yaml:"json,omitempty" json:"json,omitempty"`
-	Sqlite    bool   `yaml:"sqlite,omitempty" json:"sqlite,omitempty"`
+	Directory      string `yaml:"directory" json:"directory"`
+	CSV            bool   `yaml:"csv,omitempty" json:"csv,omitempty"`
+	JSON           bool   `yaml:"json,omitempty" json:"json,omitempty"`
+	Sqlite         bool   `yaml:"sqlite,omitempty" json:"sqlite,omitempty"`
+	CompareReport  bool   `yaml:"compare_report,omitempty" json:"compare_report,omitempty"`
+	ProofingReport bool   `yaml:"proofing_report,omitempty" json:"proofing_report,omitempty"`
+	TimestampData  bool   `yaml:"timestamp_data,omitempty" json:"timestamp_data,omitempty"`
 }
 
 type Testament struct {

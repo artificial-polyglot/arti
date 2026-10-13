@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
@@ -153,6 +154,7 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 			return status
 		}
 	}
+	audioFiles = FilterToLongVerses(a.ctx, audioFiles)
 	for _, ts := range audioFiles {
 		log.Info(a.ctx, ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)
 		var request FARequest
@@ -192,4 +194,22 @@ func (a *QAAlign) selectScriptLine(scriptLine string) (db.Audio, *log.Status) {
 	}
 	rec.BeginTS = rec.ScriptBeginTS
 	return rec, nil
+}
+
+// FilterToLongVerses removes verses that are longer than 20 seconds long.  This removes 10% of the
+// verses.  This should NOT be done with production use. But, for testing, it enables speech to text
+// processes to be run on a Mac using the MPS GPU.
+func FilterToLongVerses(ctx context.Context, verses []db.Audio) []db.Audio {
+	const mpsMaxVerseSec = 20.0
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		var kept []db.Audio
+		for _, v := range verses {
+			if v.EndTS-v.BeginTS <= mpsMaxVerseSec {
+				kept = append(kept, v)
+			}
+		}
+		log.Info(ctx, "Mac/MPS: skipped", len(verses)-len(kept), "verses longer than", mpsMaxVerseSec, "secs")
+		verses = kept
+	}
+	return verses
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/artificial-polyglot/arti/cmd/output/compare_rpt"
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
 	"github.com/artificial-polyglot/arti/courier"
@@ -270,7 +271,7 @@ func (c *Controller) processSteps() *log.Status {
 			return status
 		}
 	}
-	// Compare
+	// Original Compare Report
 	if c.req.Compare.HTMLReport {
 		log.Info(c.ctx, "Perform text comparison.")
 		filename, status = c.matchText()
@@ -287,6 +288,23 @@ func (c *Controller) processSteps() *log.Status {
 	if c.req.Output.CSV || c.req.Output.JSON {
 		status = c.output()
 		// added to bucket in c.output()
+	}
+	if c.req.Output.CompareReport {
+		reports, status1 := compare_rpt.Process(c.database, c.req)
+		if status1 != nil {
+			return status1
+		}
+		c.bucket.AddOutputTypes(reports)
+	}
+	if c.req.Output.ProofingReport {
+		reports, status1 := proofing_rpt.Process(c.database, c.req)
+		if status1 != nil {
+			return status1
+		}
+		c.bucket.AddOutputTypes(reports)
+	}
+	if c.req.Output.TimestampData {
+		log.Info(c.ctx, "cmd/output/Timestamp_rpt is not implemented. Must write main.go and process.go")
 	}
 	return status
 }
