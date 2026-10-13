@@ -41,6 +41,7 @@ func Marshal(req request.Request) ([]byte, error) {
 	w.nested(0, "sheet_columns", func(sub *yamlBuilder, d int) { appendSheetColumns(sub, d, req.SheetColumns) })
 	w.nested(0, "timestamps", func(sub *yamlBuilder, d int) { appendTimestamps(sub, d, req.Timestamps) })
 	w.nested(0, "training", func(sub *yamlBuilder, d int) { appendTraining(sub, d, req.Training) })
+	w.nested(0, "training2", func(sub *yamlBuilder, d int) { appendTraining2(sub, d, req.Training2) })
 	w.nested(0, "speech_to_text", func(sub *yamlBuilder, d int) { appendSpeechToText(sub, d, req.SpeechToText) })
 	w.nested(0, "stt_decoder", func(sub *yamlBuilder, d int) { appendSTTDecoder(sub, d, req.STTDecoder) })
 	w.nested(0, "detail", func(sub *yamlBuilder, d int) { appendDetail(sub, d, req.Detail) })
@@ -117,7 +118,7 @@ func appendTimestamps(w *yamlBuilder, depth int, t request.Timestamps) {
 func appendTraining(w *yamlBuilder, depth int, t request.Training) {
 	w.boolean(depth, "redo_training", t.RedoTraining, false)
 	w.nested(depth, "mms_adapter", func(sub *yamlBuilder, d int) { appendMMSAdapter(sub, d, t.MMSAdapter) })
-	w.nested(depth, "wav2vec2_word", func(sub *yamlBuilder, d int) { appendWav2Vec2(sub, d, t.Wav2Vec2Word) })
+	//w.nested(depth, "wav2vec2_word", func(sub *yamlBuilder, d int) { appendWav2Vec2(sub, d, t.Wav2Vec2Word) })
 	w.boolean(depth, "no_training", t.NoTraining, true)
 }
 
@@ -129,13 +130,15 @@ func appendMMSAdapter(w *yamlBuilder, depth int, m request.MMSAdapter) {
 	w.float(depth, "grad_norm_max", m.GradNormMax, true)
 }
 
-func appendWav2Vec2(w *yamlBuilder, depth int, v request.Wav2Vec2) {
+func appendTraining2(w *yamlBuilder, depth int, v request.Training2) {
+	w.str(depth, "model_base", v.ModelBase, true)
 	w.integer(depth, "batch_mb", v.BatchMB, true)
 	w.integer(depth, "num_epochs", v.NumEpochs, true)
 	w.float(depth, "learning_rate", v.LearningRate, true)
 	w.float(depth, "warmup_pct", v.WarmupPct, true)
 	w.float(depth, "grad_norm_max", v.GradNormMax, true)
 	w.float(depth, "min_audio_sec", v.MinAudioSec, true)
+	w.integer(depth, "logging_steps", v.LoggingSteps, true)
 }
 
 func appendSpeechToText(w *yamlBuilder, depth int, s request.SpeechToText) {

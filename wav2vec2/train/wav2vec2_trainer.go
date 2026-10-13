@@ -28,10 +28,10 @@ type Wav2Vec2Trainer struct {
 	conn      db.DBAdapter
 	langISO   string
 	modelBase string
-	args      req.Wav2Vec2
+	args      req.Training2
 }
 
-func NewWav2Vec2Trainer(ctx context.Context, conn db.DBAdapter, langISO string, train req.Wav2Vec2) Wav2Vec2Trainer {
+func NewWav2Vec2Trainer(ctx context.Context, conn db.DBAdapter, langISO string, train req.Training2) Wav2Vec2Trainer {
 	var t Wav2Vec2Trainer
 	t.ctx = ctx
 	t.conn = conn
@@ -41,7 +41,7 @@ func NewWav2Vec2Trainer(ctx context.Context, conn db.DBAdapter, langISO string, 
 	scripts, status := t.conn.SelectScripts()
 	fmt.Println("Status: ", status, "Len Scripts: ", len(scripts))
 	t.langISO = langISO
-	t.modelBase = Wav2Vec2CTC
+	t.modelBase = train.ModelBase
 	t.args = train
 	return t
 }
@@ -111,6 +111,8 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		strconv.FormatFloat(t.args.LearningRate, 'e', -1, 64),
 		strconv.FormatFloat(t.args.WarmupPct, 'f', -1, 64),
 		strconv.FormatFloat(t.args.GradNormMax, 'f', -1, 64),
-		strconv.FormatFloat(t.args.MinAudioSec, 'f', -1, 64))
+		strconv.FormatFloat(t.args.MinAudioSec, 'f', -1, 64),
+		strconv.Itoa(t.args.LoggingSteps))
+	// logging
 	return status
 }

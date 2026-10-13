@@ -17,6 +17,7 @@ type Request struct {
 	TextData     TextData     `yaml:"text_data,omitempty" json:"text_data,omitempty"`
 	SheetColumns SheetColumns `yaml:"sheet_columns,omitempty" json:"sheet_columns,omitempty"`
 	Timestamps   Timestamps   `yaml:"timestamps,omitempty" json:"timestamps,omitempty"`
+	Training2    Training2    `yaml:"training2,omitempty" json:"training2,omitempty"`
 	Training     Training     `yaml:"training,omitempty" json:"training,omitempty"`
 	SpeechToText SpeechToText `yaml:"speech_to_text,omitempty" json:"speech_to_text,omitempty"`
 	STTDecoder   STTDecoder   `yaml:"stt_decoder,omitempty" json:"stt_decoder,omitempty"`
@@ -218,10 +219,22 @@ func (t MediaType) IsFrom(ttype string) bool {
 	return result
 }
 
+type Training2 struct {
+	RedoTraining bool    `yaml:"redo_training,omitempty" json:"redo_training,omitempty"`
+	ModelBase    string  `yaml:"model_base,omitempty" json:"model_base,omitempty"`
+	BatchMB      int     `yaml:"batch_mb,omitempty" json:"batch_mb,omitempty"`
+	NumEpochs    int     `yaml:"num_epochs,omitempty" json:"num_epochs,omitempty"`
+	LearningRate float64 `yaml:"learning_rate,omitempty" json:"learning_rate,omitempty"`
+	WarmupPct    float64 `yaml:"warmup_pct,omitempty" json:"warmup_pct,omitempty"`
+	GradNormMax  float64 `yaml:"grad_norm_max,omitempty" json:"grad_norm_max,omitempty"`
+	MinAudioSec  float64 `yaml:"min_audio_sec,omitempty" json:"min_audio_sec,omitempty"`
+	LoggingSteps int     `yaml:"logging_steps,omitempty" json:"logging_steps,omitempty"`
+	NoTraining   bool    `yaml:"no_training,omitempty" json:"no_training,omitempty"`
+}
+
 type Training struct {
 	RedoTraining bool       `yaml:"redo_training,omitempty" json:"redo_training,omitempty"`
 	MMSAdapter   MMSAdapter `yaml:"mms_adapter,omitempty" json:"mms_adapter,omitempty"`
-	Wav2Vec2Word Wav2Vec2   `yaml:"wav2vec2_word,omitempty" json:"wav2vec2_word,omitempty"`
 	NoTraining   bool       `yaml:"no_training,omitempty" json:"no_training,omitempty"`
 }
 
@@ -231,16 +244,6 @@ type MMSAdapter struct {
 	LearningRate float64 `yaml:"learning_rate,omitempty" json:"learning_rate,omitempty"`
 	WarmupPct    float64 `yaml:"warmup_pct,omitempty" json:"warmup_pct,omitempty"`
 	GradNormMax  float64 `yaml:"grad_norm_max,omitempty" json:"grad_norm_max,omitempty"`
-}
-
-type Wav2Vec2 struct {
-	BatchMB      int     `yaml:"batch_mb,omitempty" json:"batch_mb,omitempty"`
-	NumEpochs    int     `yaml:"num_epochs,omitempty" json:"num_epochs,omitempty"`
-	LearningRate float64 `yaml:"learning_rate,omitempty" json:"learning_rate,omitempty"`
-	WarmupPct    float64 `yaml:"warmup_pct,omitempty" json:"warmup_pct,omitempty"`
-	GradNormMax  float64 `yaml:"grad_norm_max,omitempty" json:"grad_norm_max,omitempty"`
-	MinAudioSec  float64 `yaml:"min_audio_sec,omitempty" json:"min_audio_sec,omitempty"`
-	//LoggingSteps int     `yaml:"logging_steps,omitempty" json:"logging_steps,omitempty"`
 }
 
 type SpeechToText struct {

@@ -93,7 +93,7 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
 
 if len(sys.argv) < 11:
     usage = """Usage: python train_adapter.py {iso639-3} {databasePath} {audioDirectory} {modelBase}
-                    {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec}"""
+                    {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec} {loggingSteps}"""
     print(usage, file=sys.stderr)
     sys.exit(1)
 targetLang = sys.argv[1]
@@ -106,6 +106,7 @@ learningRate = float(sys.argv[7])
 warmupPct = float(sys.argv[8])
 gradNormMax = float(sys.argv[9])
 minAudioSec = float(sys.argv[10])
+loggingSteps = int(sys.argv[11])
 
 print("BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
     "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec)
@@ -132,7 +133,7 @@ if modelBase == "wav2vec2ctc":
     model = getWav2Vec2ForCTCModel(processor)
 else: # e.g. facebook/mms-300m, facebook/mms-1b
     model = Wav2Vec2ForCTC.from_pretrained(
-        baseModel,
+        modelBase,
         vocab_size=len(processor.tokenizer),
         pad_token_id=processor.tokenizer.pad_token_id,
         ctc_loss_reduction="mean",     # the model's default is "sum"
@@ -164,7 +165,7 @@ trainedModel = train_wav2vec2(
         lr = learningRate,
         warmup_steps = warmupSteps,
         max_grad_norm = gradNormMax,
-        log_steps = 10
+        log_steps = loggingSteps
 )
 sampleDB.close()
 logger.info("Training completed!")
