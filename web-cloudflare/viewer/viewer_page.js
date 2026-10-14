@@ -35,6 +35,8 @@ export const PAGE_HTML = `<!doctype html>
   .file-preview { white-space: pre-wrap; word-break: break-word; border: 1px solid rgba(128,128,128,0.25);
                    border-radius: 6px; padding: 8px 12px; max-height: 400px; overflow: auto; }
   .title-row { display: flex; align-items: center; gap: 10px; }
+  h2.title-row button.action { font-size: 0.9rem; font-weight: normal; }
+  button.danger { color: #fff; background: #c62828; border: 1px solid #c62828; border-radius: 4px; }
   .notes-edit { width: 100%; min-height: 150px; box-sizing: border-box; font: inherit;
                  padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.35); }
 </style>
@@ -388,9 +390,42 @@ export const PAGE_HTML = `<!doctype html>
     const qs = new URLSearchParams({ username, mediaId, module, runNum }).toString();
     const rows = await getJSON("/api/output/details?" + qs);
     main.innerHTML =
-      '<div class="crumbs"><a id="back">← Output</a></div><h2>Output: ' +
-      [username, mediaId, module, "run " + runNum].map(escapeHtml).join(" / ") + "</h2>";
+      '<div class="crumbs"><a id="back">← Output</a></div><h2 class="title-row"><span>Output: ' +
+      [username, mediaId, module, "run " + runNum].map(escapeHtml).join(" / ") +
+      '</span><span id="deleteArea"></span></h2>';
     document.getElementById("back").addEventListener("click", showOutputList);
+
+    // Delete swaps itself for an inline "Are you sure?" confirmation rather
+    // than a confirm() dialog; only the confirm button actually deletes.
+    const deleteArea = document.getElementById("deleteArea");
+    function showDeleteButton() {
+      deleteArea.innerHTML = "";
+      deleteArea.append(actionButton("Delete", showDeleteConfirm));
+    }
+    function showDeleteConfirm() {
+      deleteArea.innerHTML = "";
+      const confirmBtn = actionButton("Are you sure you want to delete run " + runNum + "?", async () => {
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+        confirmBtn.textContent = "Deleting run " + runNum + "…";
+        const res = await fetch("/api/output/delete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ username, mediaId, module, runNum }),
+        });
+        if (res.ok) {
+          showOutputList();
+        } else {
+          const err = (await res.json().catch(() => ({}))).error || res.statusText;
+          showDeleteButton();
+          showText("Delete failed", err);
+        }
+      });
+      confirmBtn.className = "action danger";
+      const cancelBtn = actionButton("Cancel", showDeleteButton);
+      deleteArea.append(confirmBtn, " ", cancelBtn);
+    }
+    showDeleteButton();
 
     const viewLabel = { show: "Show", open: "Open" };
     const table = document.createElement("table");

@@ -24,7 +24,7 @@ echo
 set -x
 curl -d "build ${version} finished" https://ntfy.sh/arti2 \
     -H "Authorization: Bearer ${NTFY_API_TOKEN}"
-sleep 10
+sleep 60
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N1SKNSEC.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2ATGMLT.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2CCPBBS.yaml PROD

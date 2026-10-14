@@ -67,11 +67,11 @@ RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torch to
     --index-url https://download.pytorch.org/whl/cu128
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
     --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir soundfile
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir adapters
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir peft
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir jiwer
-RUN ${MMS_ADAPTER}/pip install --no-cache-dir evaluate
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir soundfile \
+    "transformers>=4.57,<5" "huggingface-hub>=0.34,<1.0"
+RUN ${MMS_ADAPTER}/pip check
+RUN ${MMS_ADAPTER}/python -c "import torch, torchaudio, transformers, soundfile; print(transformers.__version__)"
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir psutil
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir nvidia-npp-cu12
 ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
 
@@ -115,7 +115,6 @@ ENV FCBH_MMS_ASR_PYTHON=${BASE}/miniforge3/envs/mms_asr/bin/python
 ENV FCBH_MMS_FA_PYTHON=${BASE}/miniforge3/envs/mms_fa/bin/python
 ENV FCBH_MMS_ADAPTER_PYTHON=${BASE}/miniforge3/envs/mms_adapter/bin/python
 ENV FCBH_UROMAN_EXE=${BASE}/miniforge3/envs/mms_fa/bin/uroman.pl
-ENV FCBH_WHISPER_EXE=${BASE}/miniforge3/envs/whisper/bin/whisper
 # Logging
 ENV FCBH_DATASET_LOG_FILE=${BASE}/arti.log
 ENV FCBH_DATASET_LOG_LEVEL=DEBUG

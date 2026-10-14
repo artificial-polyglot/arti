@@ -28,6 +28,21 @@ export function outputRunPrefix(username, mediaId, module, runNum) {
   return `${username}/${mediaId}/${module}/${paddedRunNum}/`;
 }
 
+// Deletes every object under one run's prefix (request, output, log,
+// database, runtime, duration, status, notes), which removes the run number
+// itself since R2 has no real directories. R2's delete() takes at most 1000
+// keys per call. Returns the number of objects deleted.
+const DELETE_BATCH_LIMIT = 1000;
+
+export async function deleteOutputRun(bucket, username, mediaId, module, runNum) {
+  const prefix = outputRunPrefix(username, mediaId, module, runNum);
+  const keys = (await listAllObjects(bucket, prefix)).map((obj) => obj.key);
+  for (let i = 0; i < keys.length; i += DELETE_BATCH_LIMIT) {
+    await bucket.delete(keys.slice(i, i + DELETE_BATCH_LIMIT));
+  }
+  return keys.length;
+}
+
 export async function getOutputDetailRows(bucket, username, mediaId, module, runNum) {
   const prefix = outputRunPrefix(username, mediaId, module, runNum);
   const objects = await listAllObjects(bucket, prefix);

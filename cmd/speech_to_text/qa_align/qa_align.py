@@ -67,16 +67,17 @@ if model_type == "mms_adapters":
     adapterFile = os.path.join(outputDir, adapterFile)
     adapter_weights = load_file(adapterFile)
     model.load_state_dict(adapter_weights, strict=False)
-elif model_type == "wav2vec2ctc":
-    modelDir = os.path.join(os.getenv('FCBH_DATASET_DB'), model_type, lang)
-    processor = AutoProcessor.from_pretrained(modelDir)
-    model = Wav2Vec2ForCTC.from_pretrained(modelDir, local_files_only=True)
-else:
+elif model_type == "mms":
     modelId = "facebook/mms-1b-all"
     if not isSupportedLanguage(modelId, lang):
         print(lang, "is not supported by", modelId, file=sys.stderr)
     processor = AutoProcessor.from_pretrained(modelId, target_lang=lang)
     model = Wav2Vec2ForCTC.from_pretrained(modelId, target_lang=lang, ignore_mismatched_sizes=True)
+else:
+    modelName = model_type.replace("/", "-")
+    modelDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, lang)
+    processor = AutoProcessor.from_pretrained(modelDir)
+    model = Wav2Vec2ForCTC.from_pretrained(modelDir, local_files_only=True)
 model.eval()
 
 model = model.to(device)

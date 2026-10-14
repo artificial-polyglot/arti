@@ -16,6 +16,7 @@
 //   GET  /api/output          - [{username, mediaId, module, highestRunNum, runs: [runNum, ...]}]
 //   GET  /api/output/details  - fixed-row (label, value, viewMode, viewKey, downloadKey)
 //   POST /api/output/notes    - {username, mediaId, module, runNum, text} - writes the run's notes object
+//   POST /api/output/delete   - {username, mediaId, module, runNum} - deletes every object in that run
 //   GET  /file                - streams/downloads/opens a single R2 object; accepts
 //                               an optional exp+sig pair (see signFileParams) that
 //                               authorizes the request on its own, regardless of mode
@@ -25,11 +26,10 @@
 //                               signed /file link, for swapping into a downloaded
 //                               report's audio buttons client-side
 //
-// No auth is applied here - the original spec didn't call for it. These
-// buckets contain internal pipeline input/output, so consider putting this
-// route behind Cloudflare Access the same way web-cloudflare/upload does,
-// before exposing it beyond localhost/VPN. If Access is added later, /file
-// requests carrying a valid sig must stay exempt from it - that signature is
+// No auth is applied in this Worker - access to the viewer (including the
+// destructive /api/output/delete route) is controlled by Cloudflare Zero
+// Trust (see web-cloudflare/authentication/cloudflare_zero_trust.sh). /file
+// requests carrying a valid sig must stay exempt from Access - that signature is
 // what lets a downloaded, forwarded report keep playing its audio for
 // someone with no Access identity at all; see AUDIO_SIGN_SECRET below.
 
@@ -41,7 +41,7 @@ import {
   getInputDetailRows,
   getOutputRows,
 } from "./r2_list.js";
-import { getOutputDetailRows, outputRunPrefix } from "./output_details.js";
+import { getOutputDetailRows, outputRunPrefix, deleteOutputRun } from "./output_details.js";
 import { buildModelZip } from "./model_zip.js";
 
 const BUCKET_NAMES = {
@@ -89,6 +89,20 @@ export default {
         const key = `${outputRunPrefix(username, mediaId, module, runNum)}notes`;
         await env.ARTI_OUTPUT.put(key, text || "");
         return json({ ok: true });
+      }
+      if (path === "/api/output/delete") {
+        if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
+        const { username, mediaId, module, runNum } = await request.json();
+        // Each value becomes one path segment of the prefix being wiped, so
+        // reject anything that could widen it (empty, "/", "..") - a bad
+        // segment here would delete far more than one run.
+        const segments = [username, mediaId, module].map((s) => String(s ?? ""));
+        if (segments.some((s) => !s || s.includes("/") || s === "." || s === "..")) {
+          return json({ error: "username, mediaId, module must be non-empty single path segments" }, 400);
+        }
+        if (!/^\d+$/.test(String(runNum ?? ""))) return json({ error: "runNum must be an integer" }, 400);
+        const deleted = await deleteOutputRun(env.ARTI_OUTPUT, username, mediaId, module, runNum);
+        return json({ ok: true, deleted });
       }
       if (path === "/file") {
         return await serveFile(request, url, env);

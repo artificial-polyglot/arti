@@ -60,8 +60,16 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
             batch = {k: v.to(model.device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs.loss
+            if not torch.isfinite(loss):
+                logger.warning(f"Skipping step {epoch + 1}/{step}: loss is {loss.item()}")
+                optimizer.zero_grad()
+                continue
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            gradNorm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            if not torch.isfinite(gradNorm):
+                logger.warning(f"Skipping step {epoch + 1}/{step}: gradient norm is {gradNorm.item()}")
+                optimizer.zero_grad()
+                continue
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()

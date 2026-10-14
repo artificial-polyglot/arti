@@ -32,9 +32,8 @@ routes = [
 
 ## Known gaps / things to verify against the real buckets
 
-- **No auth.** The spec didn't call for it, but these buckets hold internal
-  pipeline input/output. Consider putting this behind Cloudflare Access, the
-  same way `web-cloudflare/upload` does, before exposing it beyond
-  localhost/VPN.
+- **Auth.** The Worker itself does no auth; access to the viewer (including
+  deleting output runs) is controlled by Cloudflare Zero Trust - see
+  `web-cloudflare/authentication/cloudflare_zero_trust.sh`.
 - **Timestamps.** Per your call, only R2's single `uploaded` timestamp is
   used everywhere - there's no created-vs-modified distinction.
