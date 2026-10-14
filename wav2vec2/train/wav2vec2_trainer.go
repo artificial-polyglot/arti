@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/artificial-polyglot/arti/db"
@@ -66,21 +67,20 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 // larger than 1 MB, and have been written at or after since (the time Train was started).
 // Train returns nil without training when there are no audio files, and a stale adapter
 // left in the local directory must never be published as a newly trained model.
-func (t *Wav2Vec2Trainer) VerifyTrained(since time.Time) (string, *log.Status) {
-	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), t.modelBase, t.langISO)
-	path := filepath.Join(dir, t.langISO+".safetensors")
+func (t *Wav2Vec2Trainer) VerifyTrained(since time.Time) *log.Status {
+	path := t.GetLocalTensorPath()
 	info, err := os.Stat(path)
 	if err != nil {
-		return t.modelBase, log.Error(t.ctx, 500, err, t.modelBase+" training did not produce a safetensor file", path)
+		return log.Error(t.ctx, 500, err, t.modelBase+" training did not produce a safetensor file", path)
 	}
 	if info.Size() <= 1000000 { // must be GT 1Meg, like mms.HasLocalAdapter
-		return t.modelBase, log.ErrorNoErr(t.ctx, 500, t.modelBase+" file is too small to be a model", path, info.Size())
+		return log.ErrorNoErr(t.ctx, 500, path+" file is too small to be a model", path, info.Size())
 	}
 	if info.ModTime().Before(since) {
-		return t.modelBase, log.ErrorNoErr(t.ctx, 500, t.modelBase+" training did not write a new safetensor; file is older than this run",
+		return log.ErrorNoErr(t.ctx, 500, path+" training did not write a new safetensor; file is older than this run",
 			path, info.ModTime())
 	}
-	return t.modelBase, nil
+	return nil
 }
 
 func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
@@ -115,4 +115,22 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		strconv.Itoa(t.args.LoggingSteps))
 	// logging
 	return status
+}
+
+func (t *Wav2Vec2Trainer) GetLocalDir() string {
+	modelName := strings.ReplaceAll(t.modelBase, "/", "-")
+	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), modelName, t.langISO)
+	return dir
+}
+
+func (t *Wav2Vec2Trainer) GetLocalTensorPath() string {
+	dir := t.GetLocalDir()
+	path := filepath.Join(dir, "model.safetensors")
+	return path
+}
+
+func (t *Wav2Vec2Trainer) GetS3ObjectPrefix() string {
+	modelName := strings.ReplaceAll(t.modelBase, "/", "-")
+	dir := filepath.Join(modelName, t.langISO)
+	return dir
 }

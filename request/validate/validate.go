@@ -171,9 +171,6 @@ func (r *RequestValidator) checkTraining(req *request.Training) {
 	if req.MMSAdapter.NumEpochs != 0 {
 		count += 1
 	}
-	if req.Wav2Vec2Word.NumEpochs != 0 {
-		count += 1
-	}
 	if count == 0 {
 		req.NoTraining = true
 	} else if count > 1 {

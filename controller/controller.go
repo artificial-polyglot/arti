@@ -215,7 +215,7 @@ func (c *Controller) processSteps() *log.Status {
 				if status != nil {
 					return status
 				}
-				status = c.bucket.PersistModel("mms_adapters", c.ident.LanguageISO)
+				status = c.bucket.PersistModel(filepath.Join("mms_adapters", c.ident.LanguageISO))
 				if status != nil {
 					return status
 				}
@@ -232,11 +232,11 @@ func (c *Controller) processSteps() *log.Status {
 				if status != nil {
 					return status
 				}
-				modelClass, status1 := trainer.VerifyTrained(trainStart)
+				status1 := trainer.VerifyTrained(trainStart)
 				if status1 != nil {
 					return status1
 				}
-				status = c.bucket.PersistModel(modelClass, c.ident.LanguageISO)
+				status = c.bucket.PersistModel(trainer.GetS3ObjectPrefix())
 				if status != nil {
 					return status
 				}

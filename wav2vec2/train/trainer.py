@@ -108,7 +108,7 @@ gradNormMax = float(sys.argv[9])
 minAudioSec = float(sys.argv[10])
 loggingSteps = int(sys.argv[11])
 
-print("BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
+print("ModelBase", modelBase, "BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
     "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec)
 
 database = SqliteUtility(databasePath)
@@ -169,7 +169,8 @@ trainedModel = train_wav2vec2(
 )
 sampleDB.close()
 logger.info("Training completed!")
-outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), 'wav2vec2ctc', targetLang)
+modelName = modelBase.replace("/", "-")
+outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
 os.makedirs(outputDir, exist_ok=True)
 model.save_pretrained(outputDir)
 processor.save_pretrained(outputDir)  # Saves both feature extractor and tokenizer
