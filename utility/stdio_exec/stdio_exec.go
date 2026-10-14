@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/artificial-polyglot/arti/logger"
 )
@@ -101,6 +102,19 @@ func (s *StdioExec) Process(input string) (string, *log.Status) {
 	}
 	result, err = s.reader.ReadString('\n')
 	if err != nil {
+		if err == io.EOF {
+			// The process exited. Let the stderr reader finish, so a Python
+			// error written just before exiting is returned instead of EOF.
+			done := make(chan struct{})
+			go func() { s.stderrWg.Wait(); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+			}
+			if pyErr := s.getPythonErr(); pyErr != nil {
+				return result, pyErr
+			}
+		}
 		return result, log.Error(s.ctx, 500, err, `Error reading response from`, s.command)
 	}
 	pyErr = s.getPythonErr()
