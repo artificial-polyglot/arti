@@ -13,7 +13,7 @@ dataset_name: N2TTS
 username: GaryNTest
 language_iso: tts
 database:
-    aws_s3: s3://arti-output/GaryNTest/N2TTS/arti/00017/database/N2TTS.db
+    aws_s3: s3://arti-output/GaryNTest/N2TTS/arti/00039/database/N2TTS.db
 compare:
     html_report: true
 `

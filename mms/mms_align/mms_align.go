@@ -63,13 +63,13 @@ func (m *MMSAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 	}
 	defer os.RemoveAll(m.tempDir)
 	var status *log.Status
-	m.uroman, status = stdio_exec.NewStdioExec(m.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath(), "-l", m.lang)
+	m.uroman, status = stdio_exec.NewStdioExec(m.ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), uroman.ScriptPath(), "-l", m.lang)
 	if status != nil {
 		return status
 	}
 	defer m.uroman.Close()
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/mms_align/mms_align.py")
-	m.mmsAlign, status = stdio_exec.NewStdioExec(m.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), pythonScript)
+	m.mmsAlign, status = stdio_exec.NewStdioExec(m.ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), pythonScript)
 	if status != nil {
 		return status
 	}

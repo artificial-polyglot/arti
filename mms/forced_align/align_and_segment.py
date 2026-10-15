@@ -24,16 +24,17 @@ import torchaudio.functional as F
 SAMPLING_FREQ = 16000
 EMISSION_INTERVAL = 30
 setup_error_handler()
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    DEVICE = torch.device("mps")
+else:
+    DEVICE = torch.device("cpu")
+
 
 def generate_emissions(model, audio_file):
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
     waveform, _ = torchaudio.load(audio_file)  # waveform: channels X T
-    waveform = waveform.to(device)
+    waveform = waveform.to(DEVICE)
     total_duration = sox.file_info.duration(audio_file)
 
     audio_sf = sox.file_info.sample_rate(audio_file)
@@ -99,8 +100,10 @@ def get_alignments(
     
     targets = torch.tensor(token_indices, dtype=torch.int32).to(DEVICE)
     
-    input_lengths = torch.tensor(emissions.shape[0]).unsqueeze(-1)
-    target_lengths = torch.tensor(targets.shape[0]).unsqueeze(-1)
+    #input_lengths = torch.tensor(emissions.shape[0]).unsqueeze(-1)
+    #target_lengths = torch.tensor(targets.shape[0]).unsqueeze(-1)
+    input_lengths = torch.tensor([emissions.shape[0]], device=DEVICE)
+    target_lengths = torch.tensor([targets.shape[0]], device=DEVICE)
     path, _ = F.forced_align(
         emissions.unsqueeze(0), targets.unsqueeze(0), input_lengths, target_lengths, blank=blank
     )

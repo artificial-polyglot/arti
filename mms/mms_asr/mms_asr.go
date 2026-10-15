@@ -97,7 +97,7 @@ func (a *MMSASR) ProcessFiles(files []generic.InputFile) *log.Status {
 		return status
 	}
 	defer a.mmsAsrPy.Close()
-	a.uroman, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath(), "-l", a.lang)
+	a.uroman, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), uroman.ScriptPath(), "-l", a.lang)
 	if status != nil {
 		return status
 	}

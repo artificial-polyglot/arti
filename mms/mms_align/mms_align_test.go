@@ -49,7 +49,7 @@ func TestMMSFA_prepareText(t *testing.T) {
 	conn := db.NewDBAdapter(ctx, database)
 	fa := NewMMSAlign(ctx, conn, "eng", "")
 	var status *log.Status
-	fa.uroman, status = stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath())
+	fa.uroman, status = stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), uroman.ScriptPath())
 	if status != nil {
 		t.Fatal(status)
 	}
@@ -73,7 +73,7 @@ func TestMMSFA_processPyOutput(t *testing.T) {
 		t.Fatal(status)
 	}
 	fa := NewMMSAlign(ctx, conn, "eng", "")
-	fa.uroman, status = stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), uroman.ScriptPath())
+	fa.uroman, status = stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), uroman.ScriptPath())
 	if status != nil {
 		t.Fatal(status)
 	}

@@ -16,7 +16,7 @@ type UromanExec struct {
 
 func NewUromanExec(ctx context.Context, lang string, useCache bool) (UromanExec, *log.Status) {
 	var u UromanExec
-	uroman, status := stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), ScriptPath(), "-l", lang)
+	uroman, status := stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), ScriptPath(), "-l", lang)
 	if status != nil {
 		return u, status
 	}

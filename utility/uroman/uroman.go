@@ -52,7 +52,7 @@ func UpdateUroman(conn db.DBAdapter, lang string) *log.Status {
 
 func SetUroman(ctx context.Context, linesIn []db.Script, lang string) ([]db.Script, *log.Status) {
 	lines := linesIn
-	uroman, status := stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_FA_PYTHON`), ScriptPath(), "-l", lang)
+	uroman, status := stdio_exec.NewStdioExec(ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), ScriptPath(), "-l", lang)
 	if status != nil {
 		return lines, status
 	}

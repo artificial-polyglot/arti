@@ -43,20 +43,20 @@ RUN ${BASE}/miniforge3/bin/hf download facebook/mms-1b-all \
     --exclude "*.bin" --exclude "adapter.*" --exclude "vocabs/*"
 
 # Create and populate the mms_fa environment
-ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin
-RUN ${BASE}/miniforge3/bin/conda create -y -n mms_fa python=3.11
-RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
-    --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
-    --index-url https://download.pytorch.org/whl/cu128
-RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox && \
-    ${MMS_FA}/pip install --no-cache-dir sox && \
-    ${MMS_FA}/pip install --no-cache-dir uroman && \
-    cp ${MMS_FA}/uroman ${MMS_FA}/uroman.pl && \
-    ${MMS_FA}/pip cache purge && \
-    ${BASE}/miniforge3/bin/conda clean -afy
-RUN ${MMS_FA}/pip install --no-cache-dir nvidia-npp-cu12
-ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
+#ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin
+#RUN ${BASE}/miniforge3/bin/conda create -y -n mms_fa python=3.11
+#RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
+#    --index-url https://download.pytorch.org/whl/cu128
+#RUN ${MMS_FA}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
+#    --index-url https://download.pytorch.org/whl/cu128
+#RUN ${BASE}/miniforge3/bin/conda install -y -n mms_fa -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox && \
+#    ${MMS_FA}/pip install --no-cache-dir sox && \
+#    ${MMS_FA}/pip install --no-cache-dir uroman && \
+#    cp ${MMS_FA}/uroman ${MMS_FA}/uroman.pl && \
+#    ${MMS_FA}/pip cache purge && \
+#    ${BASE}/miniforge3/bin/conda clean -afy
+#RUN ${MMS_FA}/pip install --no-cache-dir nvidia-npp-cu12
+#ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_fa/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
 
 # Create and populate the mms_adapter environment
 ARG MMS_ADAPTER=${BASE}/miniforge3/envs/mms_adapter/bin
@@ -72,26 +72,32 @@ RUN ${MMS_ADAPTER}/pip install --no-cache-dir soundfile \
 RUN ${MMS_ADAPTER}/pip check
 RUN ${MMS_ADAPTER}/python -c "import torch, torchaudio, transformers, soundfile; print(transformers.__version__)"
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir psutil
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir sox
 RUN ${MMS_ADAPTER}/pip install --no-cache-dir nvidia-npp-cu12
+RUN ${MMS_ADAPTER}/pip install --no-cache-dir uroman && \
+    cp ${MMS_ADAPTER}/uroman ${MMS_ADAPTER}/uroman.pl
+RUN ${MMS_ADAPTER}/python -c "import torch; \
+    torch.hub.download_url_to_file('https://dl.fbaipublicfiles.com/mms/torchaudio/ctc_alignment_mling_uroman/model.pt', \
+    '/tmp/ctc_alignment_mling_uroman_model.pt')"
 ENV LD_LIBRARY_PATH=${BASE}/miniforge3/envs/mms_adapter/lib/python3.11/site-packages/nvidia/npp/lib:$LD_LIBRARY_PATH
 
 # Create and populated the mms_asr environment
-ARG MMS_ASR=${BASE}/miniforge3/envs/mms_asr/bin
-RUN ${BASE}/miniforge3/bin/conda create -y -n mms_asr python=3.11
-RUN ${BASE}/miniforge3/bin/conda install -y -n mms_asr -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox
-RUN ${MMS_ASR}/pip install --no-cache-dir "numpy >=2,<3"
-RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
-    --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
-    --index-url https://download.pytorch.org/whl/cu128
-RUN ${MMS_ASR}/pip install --no-cache-dir accelerate
-RUN ${MMS_ASR}/pip install --no-cache-dir datasets
-RUN ${MMS_ASR}/pip install --no-cache-dir transformers
-RUN ${MMS_ASR}/pip install --no-cache-dir soundfile
-RUN ${MMS_ASR}/pip install --no-cache-dir librosa
-RUN ${MMS_ASR}/pip install --no-cache-dir uroman
-RUN ${MMS_ASR}/pip check
-RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
+#ARG MMS_ASR=${BASE}/miniforge3/envs/mms_asr/bin
+#RUN ${BASE}/miniforge3/bin/conda create -y -n mms_asr python=3.11
+#RUN ${BASE}/miniforge3/bin/conda install -y -n mms_asr -c conda-forge pysoundfile "ffmpeg<9" ffmpeg-python sox
+#RUN ${MMS_ASR}/pip install --no-cache-dir "numpy >=2,<3"
+#RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torch torchaudio \
+#    --index-url https://download.pytorch.org/whl/cu128
+#RUN ${MMS_ASR}/pip install --no-cache-dir --retries 5 --timeout 360 torchcodec \
+#    --index-url https://download.pytorch.org/whl/cu128
+#RUN ${MMS_ASR}/pip install --no-cache-dir accelerate
+#RUN ${MMS_ASR}/pip install --no-cache-dir datasets
+#RUN ${MMS_ASR}/pip install --no-cache-dir transformers
+#RUN ${MMS_ASR}/pip install --no-cache-dir soundfile
+#RUN ${MMS_ASR}/pip install --no-cache-dir librosa
+#RUN ${MMS_ASR}/pip install --no-cache-dir uroman
+#RUN ${MMS_ASR}/pip check
+#RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
 # These two needed by decoder
 #RUN ${MMS_ASR}/pip install --no-cache-dir nltk "pygtrie>=2.1,<3" "hypothesis>=6.14,<7"
 # pyctcdecode 0.5.0 (latest) declares numpy<2, but only uses APIs NumPy 2 still has.
@@ -104,17 +110,18 @@ RUN cp ${MMS_ASR}/uroman ${MMS_FA}/uroman.pl
 # Pre-download the MMS_FA model weights so the container never fetches them
 # over the network at runtime.
 ENV TORCH_HOME=${BASE}/torch_cache
-RUN ${MMS_FA}/python -c "from torchaudio.pipelines import MMS_FA as bundle; bundle.get_model(with_star=False)"
+RUN ${MMS_ADAPTER}/python -c "from torchaudio.pipelines import MMS_FA as bundle; bundle.get_model(with_star=False)"
 
 # Data ENVs
 ENV FCBH_DATASET_DB=${BASE}/data
 ENV FCBH_DATASET_FILES=${BASE}/data/download
 ENV FCBH_DATASET_TMP=${BASE}/data/tmp
 # Conda ENVs
-ENV FCBH_MMS_ASR_PYTHON=${BASE}/miniforge3/envs/mms_asr/bin/python
-ENV FCBH_MMS_FA_PYTHON=${BASE}/miniforge3/envs/mms_fa/bin/python
+#ENV FCBH_MMS_ASR_PYTHON=${BASE}/miniforge3/envs/mms_asr/bin/python
+#ENV FCBH_MMS_FA_PYTHON=${BASE}/miniforge3/envs/mms_fa/bin/python
 ENV FCBH_MMS_ADAPTER_PYTHON=${BASE}/miniforge3/envs/mms_adapter/bin/python
-ENV FCBH_UROMAN_EXE=${BASE}/miniforge3/envs/mms_fa/bin/uroman.pl
+#ENV FCBH_UROMAN_EXE=${BASE}/miniforge3/envs/mms_fa/bin/uroman.pl
+ENV FCBH_UROMAN_EXE=${BASE}/miniforge3/envs/mms_adapter/bin/uroman.pl
 # Logging
 ENV FCBH_DATASET_LOG_FILE=${BASE}/arti.log
 ENV FCBH_DATASET_LOG_LEVEL=DEBUG

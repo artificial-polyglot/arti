@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/artificial-polyglot/arti/db"
-	"github.com/artificial-polyglot/arti/generic"
-	log "github.com/artificial-polyglot/arti/logger"
-	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
+	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 )
 
 // Documentation for this implementation of forced alignment
@@ -100,7 +101,7 @@ func (f *ForcedAlign) processFile(file generic.InputFile, lang string) *log.Stat
 func (f *ForcedAlign) forcedAlign(audioFile string, textFile string, lang string, tempDir string) (string, *log.Status) {
 	var result string
 	var status *log.Status
-	MMSFAPYTHON := os.Getenv("FCBH_MMS_FA_PYTHON")
+	MMSFAPYTHON := os.Getenv("FCBH_MMS_ADAPTER_PYTHON")
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "/mms/forced_align/align_and_segment.py")
 	outputDir := filepath.Join(tempDir, `output`)
 	cmd := exec.Command(MMSFAPYTHON,
