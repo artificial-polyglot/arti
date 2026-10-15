@@ -95,7 +95,7 @@ func (a *ASRAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 		}
 	}
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/asr_align/asr_align.py")
-	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, useAdapter)
+	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), pythonScript, lang, useAdapter)
 	if status != nil {
 		return status
 	}

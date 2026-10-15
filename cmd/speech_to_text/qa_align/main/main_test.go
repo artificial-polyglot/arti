@@ -12,7 +12,7 @@ import (
 func TestRun(t *testing.T) {
 	log.SetOutput("stderr")
 	//file := "/Users/gary/arti2/N1SKNSEC_qa.yaml"
-	file := "/Users/gary/arti2/N2TTS.yaml"
+	file := "/Users/gary/arti2/N2TTS_prod.yaml"
 	content, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)

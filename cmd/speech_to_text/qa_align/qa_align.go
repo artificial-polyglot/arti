@@ -83,7 +83,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	}
 
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "cmd/speech_to_text/qa_align/qa_align.py")
-	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang, a.modelType)
+	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), pythonScript, lang, a.modelType)
 	if status != nil {
 		return status
 	}

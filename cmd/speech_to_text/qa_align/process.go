@@ -8,13 +8,9 @@ import (
 
 func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
 	var output []db.Output
-	var modelBase string
-	if !req.Training2.NoTraining {
-		modelBase = req.Training2.ModelBase
-	} else if !req.Training.NoTraining {
+	modelBase := req.Training2.ModelBase
+	if modelBase == "" {
 		modelBase = "mms_adapters"
-	} else {
-		modelBase = "mms"
 	}
 	asr := NewQAAlign(database.Ctx, database, req.LanguageISO, req.AltLanguage, modelBase, req.Testament)
 	status := asr.ProcessFiles()

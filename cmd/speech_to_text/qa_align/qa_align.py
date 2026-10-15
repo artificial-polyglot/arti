@@ -2,11 +2,11 @@ import os
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import sys
 import json
-from datasets import Dataset, Audio
 from transformers import Wav2Vec2ForCTC
 from transformers import AutoProcessor
 import torch
 import torchaudio
+import soundfile as sf
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 from safetensors.torch import load_file
 sys.path.insert(0, os.path.abspath(os.path.join(os.environ['GOPROJ'], 'logger')))
@@ -87,9 +87,11 @@ for line in sys.stdin:
     data = json.loads(line)
     audioFile = data['audio']
     reference_text = data['text']
-    fromDict = Dataset.from_dict({"audio": [audioFile]})
-    streamData = fromDict.cast_column("audio", Audio(sampling_rate=16000))
-    sample = next(iter(streamData))["audio"]["array"]
+    sample, sampleRate = sf.read(audioFile, dtype="float32")
+    if sampleRate != 16000:
+        raise ValueError(f"{audioFile}: expected 16000 Hz audio, got {sampleRate}")
+    if sample.ndim > 1:          # just in case a clip is stereo
+        sample = sample.mean(axis=1)
     inputs = processor(sample, sampling_rate=16_000, return_tensors="pt")
     if model.config.feat_extract_norm == "group": # Needed for wav2vec2ctc models
         inputs.pop("attention_mask", None)

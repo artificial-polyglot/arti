@@ -1,9 +1,13 @@
 import subprocess
 import os
 import numpy
-import nltk
-from pyctcdecode import build_ctcdecoder
 from sqlite_utility import *
+
+#
+# This module is probably not useful for arti as a QA product.
+# but it here for interest.
+# As of Oct 14, 2026, it will not run unless pyctcdecode and nltk are installed.
+#
 
 def create_labels(processor):
     vocab = processor.tokenizer.get_vocab()
@@ -34,8 +38,10 @@ def create_lm_corpus(db_path, corpus_file):
 
 def create_decoder(type, processor, db_path, directory="."):
     if type == "greedy":
-        decoder = None
-    elif type == "simple":
+        return None
+    import nltk
+    from pyctcdecode import build_ctcdecoder
+    if type == "simple":
         decoder = build_ctcdecoder(
             labels = create_labels(processor),
             kenlm_model = None,

@@ -91,7 +91,7 @@ func (a *MMSASR) ProcessFiles(files []generic.InputFile) *log.Status {
 		}
 	}
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "mms/mms_asr/mms_asr.py")
-	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ASR_PYTHON`), pythonScript, lang,
+	a.mmsAsrPy, status = stdio_exec.NewStdioExec(a.ctx, os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`), pythonScript, lang,
 		a.dbPath, a.decoderType.String(), useAdapter)
 	if status != nil {
 		return status
