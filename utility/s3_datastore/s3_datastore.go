@@ -268,6 +268,9 @@ func (t S3Client) DownloadFileTree(bucket string, prefix string, localDir string
 	if err != nil {
 		return log.Error(t.ctx, 500, err, "Could not download", bucket, prefix)
 	}
+	if list == nil || len(list.Contents) == 0 {
+		return log.ErrorNoErr(t.ctx, 500, err, "There was nothing to download", bucket, prefix)
+	}
 	for _, obj := range list.Contents {
 		key := *obj.Key
 		if strings.HasSuffix(key, "/") { // skip "folder" placeholder keys

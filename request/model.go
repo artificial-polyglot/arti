@@ -1,5 +1,11 @@
 package request
 
+import (
+	"os"
+	"path/filepath"
+	"strings"
+)
+
 type Request struct {
 	IsNew        bool         `yaml:"is_new" json:"is_new"`
 	DatasetName  string       `yaml:"dataset_name" json:"dataset_name"`
@@ -25,6 +31,16 @@ type Request struct {
 	AudioProof   AudioProof   `yaml:"audio_proof,omitempty" json:"audio_proof,omitempty"`
 	Compare      Compare      `yaml:"compare,omitempty" json:"compare,omitempty"`
 	//	UpdateDBP     UpdateDBP     `yaml:"update_dbp,omitempty" json:"update_dbp,omitempty"`
+}
+
+func ModelS3PrefixAndPath(modelBase string, langISO string) (string, string) {
+	var prefix string
+	if modelBase == "mms_adapter" {
+		prefix = filepath.Join("mms_adapters", langISO)
+	} else {
+		prefix = filepath.Join(strings.ReplaceAll(modelBase, "/", "-"), langISO)
+	}
+	return prefix, filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
 }
 
 // GetTestUser is used for testing when there is no full request object.

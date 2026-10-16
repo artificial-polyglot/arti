@@ -71,8 +71,7 @@ func (a *QAAlign) ProcessFiles() *log.Status {
 	}
 
 	bucket := os.Getenv("FCBH_MODELS_BUCKET")
-	prefix := a.modelType + "/" + lang
-	localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+	prefix, localDir := request.ModelS3PrefixAndPath(a.modelType, a.lang)
 	a.s3Client, status = s3_datastore.NewS3Client(a.ctx)
 	if status != nil {
 		return status

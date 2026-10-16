@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/artificial-polyglot/arti/db"
@@ -20,9 +19,6 @@ import (
 
 const pctExcludePruneData = 5
 const stdDevOverMeanPruneSilence = 1.5
-const Wav2Vec2CTC = "wav2vec2ctc"   // belongs in request
-const MMS300m = "facebook/mms-300m" // belongs in request
-const MMS1b = "facebook/mms-1b"     // belongs in request
 
 type Wav2Vec2Trainer struct {
 	ctx       context.Context
@@ -54,7 +50,7 @@ func (t *Wav2Vec2Trainer) HasModel() bool {
 		return false
 	}
 	bucket := os.Getenv("FCBH_MODELS_BUCKET")
-	prefix := t.modelBase + "/" + t.langISO
+	prefix, _ := req.ModelS3PrefixAndPath(t.modelBase, t.langISO)
 	has, status := client.HasModel(bucket, prefix)
 	if status != nil {
 		log.Warn(t.ctx, status, "Failed to check R2 for existing model", prefix)
@@ -113,24 +109,11 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		strconv.FormatFloat(t.args.GradNormMax, 'f', -1, 64),
 		strconv.FormatFloat(t.args.MinAudioSec, 'f', -1, 64),
 		strconv.Itoa(t.args.LoggingSteps))
-	// logging
 	return status
 }
 
-func (t *Wav2Vec2Trainer) GetLocalDir() string {
-	modelName := strings.ReplaceAll(t.modelBase, "/", "-")
-	dir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), modelName, t.langISO)
-	return dir
-}
-
 func (t *Wav2Vec2Trainer) GetLocalTensorPath() string {
-	dir := t.GetLocalDir()
+	_, dir := req.ModelS3PrefixAndPath(t.modelBase, t.langISO)
 	path := filepath.Join(dir, "model.safetensors")
 	return path
-}
-
-func (t *Wav2Vec2Trainer) GetS3ObjectPrefix() string {
-	modelName := strings.ReplaceAll(t.modelBase, "/", "-")
-	dir := filepath.Join(modelName, t.langISO)
-	return dir
 }

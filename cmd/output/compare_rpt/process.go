@@ -31,7 +31,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if err != nil {
 		return output, log.Error(database.Ctx, 500, err, "Error writing Pairs to json bytes")
 	}
-	jsonFile := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), req.Username, req.DatasetName+"_pairs.json")
+	jsonFile := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), req.DatasetName+"_pairs.json")
 	err = os.WriteFile(jsonFile, jsonBytes, 0644)
 	if err != nil {
 		return output, log.Error(database.Ctx, 500, err, "Error writing pairs json to file")

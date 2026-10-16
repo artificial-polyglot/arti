@@ -215,7 +215,8 @@ func (c *Controller) processSteps() *log.Status {
 				if status != nil {
 					return status
 				}
-				status = c.bucket.PersistModel(filepath.Join("mms_adapters", c.ident.LanguageISO))
+				prefix, localPath := request.ModelS3PrefixAndPath("mms_adapter", c.req.LanguageISO)
+				status = c.bucket.PersistModel(prefix, localPath)
 				if status != nil {
 					return status
 				}
@@ -236,7 +237,8 @@ func (c *Controller) processSteps() *log.Status {
 				if status1 != nil {
 					return status1
 				}
-				status = c.bucket.PersistModel(trainer.GetS3ObjectPrefix())
+				prefix, path := request.ModelS3PrefixAndPath(c.req.Training2.ModelBase, c.req.LanguageISO)
+				status = c.bucket.PersistModel(prefix, path)
 				if status != nil {
 					return status
 				}

@@ -94,13 +94,12 @@ func (b *Courier) AddJson(records any, filePath string) {
 // PersistModel uploads a newly trained model to the models bucket as the next model run.
 // It is called as soon as training completes, so that later steps, which always download
 // the latest model, get the one just trained.
-func (b *Courier) PersistModel(prefix string) *log.Status {
+func (b *Courier) PersistModel(prefix string, localDir string) *log.Status {
 	client, status := s3_datastore.NewS3Client(b.ctx)
 	if status != nil {
 		return status
 	}
 	bucket := os.Getenv("FCBH_MODELS_BUCKET")
-	localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
 	lastModelRun, status := b.findLastModelRun(client, bucket, prefix)
 	if status != nil {
 		return status

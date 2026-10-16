@@ -13,6 +13,7 @@ import (
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/mms"
+	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/performance"
 	"github.com/artificial-polyglot/arti/utility/s3_datastore"
@@ -72,8 +73,7 @@ func (a *ASRAlign) ProcessFiles(files []generic.InputFile) *log.Status {
 	if a.adapter {
 		useAdapter = "adapter"
 		bucket := os.Getenv("FCBH_MODELS_BUCKET")
-		prefix := "mms_adapters/" + lang
-		localDir := filepath.Join(os.Getenv("FCBH_DATASET_DB"), prefix)
+		prefix, localDir := request.ModelS3PrefixAndPath("mms_adapter", lang)
 		if !mms.HasLocalAdapter(localDir, lang) {
 			var s3Client s3_datastore.S3Client
 			s3Client, status = s3_datastore.NewS3Client(a.ctx)
