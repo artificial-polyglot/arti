@@ -19,7 +19,8 @@ func TestNewWav2Vec2Trainer(t *testing.T) {
 	if status != nil {
 		t.Fatal(status)
 	}
-	params := req.Training2{ModelBase: "wav2vec2ctc", BatchMB: 4, NumEpochs: 1, LearningRate: 1e-3, WarmupPct: 12, GradNormMax: 0.4, LoggingSteps: 2}
+	params := req.Training2{ModelBase: "aadel4/omniASR-W2V-300M", BatchMB: 4, NumEpochs: 1, LearningRate: 1e-4, WarmupPct: 8,
+		GradNormMax: 0.4, MinAudioSec: 0.5, LoggingSteps: 2}
 	trainer := NewWav2Vec2Trainer(ctx, database, "tts", params)
 	err := trainer.Train(files)
 	if err != nil {

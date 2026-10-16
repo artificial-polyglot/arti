@@ -46,7 +46,7 @@ if len(sys.argv) < 2:
     print("Usage: qa_align.py {iso639-3} [mms_adapters|wav2vec2ctc]", file=sys.stderr)
     sys.exit(1)
 lang = sys.argv[1]
-model_type = sys.argv[2].lower() if len(sys.argv) > 2 else ""
+model_type = sys.argv[2] if len(sys.argv) > 2 else ""
 if torch.cuda.is_available():
     device = 'cuda'
 elif torch.backends.mps.is_available():
@@ -54,7 +54,7 @@ elif torch.backends.mps.is_available():
 else:
     device = 'cpu'
 
-if model_type == "mms_adapters":
+if model_type.lower() == "mms_adapters" or model_type.lower() == "mms_adapter":
     modelId = "facebook/mms-1b-all"
     outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), 'mms_adapters', lang)
     processorDir = os.path.join(outputDir, f"processor_{lang}")
@@ -67,7 +67,7 @@ if model_type == "mms_adapters":
     adapterFile = os.path.join(outputDir, adapterFile)
     adapter_weights = load_file(adapterFile)
     model.load_state_dict(adapter_weights, strict=False)
-elif model_type == "mms":
+elif model_type.lower() == "mms":
     modelId = "facebook/mms-1b-all"
     if not isSupportedLanguage(modelId, lang):
         print(lang, "is not supported by", modelId, file=sys.stderr)

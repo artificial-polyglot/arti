@@ -121,6 +121,7 @@ func (a *QAAlign) pruneBooks(files []generic.InputFile) []generic.InputFile {
 
 func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Status {
 	var status *log.Status
+	log.Info(a.ctx, "QA_Align", file.BookId, file.Chapter)
 	status = input.Download(&file, a.ctx, a.s3Client, tempDir)
 	if status != nil {
 		return status
@@ -130,7 +131,7 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 		return status
 	}
 	var audioFiles []db.Audio
-	if file.ScriptLine != "" { // This is dangerously dependant upon code elsewhere to set this under right conditions
+	if file.ScriptLine != "" { // This is for processing script lines that are single file per script.
 		var audioFile db.Audio
 		audioFile, status = a.selectScriptLine(file.ScriptLine)
 		if status != nil {
@@ -165,7 +166,7 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 		if err != nil {
 			return log.Error(a.ctx, 500, err, "Could not Marshal FARequest")
 		}
-		log.Info(a.ctx, request, ts.BeginTS, ts.EndTS)
+		//log.Info(a.ctx, request, ts.BeginTS, ts.EndTS)
 		response, status1 := a.mmsAsrPy.Process(string(content))
 		if status1 != nil {
 			return status1
@@ -174,7 +175,7 @@ func (a *QAAlign) processFile(file generic.InputFile, tempDir string) *log.Statu
 		if status != nil {
 			return status
 		}
-		log.Info(a.ctx, "finished", ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)
+		//log.Info(a.ctx, "finished", ts.BookId, ts.ChapterNum, ts.VerseStr, "sid:", ts.ScriptId)
 	}
 	return nil
 }
