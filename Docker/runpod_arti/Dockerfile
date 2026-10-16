@@ -41,6 +41,14 @@ ENV HF_HOME=${BASE}/miniforge3/hf_cache
 # adapter.* files (~10.7GB) since adapters are not baked into this image.
 RUN ${BASE}/miniforge3/bin/hf download facebook/mms-1b-all \
     --exclude "*.bin" --exclude "adapter.*" --exclude "vocabs/*"
+RUN ${BASE}/miniforge3/bin/hf download aadel4/omniASR-W2V-300M \
+    --revision 5dabd8d0f1c5c3aa6fb3e0a7dfd613f49104a364
+RUN ${BASE}/miniforge3/bin/hf download aadel4/omniASR-W2V-1B \
+    --revision dad3de98e71b105a2906ac8a80ad67e191ff0550
+RUN ${BASE}/miniforge3/bin/hf download facebook/mms-300m \
+    --revision 4ee317ce793c53dbc041fc4376c7558292dd38dc
+RUN ${BASE}/miniforge3/bin/hf download facebook/mms-1b \
+    --revision 0d2f7adb9903d98894d70ae11f7fbdfc8cb71a69
 
 # Create and populate the mms_fa environment
 #ARG MMS_FA=${BASE}/miniforge3/envs/mms_fa/bin

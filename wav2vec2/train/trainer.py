@@ -99,6 +99,14 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
     return model
 
 
+# Community conversions can change; pin the tested revision.
+PINNED_REVISIONS = {
+    "aadel4/omniASR-W2V-300M": "5dabd8d0f1c5c3aa6fb3e0a7dfd613f49104a364",
+    "aadel4/omniASR-W2V-1B":   "dad3de98e71b105a2906ac8a80ad67e191ff0550",
+    "facebook/mms-300m":       "4ee317ce793c53dbc041fc4376c7558292dd38dc",
+    "facebook/mms-1b":         "0d2f7adb9903d98894d70ae11f7fbdfc8cb71a69",
+}
+
 if len(sys.argv) < 11:
     usage = """Usage: python train_adapter.py {iso639-3} {databasePath} {audioDirectory} {modelBase}
                     {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec} {loggingSteps}"""
@@ -142,6 +150,7 @@ if modelBase == "wav2vec2ctc":
 else: # e.g. facebook/mms-300m, facebook/mms-1b
     model = Wav2Vec2ForCTC.from_pretrained(
         modelBase,
+        revision=PINNED_REVISIONS.get(modelBase),   # None means the latest, for official repos
         vocab_size=len(processor.tokenizer),
         pad_token_id=processor.tokenizer.pad_token_id,
         ctc_loss_reduction="mean",     # the model's default is "sum"

@@ -7,7 +7,7 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
-const train_yaml = "/Users/gary/arti2/N2TTS.yaml"
+const train_yaml = "/Users/gary/arti2/N2TTS_test2.yaml"
 
 func TestRun(t *testing.T) {
 	log.SetOutput("stderr")
