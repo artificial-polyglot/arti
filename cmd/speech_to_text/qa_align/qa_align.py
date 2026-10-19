@@ -1,13 +1,15 @@
 import os
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import sys
+import glob
 import json
 from transformers import Wav2Vec2ForCTC
 from transformers import AutoProcessor
+from transformers import Wav2Vec2Config
 import torch
 import torchaudio
 import soundfile as sf
-from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
+#from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 from safetensors.torch import load_file
 sys.path.insert(0, os.path.abspath(os.path.join(os.environ['GOPROJ'], 'logger')))
 from error_handler import setup_error_handler
@@ -42,43 +44,55 @@ def ensureMinimumTensorSize(batch, minTensorLength, padValue):
         batch['attention_mask'] = mask
     return batch
 
-if len(sys.argv) < 2:
-    print("Usage: qa_align.py {iso639-3} [mms_adapters|wav2vec2ctc]", file=sys.stderr)
+
+if len(sys.argv) < 4:
+    print("Usage: qa_align.py {iso639-3} {mms|mms_adapters|<model base>} {model directory}", file=sys.stderr)
     sys.exit(1)
 lang = sys.argv[1]
-model_type = sys.argv[2] if len(sys.argv) > 2 else ""
-if torch.cuda.is_available():
-    device = 'cuda'
-elif torch.backends.mps.is_available():
-    device = 'mps'
-else:
-    device = 'cpu'
+model_type = sys.argv[2]
+model_dir = sys.argv[3]      # where Go downloaded the trained model; not used for "mms"
 
-if model_type.lower() == "mms_adapters" or model_type.lower() == "mms_adapter":
-    modelId = "facebook/mms-1b-all"
-    outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), 'mms_adapters', lang)
-    processorDir = os.path.join(outputDir, f"processor_{lang}")
-    processor = AutoProcessor.from_pretrained(processorDir)
-    model = Wav2Vec2ForCTC.from_pretrained(modelId, local_files_only=True)
-    vocabSize = len(processor.tokenizer)
-    hiddenSize = model.lm_head.weight.shape[1]
-    model.lm_head = torch.nn.Linear(hiddenSize, vocabSize)
-    adapterFile = WAV2VEC2_ADAPTER_SAFE_FILE.format(lang)
-    adapterFile = os.path.join(outputDir, adapterFile)
-    adapter_weights = load_file(adapterFile)
-    model.load_state_dict(adapter_weights, strict=False)
-elif model_type.lower() == "mms":
+def findOne(pattern):
+    matches = glob.glob(os.path.join(model_dir, pattern))
+    if len(matches) != 1:
+        raise FileNotFoundError(f"Expected exactly one {pattern} in {model_dir}, found {len(matches)}: {matches}")
+    return matches[0]
+
+if model_type.lower() == "mms":                     # plain mms-1b-all, no training
     modelId = "facebook/mms-1b-all"
     if not isSupportedLanguage(modelId, lang):
         print(lang, "is not supported by", modelId, file=sys.stderr)
     processor = AutoProcessor.from_pretrained(modelId, target_lang=lang)
     model = Wav2Vec2ForCTC.from_pretrained(modelId, target_lang=lang, ignore_mismatched_sizes=True)
 else:
-    modelName = model_type.replace("/", "-")
-    modelDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, lang)
-    processor = AutoProcessor.from_pretrained(modelDir)
-    model = Wav2Vec2ForCTC.from_pretrained(modelDir, local_files_only=True)
+    if not os.path.isdir(model_dir):
+        raise FileNotFoundError(f"Model directory not found: {model_dir}")
+    if glob.glob(os.path.join(model_dir, "adapter.*.safetensors")):
+        # MMS adapter (verse- or word-trained) on top of mms-1b-all
+        adapterFile = findOne("adapter.*.safetensors")
+        processorDir = findOne("processor_*")
+        print("Loading adapter", adapterFile, file=sys.stderr, flush=True)
+        processor = AutoProcessor.from_pretrained(processorDir, local_files_only=True)
+        model = Wav2Vec2ForCTC.from_pretrained("facebook/mms-1b-all", local_files_only=True)
+        hiddenSize = model.lm_head.weight.shape[1]
+        model.lm_head = torch.nn.Linear(hiddenSize, len(processor.tokenizer))
+        result = model.load_state_dict(load_file(adapterFile), strict=False)
+        if result.unexpected_keys:
+            raise ValueError(f"Adapter file has weights the model doesn't: {result.unexpected_keys[:5]}")
+    else:
+        # fully fine-tuned model saved with save_pretrained (mms-300m, mms-1b, Omnilingual, raw)
+        print("Loading model", model_dir, file=sys.stderr, flush=True)
+        processor = AutoProcessor.from_pretrained(model_dir, local_files_only=True)
+        config = Wav2Vec2Config.from_pretrained(model_dir, local_files_only=True)
+        model = Wav2Vec2ForCTC.from_pretrained(model_dir, config=config, local_files_only=True)
 model.eval()
+
+if torch.cuda.is_available():
+    device = 'cuda'
+elif torch.backends.mps.is_available():
+    device = 'mps'
+else:
+    device = 'cpu'
 
 model = model.to(device)
 vocab = processor.tokenizer.get_vocab()

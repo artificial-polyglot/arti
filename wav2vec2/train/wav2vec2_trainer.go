@@ -114,6 +114,8 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 
 func (t *Wav2Vec2Trainer) GetLocalTensorPath() string {
 	_, dir := req.ModelS3PrefixAndPath(t.modelBase, t.langISO)
-	path := filepath.Join(dir, "model.safetensors")
-	return path
+	if t.modelBase == "facebook/mms-1b-all" {
+		return filepath.Join(dir, "adapter."+t.langISO+".safetensors")
+	}
+	return filepath.Join(dir, "model.safetensors")
 }

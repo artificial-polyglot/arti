@@ -147,7 +147,7 @@ def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
               file=sys.stderr, flush=True)
     return index + 1
 
-WORD_PAD = 0.10  # seconds of context added on each side, limited to half the gap to the neighbouring word
+WORD_PAD = 0.20  # seconds of context added on each side, limited to half the gap to the neighbouring word
 
 def padWordTimestamps(rows):
     """rows: (scriptId, wordId, reference, audioFile, beginTS, endTS, faScore, text), ordered by

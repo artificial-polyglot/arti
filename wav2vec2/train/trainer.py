@@ -11,6 +11,8 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import Wav2Vec2Processor
 from transformers import Wav2Vec2ForCTC
 from tokenizer import createTokenizer
+from safetensors.torch import save_file as safe_save_file
+from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 from sqlite_utility import *
 from data_preparation import *
 from dataset import *
@@ -127,6 +129,8 @@ loggingSteps = int(sys.argv[11])
 print("ModelBase", modelBase, "BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
     "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec)
 
+torch.manual_seed(42)
+
 database = SqliteUtility(databasePath)
 tokenizer = createTokenizer(database, targetLang)
 
@@ -145,23 +149,32 @@ processor = Wav2Vec2Processor(
 
 sampleDB = dataPreparation(database, databasePath, audioDirectory, processor, 512, batchSizeMB, minAudioSec)
 database.close()
+
+ADAPTER_BASE = "facebook/mms-1b-all"
+isAdapter = modelBase == ADAPTER_BASE
+
 if modelBase == "wav2vec2ctc":
     model = getWav2Vec2ForCTCModel(processor)
-else: # e.g. facebook/mms-300m, facebook/mms-1b
+else:
     model = Wav2Vec2ForCTC.from_pretrained(
         modelBase,
-        revision=PINNED_REVISIONS.get(modelBase),   # None means the latest, for official repos
+        revision=PINNED_REVISIONS.get(modelBase),
         vocab_size=len(processor.tokenizer),
         pad_token_id=processor.tokenizer.pad_token_id,
-        ctc_loss_reduction="mean",     # the model's default is "sum"
+        ignore_mismatched_sizes=isAdapter,   # mms-1b-all's own output layer is replaced by ours
+        ctc_loss_reduction="mean",    # the model's default is "sum"
         ctc_zero_infinity=True,
-        mask_time_prob=0.05,           # default 0.075
-        mask_time_length=4,            # default 10 frames (200 ms)
-        mask_time_min_masks=0,         # default 2
+        mask_time_prob=0.05,          # default 0.075
+        mask_time_length=4,           # default 10 frames (200 ms)
+        mask_time_min_masks=0,        # default 2
     )
-    model.freeze_feature_encoder()
-
-torch.manual_seed(42)
+    if isAdapter:
+        model.init_adapter_layers()
+        model.freeze_base_model()
+        for param in model._get_adapters().values():
+            param.requires_grad = True
+    else:
+        model.freeze_feature_encoder()
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -189,8 +202,13 @@ logger.info("Training completed!")
 modelName = modelBase.replace("/", "-")
 outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
 os.makedirs(outputDir, exist_ok=True)
-model.save_pretrained(outputDir)
-processor.save_pretrained(outputDir)  # Saves both feature extractor and tokenizer
+if isAdapter:
+    adapterFile = os.path.join(outputDir, WAV2VEC2_ADAPTER_SAFE_FILE.format(targetLang))
+    safe_save_file(model._get_adapters(), adapterFile, metadata={"format": "pt"})
+    processor.save_pretrained(os.path.join(outputDir, "processor_" + targetLang))
+else:
+    model.save_pretrained(outputDir)
+    processor.save_pretrained(outputDir)  # Saves both feature extractor and tokenizer
 logger.info(f"Model and processor saved to {outputDir}")
 
 
