@@ -180,7 +180,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 	// and by the verseNum state's fallback when '{' turns out not to open a
 	// verse marker.
 	beginToken := func(tok rune) int {
-		if isSpace(tok) {
+		if IsSpace(tok) {
 			term = append(term, tok)
 			return space
 		} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
@@ -230,7 +230,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 		case begin:
 			state = beginToken(tok)
 		case space:
-			if isSpace(tok) {
+			if IsSpace(tok) {
 				term = append(term, tok)
 			} else if unicode.IsLetter(tok) || unicode.IsNumber(tok) {
 				flushSpace()
@@ -246,7 +246,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				state = begin
 			}
 		case word:
-			if isSpace(tok) {
+			if IsSpace(tok) {
 				flushWord()
 				term = append(term, tok)
 				state = space
@@ -261,7 +261,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 				state = wordPunct
 			}
 		case wordPunct:
-			if isSpace(tok) {
+			if IsSpace(tok) {
 				flushWord()
 				emitPunct(punct)
 				punct = 0
@@ -337,7 +337,7 @@ func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Sta
 			if tok == '-' || tok == '_' {
 				term = append(term, tok)
 				state = nextVerseNum
-			} else if isSpace(tok) {
+			} else if IsSpace(tok) {
 				flushVerse()
 				term = append(term, tok)
 				state = space

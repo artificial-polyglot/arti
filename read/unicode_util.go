@@ -10,7 +10,7 @@ import (
 // isSpace reports whether r separates words. It is unicode.IsSpace plus the
 // zero width space U+200B, which is category Cf (not White_Space) but is used as an
 // invisible word separator by Khmer, Thai, Burmese and others.
-func isSpace(r rune) bool {
+func IsSpace(r rune) bool {
 	return unicode.IsSpace(r) || r == '\u200B'
 }
 
