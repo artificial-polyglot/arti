@@ -9,11 +9,11 @@ import (
 
 const compare_rpt_yaml = `
 is_new: false 
-dataset_name: N2TTS
+dataset_name: N2CCPBBS
 username: GaryNTest
-language_iso: tts
+language_iso: ccp
 database:
-    aws_s3: s3://arti-output/GaryNTest/N2TTS/arti/00041/database/N2TTS.db
+    aws_s3: s3://arti-output/GaryNTest/N2CCPBBS/arti/00025/database/N2CCPBBS.db
 compare:
     html_report: true
 `

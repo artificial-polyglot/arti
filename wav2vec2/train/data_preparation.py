@@ -28,7 +28,7 @@ As of 10/28/75, this model is not being used.  So, I have not bothered to fix it
 # def prepareBatches() creates the actual tensors, and stores them compressed in a sqlite table.
 
 
-def dataPreparation(scriptsDB, scriptsDBPath, audioDir, processor, maxBatchSize, targetMemoryMB, minAudioSec):
+def dataPreparation(scriptsDB, scriptsDBPath, audioDir, sampleType, processor, targetMemoryMB, minAudioSec):
     (minTensorLength, minTensorMB) = calcMinTensor(minAudioSec, torch.float32)
     print("minAudioSec:", minAudioSec, "minTensorLength:", minTensorLength, "minTensorMB:", minTensorMB)
     scriptsDBName = os.path.basename(scriptsDBPath)
@@ -36,7 +36,16 @@ def dataPreparation(scriptsDB, scriptsDBPath, audioDir, processor, maxBatchSize,
     if os.path.exists(samplesDBPath):
         os.remove(samplesDBPath)
     samplesDB = SqliteUtility(samplesDBPath)
-    numSamples = prepareDataset(scriptsDB, samplesDB, audioDir, processor) # 22 sec
+    if sampleType == "verse":
+        numSamples = prepareVerseDataset(scriptsDB, samplesDB, audioDir, processor)
+        maxBatchSize = 128
+    elif sampleType == "word":
+        numSamples = prepareWordDataset(scriptsDB, samplesDB, audioDir, processor)
+        maxBatchSize = 512
+    else:
+        print("Unknown sampleType: " + sampleType, file=sys.stderr, flush=True)
+        sys.exit(1)
+    # 22 sec
     print("numSamples", numSamples)
     numBatches = identifyBatches(samplesDB, maxBatchSize, targetMemoryMB, minTensorMB)
     print("numBatches", numBatches)
@@ -63,7 +72,83 @@ character.  I summarize these probabilities of correctness to an average for eac
 and each script line.
 """
 
-def prepareDataset(scriptsDB, samplesDB, audioDir, processor):
+def prepareVerseDataset(scriptsDB, samplesDB, audioDir, processor):
+    samplesDB.execute('DROP TABLE IF EXISTS samples', ())
+    samples = 'CREATE TABLE samples (idx INTEGER PRIMARY KEY, input_values BLOB, labels BLOB, text TEXT, reference TEXT, memory_mb FLOAT)'
+    samplesDB.execute(samples,())
+    query = """
+        SELECT s.book_id || ' ' || s.chapter_num || ':' || s.verse_str as ref,
+            s.audio_file, s.script_begin_ts, s.script_end_ts, GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS text
+        FROM scripts s
+        JOIN words w ON w.script_id = s.script_id
+        WHERE w.ttype = 'W' AND s.script_id NOT IN (SELECT script_id FROM pruned_data)
+        AND s.script_id NOT IN (SELECT script_id FROM pruned_silence)
+        GROUP BY s.book_id, s.chapter_num, s.verse_str, s.audio_file, s.script_begin_ts, s.script_end_ts
+        ORDER BY s.script_end_ts - s.script_begin_ts
+        """
+    index = -1
+    vocab = processor.tokenizer.get_vocab()
+    unkId = processor.tokenizer.unk_token_id
+    numUnk = 0
+    missingChars = set()
+    data = scriptsDB.select(query,())
+    for (reference, audioFile, beginTS, endTS, text) in data:
+        if endTS == 0.0:
+            continue
+        index += 1
+        audioFile = audioFile.replace(".mp3", ".wav")
+        audioPath = os.path.join(audioDir, audioFile)
+
+        sample_rate = sf.info(audioPath).samplerate
+        if sample_rate != 16000:
+            print("Audio sample rate must be 16000", file=sys.stderr, flush=True)
+            sys.exit(1)
+
+        speech, sample_rate = torchaudio.load(
+            audioPath,
+            frame_offset = int(beginTS * 16000),
+            num_frames = int((endTS - beginTS) * 16000)
+        )
+        speech = speech.squeeze().numpy()
+
+        inputValues = processor(
+                speech,
+                sampling_rate=16000,
+                return_tensors=None,
+                padding=False
+            ).input_values
+        inputValues = np.array(inputValues)
+        inputValuesTensor = torch.tensor(inputValues, dtype=torch.float).squeeze(0)
+        memoryMB = inputValuesTensor.element_size() * inputValuesTensor.numel() / (1024 * 1024)
+        if memoryMB == 0:
+            print(reference, audioFile, "Has Zero Length input_values", file=sys.stderr, flush=True)
+            sys.exit(1)
+
+        normalized = normalizeText(text)
+        labels = processor(text=normalized).input_ids
+        numUnk += labels.count(unkId)
+        missingChars.update(ch for ch in normalized if ch != ' ' and ch not in vocab)
+        labelsTensor = torch.tensor(labels, dtype=torch.long)
+
+        buffer = BytesIO()
+        torch.save(inputValuesTensor, buffer)
+        inputValuesBlob = buffer.getvalue()
+
+        buffer = BytesIO()
+        torch.save(labelsTensor, buffer)
+        labelsBlob = buffer.getvalue()
+        insert = 'INSERT INTO samples (idx, input_values, labels, text, reference, memory_mb) VALUES (?,?,?,?,?,?)'
+        samplesDB.execute(insert, (index, inputValuesBlob, labelsBlob, text, reference, memoryMB))
+    if numUnk > 0:
+        # Labels containing [UNK] teach the model to output [UNK]; this should never happen
+        # because the vocabulary is built from the same text with the same normalizeText.
+        chars = ' '.join(f"{ch!r} U+{ord(ch):04X}" for ch in sorted(missingChars))
+        print(f"WARNING: {numUnk} [UNK] tokens in training labels. Characters not in vocab: {chars}",
+              file=sys.stderr, flush=True)
+    return index + 1
+
+
+def prepareWordDataset(scriptsDB, samplesDB, audioDir, processor):
     samplesDB.execute('DROP TABLE IF EXISTS samples', ())
     samples = """CREATE TABLE samples (idx INTEGER PRIMARY KEY, script_id INTEGER, word_id INTEGER,
             input_values BLOB, labels BLOB, text TEXT, reference TEXT, fa_score FLOAT, memory_mb FLOAT)"""
@@ -167,6 +252,9 @@ def padWordTimestamps(rows):
     return result
 
 def identifyBatches(database, maxBatchSize, targetMemoryMB, minTensorMB):
+    count = database.selectOne('SELECT count(*) FROM samples WHERE memory_mb > ?', (targetMemoryMB,))
+    if len(count) > 0 and count[0] > 0:
+        print(count[0], "samples were dropped, because they were too large.", file=sys.stderr)
     database.execute('DROP TABLE IF EXISTS batches', ())
     batches = """CREATE TABLE batches (idx INTEGER PRIMARY KEY, num_samples INTEGER, memory_mb FLOAT,
                 padded_mb FLOAT, indexes BLOB)"""
@@ -266,6 +354,8 @@ def displaySamples(database):
         print("memory_mb", memoryMB)
     print("numSamples", len(samples))
 
+def countSamples(database):
+    return database.selectOne('SELECT count(*) FROM samples', ())
 
 def displayBatches(database):
     batches = database.select('SELECT idx, num_samples, memory_mb, padded_mb, indexes FROM batches', ())

@@ -25,7 +25,26 @@ type WordRec struct {
 	faScore float64
 }
 
-func dataPruner(conn db.DBAdapter, pctExclude int) *log.Status {
+func VerseDataPruner(conn db.DBAdapter) *log.Status {
+	ctx := conn.Ctx
+	_, err := conn.DB.Exec("DROP TABLE IF EXISTS pruned_data")
+	if err != nil {
+		return log.Error(ctx, 500, err, "Error while dropping pruned data.")
+	}
+	query := `CREATE TABLE pruned_data AS
+		SELECT script_id
+		FROM scripts WHERE verse_str = '0'
+		OR fa_score < 0.2
+		OR script_id IN
+		(SELECT script_id FROM words WHERE ttype='W' AND fa_score < 0.01)`
+	_, err = conn.DB.Exec(query)
+	if err != nil {
+		return log.Error(ctx, 500, err, "Error while creating pruned data.")
+	}
+	return nil
+}
+
+func WordDataPruner(conn db.DBAdapter, pctExclude int) *log.Status {
 	ctx := conn.Ctx
 	_, err := conn.DB.Exec("DROP TABLE IF EXISTS pruned_data")
 	if err != nil {

@@ -15,7 +15,7 @@ import (
 	"gonum.org/v1/gonum/stat"
 )
 
-type SilenceRec struct {
+type SilenceWordRec struct {
 	BookId          string
 	ChapterNum      int
 	VerseStr        string
@@ -27,7 +27,7 @@ type SilenceRec struct {
 	DurationPerChar float64
 }
 
-func SilencePruner(ctx context.Context, conn db.DBAdapter, stdDevOverMean float64) *log.Status {
+func WordSilencePruner(ctx context.Context, conn db.DBAdapter, stdDevOverMean float64) *log.Status {
 	_, err := conn.DB.Exec("DROP TABLE IF EXISTS pruned_silence")
 	if err != nil {
 		return log.Error(ctx, 500, err, "Error while dropping pruned silence.")
@@ -36,8 +36,8 @@ func SilencePruner(ctx context.Context, conn db.DBAdapter, stdDevOverMean float6
 	if err != nil {
 		return log.Error(ctx, 500, err, "Error while creating pruned silence.")
 	}
-	silences := selectSilences(ctx, conn)
-	silences = findOutliers(ctx, silences, stdDevOverMean)
+	silences := selectWordSilences(ctx, conn)
+	silences = findWordOutliers(ctx, silences, stdDevOverMean)
 	query := `INSERT INTO pruned_silence(word_id) VALUES (?)`
 	tx, err := conn.DB.Begin()
 	if err != nil {
@@ -61,7 +61,7 @@ func SilencePruner(ctx context.Context, conn db.DBAdapter, stdDevOverMean float6
 	return nil
 }
 
-func selectSilences(ctx context.Context, conn db.DBAdapter) []SilenceRec {
+func selectWordSilences(ctx context.Context, conn db.DBAdapter) []SilenceWordRec {
 	var query = `SELECT s.book_id, s.chapter_num, s.verse_str,
 		w.word_id, length(w.word), w.word_begin_ts, w.word_end_ts
 		FROM scripts s JOIN words w ON s.script_id = w.script_id
@@ -72,9 +72,9 @@ func selectSilences(ctx context.Context, conn db.DBAdapter) []SilenceRec {
 		os.Exit(1)
 	}
 	defer rows.Close()
-	var results []SilenceRec
+	var results []SilenceWordRec
 	for rows.Next() {
-		var s SilenceRec
+		var s SilenceWordRec
 		err = rows.Scan(&s.BookId, &s.ChapterNum, &s.VerseStr, &s.WordId, &s.WordLength, &s.BeginTS, &s.EndTS)
 		if err != nil {
 			_ = log.Error(ctx, 500, err, `Error scanning in Select Silence`)
@@ -96,7 +96,7 @@ func selectSilences(ctx context.Context, conn db.DBAdapter) []SilenceRec {
 	return results
 }
 
-func findOutliers(ctx context.Context, silences []SilenceRec, stdDevOverMean float64) []SilenceRec {
+func findWordOutliers(ctx context.Context, silences []SilenceWordRec, stdDevOverMean float64) []SilenceWordRec {
 	var durPerChar []float64
 	for _, sil := range silences {
 		durPerChar = append(durPerChar, sil.DurationPerChar)
@@ -106,7 +106,7 @@ func findOutliers(ctx context.Context, silences []SilenceRec, stdDevOverMean flo
 	stdDev := stat.StdDev(durPerChar, nil)
 	log.Info(ctx, "StdDev: ", strconv.FormatFloat(stdDev, 'f', 2, 64))
 	cutoff := mean + stdDevOverMean*stdDev
-	var results []SilenceRec
+	var results []SilenceWordRec
 	for _, sil := range silences {
 		if sil.DurationPerChar > cutoff {
 			results = append(results, sil)

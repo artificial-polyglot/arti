@@ -1,5 +1,7 @@
 import os
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+import time
+import json
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -7,6 +9,7 @@ from transformers import get_linear_schedule_with_warmup
 import logging
 # from train_adapter
 import sys
+import transformers
 from transformers import Wav2Vec2FeatureExtractor
 from transformers import Wav2Vec2Processor
 from transformers import Wav2Vec2ForCTC
@@ -53,7 +56,7 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
     model.train()
     global_step = 0
     total_loss = 0
-
+    epochLosses = []
     for epoch in range(num_epochs):
         logger.info(f"Starting epoch {epoch + 1}/{num_epochs}")
         epoch_loss = 0
@@ -95,10 +98,11 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
                     torch.mps.empty_cache()
                     logger.warning("Cleared MPS cache due to fragmentation")
         avg_epoch_loss = epoch_loss / len(dataloader)
+        epochLosses.append(round(avg_epoch_loss, 4))
         logger.info(f"Epoch {epoch + 1} completed. Average loss: {avg_epoch_loss:.4f}")
 
     logger.info("Training completed!")
-    return model
+    return model, epochLosses
 
 
 # Community conversions can change; pin the tested revision.
@@ -111,24 +115,26 @@ PINNED_REVISIONS = {
 
 if len(sys.argv) < 11:
     usage = """Usage: python train_adapter.py {iso639-3} {databasePath} {audioDirectory} {modelBase}
-                    {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec} {loggingSteps}"""
+                    {sampleType} {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec} {loggingSteps}"""
     print(usage, file=sys.stderr)
     sys.exit(1)
 targetLang = sys.argv[1]
 databasePath = sys.argv[2]
 audioDirectory = sys.argv[3].strip("'")
 modelBase = sys.argv[4]
-batchSizeMB = int(sys.argv[5])
-numEpochs = int(sys.argv[6])
-learningRate = float(sys.argv[7])
-warmupPct = float(sys.argv[8])
-gradNormMax = float(sys.argv[9])
-minAudioSec = float(sys.argv[10])
-loggingSteps = int(sys.argv[11])
+sampleType = sys.argv[5]
+batchSizeMB = int(sys.argv[6])
+numEpochs = int(sys.argv[7])
+learningRate = float(sys.argv[8])
+warmupPct = float(sys.argv[9])
+gradNormMax = float(sys.argv[10])
+minAudioSec = float(sys.argv[11])
+loggingSteps = int(sys.argv[12])
 
-print("ModelBase", modelBase, "BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
+print("ModelBase", modelBase, "SampleType", sampleType, "BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
     "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec)
 
+startTime = time.strftime("%Y-%m-%d %H:%M:%S")
 torch.manual_seed(42)
 
 database = SqliteUtility(databasePath)
@@ -147,7 +153,7 @@ processor = Wav2Vec2Processor(
     tokenizer=tokenizer
 )
 
-sampleDB = dataPreparation(database, databasePath, audioDirectory, processor, 512, batchSizeMB, minAudioSec)
+sampleDB = dataPreparation(database, databasePath, audioDirectory, sampleType, processor, batchSizeMB, minAudioSec)
 database.close()
 
 ADAPTER_BASE = "facebook/mms-1b-all"
@@ -164,10 +170,14 @@ else:
         ignore_mismatched_sizes=isAdapter,   # mms-1b-all's own output layer is replaced by ours
         ctc_loss_reduction="mean",    # the model's default is "sum"
         ctc_zero_infinity=True,
-        mask_time_prob=0.05,          # default 0.075
-        mask_time_length=4,           # default 10 frames (200 ms)
-        mask_time_min_masks=0,        # default 2
+#        mask_time_prob=0.05,          # default 0.075
+#        mask_time_length=4,           # default 10 frames (200 ms)
+#        mask_time_min_masks=0,        # default 2
     )
+    if sampleType == "word":
+        model.config.mask_time_prob = 0.05
+        model.config.mask_time_length = 4
+        model.config.mask_time_min_masks = 0
     if isAdapter:
         model.init_adapter_layers()
         model.freeze_base_model()
@@ -188,7 +198,7 @@ model.to(device)
 dataset = MyDataset(sampleDB)
 warmupSteps = int(len(dataset) * numEpochs * warmupPct / 100.0)
 print("warmupSteps", warmupSteps)
-trainedModel = train_wav2vec2(
+trainedModel, epochLosses = train_wav2vec2(
         model,
         dataset,
         num_epochs = numEpochs,
@@ -197,11 +207,27 @@ trainedModel = train_wav2vec2(
         max_grad_norm = gradNormMax,
         log_steps = loggingSteps
 )
+numSamples = countSamples(sampleDB)
+numTensors = len(dataset)
 sampleDB.close()
 logger.info("Training completed!")
 modelName = modelBase.replace("/", "-")
 outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
 os.makedirs(outputDir, exist_ok=True)
+info = {
+    "model_base": modelBase,
+    "base_revision": PINNED_REVISIONS.get(modelBase) or "main",
+    "sample_type": sampleType,
+#    "image_version": os.environ.get("ARTI_IMAGE_VERSION", "unknown"),
+    "torch": torch.__version__,
+    "transformers": transformers.__version__,
+    "num_samples": numSamples,                  # after pruning
+    "num_batches": numTensors,
+    "epoch_losses": epochLosses,                # average loss per epoch
+    "started": startTime, "finished": time.strftime("%Y-%m-%d %H:%M:%S"),
+}
+with open(os.path.join(outputDir, "training_info.json"), "w") as f:
+    json.dump(info, f, indent=2)
 if isAdapter:
     adapterFile = os.path.join(outputDir, WAV2VEC2_ADAPTER_SAFE_FILE.format(targetLang))
     safe_save_file(model._get_adapters(), adapterFile, metadata={"format": "pt"})

@@ -19,6 +19,7 @@ import (
 
 const pctExcludePruneData = 5
 const stdDevOverMeanPruneSilence = 1.5
+const numVerses2SilencePrune = 400
 
 type Wav2Vec2Trainer struct {
 	ctx       context.Context
@@ -90,18 +91,35 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 			return status
 		}
 	}
-	status := SilencePruner(t.ctx, t.conn, stdDevOverMeanPruneSilence)
-	if status != nil {
-		return status
+	if t.args.SampleType == "word" {
+		status := WordSilencePruner(t.ctx, t.conn, stdDevOverMeanPruneSilence)
+		if status != nil {
+			return status
+		}
+		status = WordDataPruner(t.conn, pctExcludePruneData)
+		if status != nil {
+			return status
+		}
+	} else if t.args.SampleType == "verse" {
+		status := VerseSilencePruner(t.ctx, numVerses2SilencePrune, t.conn)
+		if status != nil {
+			return status
+		}
+		status = VerseDataPruner(t.conn)
+		if status != nil {
+			return status
+		}
+	} else {
+		return log.ErrorNoErr(t.ctx, 500, "Sample Type must be verse|word.  It was: "+t.args.SampleType)
 	}
-	status = dataPruner(t.conn, pctExcludePruneData)
 	pythonPath := os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`)
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "wav2vec2/train/trainer.py")
-	status = stdio_exec.RunScriptWithLogging(t.ctx, pythonPath, pythonScript,
+	status := stdio_exec.RunScriptWithLogging(t.ctx, pythonPath, pythonScript,
 		t.langISO,
 		t.conn.DatabasePath,
 		`'`+tempDir+`'`,
 		t.modelBase,
+		t.args.SampleType,
 		strconv.Itoa(t.args.BatchMB),
 		strconv.Itoa(t.args.NumEpochs),
 		strconv.FormatFloat(t.args.LearningRate, 'e', -1, 64),

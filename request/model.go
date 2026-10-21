@@ -238,6 +238,7 @@ func (t MediaType) IsFrom(ttype string) bool {
 type Training2 struct {
 	RedoTraining bool    `yaml:"redo_training,omitempty" json:"redo_training,omitempty"`
 	ModelBase    string  `yaml:"model_base,omitempty" json:"model_base,omitempty"`
+	SampleType   string  `yaml:"sample_type,omitempty" json:"sample_type,omitempty"`
 	BatchMB      int     `yaml:"batch_mb,omitempty" json:"batch_mb,omitempty"`
 	NumEpochs    int     `yaml:"num_epochs,omitempty" json:"num_epochs,omitempty"`
 	LearningRate float64 `yaml:"learning_rate,omitempty" json:"learning_rate,omitempty"`

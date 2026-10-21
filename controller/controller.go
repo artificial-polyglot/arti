@@ -238,6 +238,14 @@ func (c *Controller) processSteps() *log.Status {
 					return status1
 				}
 				prefix, path := request.ModelS3PrefixAndPath(c.req.Training2.ModelBase, c.req.LanguageISO)
+				yamlRequest, status2 := decode.Encode(c.ctx, "yaml", c.req)
+				if status2 != nil {
+					return status2
+				}
+				err := os.WriteFile(filepath.Join(path, "arti_request.yaml"), []byte(yamlRequest), 0o644)
+				if err != nil {
+					return log.Error(c.ctx, 500, err, "Could not write arti_request.yaml")
+				}
 				status = c.bucket.PersistModel(prefix, path)
 				if status != nil {
 					return status

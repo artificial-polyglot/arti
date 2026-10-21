@@ -16,7 +16,7 @@ func TestSilencePruner(t *testing.T) {
 	log.SetOutput("stderr")
 	dbPath := filepath.Join(os.Getenv("HOME"), "Downloads", "arti-output_GaryNTest_N2TTS_arti_00011_database_N2TTS.db")
 	conn := db.NewDBAdapter(ctx, dbPath)
-	status := SilencePruner(ctx, conn, 1.5)
+	status := WordSilencePruner(ctx, conn, 1.5)
 	if status != nil {
 		t.Fatal(status)
 	}
