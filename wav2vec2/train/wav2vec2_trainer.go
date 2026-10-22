@@ -105,7 +105,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
-		status = VerseDataPruner(t.conn)
+		status = VerseDataPruner(t.conn, pctExcludePruneData)
 		if status != nil {
 			return status
 		}
