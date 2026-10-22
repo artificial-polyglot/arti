@@ -25,19 +25,34 @@ type WordRec struct {
 	faScore float64
 }
 
-func VerseDataPruner(conn db.DBAdapter) *log.Status {
+// VerseDataPruner excludes every verse_str '0' line (headings), plus the pctExclude percent
+// of the remaining verses whose weakest word has the lowest fa_score. A verse is only as
+// trustworthy as its worst word, so verses are ranked by the minimum word fa_score.
+// A percentage, rather than a fixed fa_score threshold, is used because fa_scores vary
+// widely by language; a fixed threshold pruned far too many verses in some (e.g. shn).
+func VerseDataPruner(conn db.DBAdapter, pctExclude int) *log.Status {
 	ctx := conn.Ctx
 	_, err := conn.DB.Exec("DROP TABLE IF EXISTS pruned_data")
 	if err != nil {
 		return log.Error(ctx, 500, err, "Error while dropping pruned data.")
 	}
 	query := `CREATE TABLE pruned_data AS
-		SELECT script_id
-		FROM scripts WHERE verse_str = '0'
-		OR fa_score < 0.2
-		OR script_id IN
-		(SELECT script_id FROM words WHERE ttype='W' AND fa_score < 0.01)`
-	_, err = conn.DB.Exec(query)
+		WITH verse_min AS (
+			SELECT s.script_id, MIN(w.fa_score) AS min_fa_score
+			FROM scripts s JOIN words w ON w.script_id = s.script_id
+			WHERE w.ttype = 'W' AND s.verse_str != '0'
+			GROUP BY s.script_id
+		),
+		ranked AS (
+			SELECT script_id, min_fa_score,
+				ROW_NUMBER() OVER (ORDER BY min_fa_score, script_id) AS rank_num
+			FROM verse_min
+		)
+		SELECT script_id, NULL AS min_fa_score FROM scripts WHERE verse_str = '0'
+		UNION ALL
+		SELECT script_id, min_fa_score FROM ranked
+		WHERE rank_num <= (SELECT COUNT(*) FROM verse_min) * ? / 100`
+	_, err = conn.DB.Exec(query, pctExclude)
 	if err != nil {
 		return log.Error(ctx, 500, err, "Error while creating pruned data.")
 	}
