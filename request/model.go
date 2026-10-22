@@ -245,6 +245,7 @@ type Training2 struct {
 	WarmupPct    float64 `yaml:"warmup_pct,omitempty" json:"warmup_pct,omitempty"`
 	GradNormMax  float64 `yaml:"grad_norm_max,omitempty" json:"grad_norm_max,omitempty"`
 	MinAudioSec  float64 `yaml:"min_audio_sec,omitempty" json:"min_audio_sec,omitempty"`
+	UseBF16      bool    `yaml:"use_bf16,omitempty" json:"use_bf16,omitempty"`
 	LoggingSteps int     `yaml:"logging_steps,omitempty" json:"logging_steps,omitempty"`
 	NoTraining   bool    `yaml:"no_training,omitempty" json:"no_training,omitempty"`
 }

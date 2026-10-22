@@ -115,18 +115,19 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 	pythonPath := os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`)
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "wav2vec2/train/trainer.py")
 	status := stdio_exec.RunScriptWithLogging(t.ctx, pythonPath, pythonScript,
-		t.langISO,
-		t.conn.DatabasePath,
-		`'`+tempDir+`'`,
-		t.modelBase,
-		t.args.SampleType,
-		strconv.Itoa(t.args.BatchMB),
-		strconv.Itoa(t.args.NumEpochs),
-		strconv.FormatFloat(t.args.LearningRate, 'e', -1, 64),
-		strconv.FormatFloat(t.args.WarmupPct, 'f', -1, 64),
-		strconv.FormatFloat(t.args.GradNormMax, 'f', -1, 64),
-		strconv.FormatFloat(t.args.MinAudioSec, 'f', -1, 64),
-		strconv.Itoa(t.args.LoggingSteps))
+		t.langISO,                      // 1
+		t.conn.DatabasePath,            // 2
+		`'`+tempDir+`'`,                // 3
+		t.modelBase,                    // 4
+		t.args.SampleType,              // 5
+		strconv.Itoa(t.args.BatchMB),   // 6
+		strconv.Itoa(t.args.NumEpochs), // 7
+		strconv.FormatFloat(t.args.LearningRate, 'e', -1, 64), // 8
+		strconv.FormatFloat(t.args.WarmupPct, 'f', -1, 64),    // 9
+		strconv.FormatFloat(t.args.GradNormMax, 'f', -1, 64),  // 10
+		strconv.FormatFloat(t.args.MinAudioSec, 'f', -1, 64),  // 11
+		strconv.FormatBool(t.args.UseBF16),                    // 12
+		strconv.Itoa(t.args.LoggingSteps))                     // 13
 	return status
 }
 

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
-                     warmup_steps=100, max_grad_norm=1.0, log_steps=50):
+                     warmup_steps=100, max_grad_norm=1.0, log_steps=50, use_bf16=False):
     """
     Train Wav2Vec2 Model with PyTorch
     Args:
@@ -44,6 +44,7 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
         warmup_steps: Warmup steps for lr scheduler
         max_grad_norm: Max gradient norm for clipping
         log_steps: Steps between logging
+        use_bf16: Run the forward pass under bf16 autocast (CUDA only, no GradScaler needed)
     """
     dataloader = DataLoader(dataset, batch_size=None, shuffle=True)
 
@@ -63,7 +64,10 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
 
         for step, batch in enumerate(dataloader):
             batch = {k: v.to(model.device) for k, v in batch.items()}
-            outputs = model(**batch)
+            # bf16 autocast covers the forward pass only. The model computes its CTC loss
+            # in float32 regardless, and weights, gradients and optimizer state stay float32.
+            with torch.autocast(device_type=model.device.type, dtype=torch.bfloat16, enabled=use_bf16):
+                outputs = model(**batch)
             loss = outputs.loss
             if not torch.isfinite(loss):
                 logger.warning(f"Skipping step {epoch + 1}/{step}: loss is {loss.item()}")
@@ -113,9 +117,10 @@ PINNED_REVISIONS = {
     "facebook/mms-1b":         "0d2f7adb9903d98894d70ae11f7fbdfc8cb71a69",
 }
 
-if len(sys.argv) < 11:
+if len(sys.argv) < 14:
     usage = """Usage: python train_adapter.py {iso639-3} {databasePath} {audioDirectory} {modelBase}
-                    {sampleType} {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec} {loggingSteps}"""
+                    {sampleType} {batchMB} {numEpochs} {learningRage} {warmupPct} {gradNormMax} {minAudioSec}
+                    {useBF16} {loggingSteps}"""
     print(usage, file=sys.stderr)
     sys.exit(1)
 targetLang = sys.argv[1]
@@ -129,10 +134,11 @@ learningRate = float(sys.argv[8])
 warmupPct = float(sys.argv[9])
 gradNormMax = float(sys.argv[10])
 minAudioSec = float(sys.argv[11])
-loggingSteps = int(sys.argv[12])
+useBF16Arg = sys.argv[12].lower()
+loggingSteps = int(sys.argv[13])
 
 print("ModelBase", modelBase, "SampleType", sampleType, "BatchSizeMB", batchSizeMB, "NumEpochs", numEpochs, "learningRate", learningRate,
-    "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec)
+    "warmupPct", warmupPct, "gradNormMax", gradNormMax, "minAudioSec", minAudioSec, "useBF16", useBF16Arg)
 
 startTime = time.strftime("%Y-%m-%d %H:%M:%S")
 torch.manual_seed(42)
@@ -195,6 +201,8 @@ else:
 print("device", device)
 model.to(device)
 
+useBF16 = (useBF16Arg == "true" and device.type == "cuda" and torch.cuda.is_bf16_supported())
+
 dataset = MyDataset(sampleDB)
 warmupSteps = int(len(dataset) * numEpochs * warmupPct / 100.0)
 print("warmupSteps", warmupSteps)
@@ -205,7 +213,8 @@ trainedModel, epochLosses = train_wav2vec2(
         lr = learningRate,
         warmup_steps = warmupSteps,
         max_grad_norm = gradNormMax,
-        log_steps = loggingSteps
+        log_steps = loggingSteps,
+        use_bf16 = useBF16
 )
 numSamples = countSamples(sampleDB)
 numTensors = len(dataset)
@@ -218,6 +227,7 @@ info = {
     "model_base": modelBase,
     "base_revision": PINNED_REVISIONS.get(modelBase) or "main",
     "sample_type": sampleType,
+    "bf16": useBF16,
 #    "image_version": os.environ.get("ARTI_IMAGE_VERSION", "unknown"),
     "torch": torch.__version__,
     "transformers": transformers.__version__,
