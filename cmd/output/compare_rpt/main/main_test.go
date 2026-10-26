@@ -9,13 +9,13 @@ import (
 
 const compare_rpt_yaml = `
 is_new: false 
-dataset_name: N2CCPBBS
+dataset_name: N1SKNSEC
 username: GaryNTest
-language_iso: ccp
+language_iso: skn
 database:
-    aws_s3: s3://arti-output/GaryNTest/N2CCPBBS/arti/00025/database/N2CCPBBS.db
-compare:
-    html_report: true
+    aws_s3: s3://arti-output/GaryNTest/N1SKNSEC/arti/00001/database/N1SKNSEC.db
+output:
+    compare_report: true
 `
 
 func TestRun(t *testing.T) {

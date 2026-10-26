@@ -32,7 +32,7 @@ func CompareReport(conn db.DBAdapter, langISO string) ([]generic.Pair, map[strin
 		diffs := diff.DiffMatchPatch(vs.Text(), vs.ASRText)
 		if !diff.IsMatch(diffs) {
 			pair := vs.ToPair()
-			diffs = CleanupSpaceAndHyphen(diffs)
+			//diffs = CleanupSpaceAndHyphen(diffs)
 			pair.Text.Diffs = diff.Convert2Diff(diffs)
 			pair.Text.HTML = diff.DiffPrettyHtml(diffs)
 			asrUroman, status2 := urExec.Transliterate(vs.ASRText)
@@ -40,7 +40,7 @@ func CompareReport(conn db.DBAdapter, langISO string) ([]generic.Pair, map[strin
 				return records, fileMap, status2
 			}
 			diffs = diff.DiffMatchPatch(vs.Uroman(), asrUroman)
-			diffs = CleanupSpaceAndHyphen(diffs)
+			//diffs = CleanupSpaceAndHyphen(diffs)
 			pair.Uroman.Diffs = diff.Convert2Diff(diffs)
 			pair.Uroman.HTML = diff.DiffPrettyHtml(diffs)
 			records = append(records, pair)
