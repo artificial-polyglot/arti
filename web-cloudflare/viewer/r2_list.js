@@ -77,17 +77,31 @@ export async function getModelsRows(bucket) {
 // arti-models config/tokenizer files for one (model_type, lang_iso, run_num),
 // one row per file. mms_adapters keeps them under processor_<lang_iso>/; every
 // other model type (wav2vec2ctc, and any added later) stores them as .json
-// files directly beside the model weights, so only those are listed.
+// files directly beside the model weights, so only those are listed. Every
+// model type also gets the arti_request.yaml (the request that trained it,
+// written by controller.go) from the top of the run directory.
+const MODEL_REQUEST_FILE = "arti_request.yaml";
+
 export async function getModelDetailRows(bucket, modelType, langIso, runNum) {
   const runPrefix = `${modelType}/${langIso}/${padRunNum(runNum)}/`;
   const isAdapter = modelType === "mms_adapters";
-  const prefix = isAdapter ? `${runPrefix}processor_${langIso}/` : runPrefix;
-  const objects = await listAllObjects(bucket, prefix);
+  const processorPrefix = `${runPrefix}processor_${langIso}/`;
+  const objects = await listAllObjects(bucket, runPrefix);
   const rows = [];
   for (const obj of objects) {
-    const filename = obj.key.slice(prefix.length);
-    if (!filename) continue; // directory placeholder object, not a real file
-    if (!isAdapter && (filename.includes("/") || !filename.toLowerCase().endsWith(".json"))) continue;
+    const rest = obj.key.slice(runPrefix.length);
+    if (!rest) continue; // directory placeholder object, not a real file
+    let filename;
+    if (rest === MODEL_REQUEST_FILE) {
+      filename = rest;
+    } else if (isAdapter) {
+      if (!obj.key.startsWith(processorPrefix)) continue;
+      filename = obj.key.slice(processorPrefix.length);
+      if (!filename) continue;
+    } else {
+      if (rest.includes("/") || !rest.toLowerCase().endsWith(".json")) continue;
+      filename = rest;
+    }
     rows.push({ filename, uploaded: obj.uploaded, key: obj.key });
   }
   rows.sort((a, b) => a.filename.localeCompare(b.filename));

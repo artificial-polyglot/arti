@@ -203,17 +203,20 @@ func (t S3Client) PutDirectory(bucket, prefix, localDir string) *log.Status {
 		var mimeType string
 		var disposition string
 		fileExt := strings.ToLower(filepath.Ext(path))
-		if fileExt == ".sfm" || fileExt == "usx" {
+		if fileExt == ".sfm" || fileExt == ".usx" {
 			mimeType = "text/plain"
 			disposition = "inline"
-		} else if fileExt == ".mp3" || fileExt == ".wav" {
-			mimeType = "audio/mp3"
+		} else if fileExt == ".mp3" {
+			mimeType = "audio/mpeg"
 			disposition = "inline"
 		} else if fileExt == ".wav" {
 			mimeType = "audio/wav"
 			disposition = "inline"
 		} else if fileExt == ".json" {
 			mimeType = "application/json"
+			disposition = "inline"
+		} else if fileExt == ".yaml" {
+			mimeType = "application/yaml"
 			disposition = "inline"
 		} else {
 			mimeType = "application/octet-stream"
