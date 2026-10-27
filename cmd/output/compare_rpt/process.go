@@ -27,6 +27,8 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 		s3.SignAudioFiles(fileMap)
 	}
 
+	status = DebugReport(database, req) // puts output in DATASET_TMP
+
 	jsonBytes, err := json.MarshalIndent(records, "", " ")
 	if err != nil {
 		return output, log.Error(database.Ctx, 500, err, "Error writing Pairs to json bytes")
