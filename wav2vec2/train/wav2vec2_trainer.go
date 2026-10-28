@@ -17,7 +17,7 @@ import (
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 )
 
-const pctExcludePruneData = 5
+const pctExcludePruneData = 26
 const stdDevOverMeanPruneSilence = 1.5
 const numVerses2SilencePrune = 400
 
