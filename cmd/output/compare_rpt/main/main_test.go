@@ -9,11 +9,11 @@ import (
 
 const compare_rpt_yaml = `
 is_new: false 
-dataset_name: N1SKNSEC
+dataset_name: N2ATGMLT
 username: GaryNTest
-language_iso: skn
+language_iso: atg
 database:
-    aws_s3: s3://arti-output/GaryNTest/N1SKNSEC/arti/00001/database/N1SKNSEC.db
+    aws_s3: s3://arti-output/GaryNTest/N2ATGMLT/arti/00001/database/N2ATGMLT.db
 output:
     compare_report: true
 `
