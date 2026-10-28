@@ -68,7 +68,7 @@ func NewVerseRef(key string) VerseRef {
 			r.VerseStr = pieces[1]
 		}
 		if len(parts) > 1 {
-			pieces = strings.Split(parts[0], `:`)
+			pieces = strings.Split(parts[1], `:`)
 			if len(pieces) == 1 {
 				r.VerseEnd = pieces[0]
 			} else {

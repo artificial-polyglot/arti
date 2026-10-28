@@ -183,3 +183,25 @@ func Diff2CDiff(diffs []Diff) []CDiff {
 	}
 	return result
 }
+
+func ReadableDiff(diffs []Diff) string {
+	var result []string
+	for _, df := range diffs {
+		switch df.Type {
+		case OpEqual:
+			result = append(result, "{=}")
+		case OpInsert:
+			result = append(result, "{+}")
+		case OpDelete:
+			result = append(result, "{-}")
+		case OpReplace:
+			result = append(result, "{-r}")
+		}
+		result = append(result, df.Text)
+		if df.Type == OpReplace {
+			result = append(result, "{+r")
+			result = append(result, df.Replace)
+		}
+	}
+	return strings.Join(result, "")
+}

@@ -3,6 +3,7 @@ package validate
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -59,7 +60,11 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status1 != nil {
 		return output, status1
 	}
-	knownErrors := checkKnownErrors(verses, prunedMap, knownErrorList)
+	faRankMap, status3 := SelectVerseFARank(database)
+	if status3 != nil {
+		return output, status3
+	}
+	knownErrors := checkKnownErrors(verses, prunedMap, faRankMap, knownErrorList)
 	rptPath, status2 := generateReport(ctx, req.DatasetName, charCntMap, verseCntMap, knownErrors)
 	if status2 != nil {
 		return output, status2
@@ -76,10 +81,19 @@ type prunedVerse struct {
 	reference  generic.VerseRef
 }
 
+// faRank is a verse's minimum words.fa_score, and its percentile among all
+// verses ranked the same way VerseDataPruner ranks them (lowest = 0).
+type faRank struct {
+	minFAScore sql.NullFloat64
+	percentile float64
+}
+
 type knownError struct {
 	reference   string
 	scriptId    int64
 	pruned      PruneSource
+	faRank      faRank
+	faRankFound bool
 	cer         diff.Counts
 	largestDiff int
 	difference  string
@@ -100,7 +114,7 @@ func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVers
 	return result, verseCount
 }
 
-func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, errors []string) []knownError {
+func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRanks map[int64]faRank, errors []string) []knownError {
 	var result []knownError
 	var refMap = make(map[generic.VerseRef]generic.Verse2)
 	for _, vs := range verses {
@@ -119,6 +133,7 @@ func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, erro
 			} else {
 				known.pruned = NotPruned
 			}
+			known.faRank, known.faRankFound = faRanks[vs.ScriptId]
 			known.cer = diff.Count(diff.CharLevenshtein(vs.Text(), vs.ASRText))
 			diffs := diff.DiffConvert(vs.Text(), vs.ASRText)
 			pair := vs.ToPair()
@@ -159,11 +174,19 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 	}
 	_, _ = w.WriteString("\n\n")
 	var caughtCount int
-	_, _ = w.WriteString("Known Error\tPrune Status\tCER\tLargest\tDiff\n")
+	_, _ = w.WriteString("Known Error\tPrune Status\tMin FA\tFA Pctl\tCER\tLargest\tDiff\n")
 	for _, kn := range knownErrors {
 		_, _ = w.WriteString(kn.reference)
 		_, _ = w.WriteString("\t")
 		_, _ = w.WriteString(kn.pruned.String())
+		_, _ = w.WriteString("\t")
+		if kn.faRank.minFAScore.Valid {
+			_, _ = w.WriteString(strconv.FormatFloat(kn.faRank.minFAScore.Float64, 'f', 4, 64))
+		}
+		_, _ = w.WriteString("\t")
+		if kn.faRankFound {
+			_, _ = w.WriteString(strconv.FormatFloat(kn.faRank.percentile, 'f', 1, 64))
+		}
 		_, _ = w.WriteString("\t")
 		_, _ = w.WriteString(strconv.FormatFloat(kn.cer.ErrorRate(), 'f', 3, 64))
 		_, _ = w.WriteString("\t")
@@ -185,6 +208,46 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 		return filePath, log.Error(ctx, 500, err, "Could not flush Validation.txt")
 	}
 	return filePath, nil
+}
+
+// SelectVerseFARank ranks verses exactly as wav2vec2/train VerseDataPruner
+// does (min word fa_score, ties by script_id, headings excluded), so a
+// percentile at or below pctExcludePruneData means the verse was FA pruned.
+func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
+	ctx := database.Ctx
+	var result = make(map[int64]faRank)
+	query := `WITH verse_min AS (
+			SELECT s.script_id, MIN(w.fa_score) AS min_fa_score
+			FROM scripts s JOIN words w ON w.script_id = s.script_id
+			WHERE w.ttype = 'W' AND s.verse_str != '0'
+			GROUP BY s.script_id
+		)
+		SELECT script_id, min_fa_score,
+			ROW_NUMBER() OVER (ORDER BY min_fa_score, script_id) AS rank_num,
+			(SELECT COUNT(*) FROM verse_min) AS total
+		FROM verse_min`
+	rows, err := database.DB.Query(query)
+	if err != nil {
+		return result, log.Error(ctx, 500, err, "Could not execute ", query)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var scriptId int64
+		var rank faRank
+		var rankNum int
+		var total int
+		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total)
+		if err != nil {
+			return result, log.Error(ctx, 500, err, `Error scanning in SelectVerseFARank`)
+		}
+		rank.percentile = float64(rankNum) * 100.0 / float64(total)
+		result[scriptId] = rank
+	}
+	err = rows.Err()
+	if err != nil {
+		return result, log.Error(ctx, 500, err, `Error at end of rows in SelectVerseFARank`)
+	}
+	return result, nil
 }
 
 func SelectVerses(database db.DBAdapter) ([]generic.Verse2, *log.Status) {
