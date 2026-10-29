@@ -27,7 +27,7 @@ curl -d "build ${version} finished" https://ntfy.sh/arti2 \
 sleep 60
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N1SKNSEC.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2ATGMLT.yaml PROD
-#python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2CCPBBS.yaml PROD
+python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2CCPBBS.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2MGUPNG.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2QAEBSP.yaml PROD
 #python Docker/runpod_arti/run_request.py /app/runpod_arti $HOME/arti2/N2SHNOMF.yaml PROD

@@ -50,16 +50,7 @@ func DownloadDatabaseFile(ctx context.Context, s3Path string, filePath string) *
 	if status != nil {
 		return status
 	}
-	log.Info(ctx, `Downloading file`, objectKey)
-	response, getErr := client.GetObject(bucket, objectKey)
-	if getErr != nil {
-		return log.Error(ctx, 400, getErr, `Failed to get S3 object`, objectKey)
-	}
-	filErr := os.WriteFile(filePath, response, 0644)
-	if filErr != nil {
-		return log.Error(ctx, 400, filErr, `Failed to create file of S3 object`, filePath)
-	}
-	return nil
+	return client.DownloadFile(bucket, objectKey, filePath)
 }
 
 func DownloadToDBLocation(ctx context.Context, dbPath string, username string) (string, *log.Status) {

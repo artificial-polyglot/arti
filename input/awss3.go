@@ -42,18 +42,9 @@ func AWSS3Input(ctx context.Context, path string) ([]generic.InputFile, *log.Sta
 			inFile.Directory = directory
 			inFile.Filename = filepath.Base(objKey)
 			files = append(files, inFile)
-			filePath := inFile.FilePath()
-			fileInfo, stErr := os.Stat(filePath)
-			if os.IsNotExist(stErr) || fileInfo.Size() != *object.Size {
-				log.Info(ctx, `Downloading file`, objKey)
-				response, getErr := client.GetObject(bucket, objKey)
-				if getErr != nil {
-					return files, log.Error(ctx, 400, getErr, `Failed to get object`, objKey)
-				}
-				filErr := os.WriteFile(filePath, response, 0644)
-				if filErr != nil {
-					return files, log.Error(ctx, 400, filErr, `Failed to create file`, filePath)
-				}
+			status = client.DownloadFile(bucket, objKey, inFile.FilePath())
+			if status != nil {
+				return files, status
 			}
 		}
 	}

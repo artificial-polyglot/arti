@@ -3,6 +3,8 @@ package s3_datastore
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"io/fs"
 	"path/filepath"
 
@@ -10,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -336,27 +339,125 @@ func isRunNumber(s string) bool {
 	return true
 }
 
+const (
+	downloadChunkSize    = 64 * 1024 * 1024 // bytes per ranged GET
+	downloadChunkTimeout = 5 * time.Minute  // a stalled chunk is abandoned and resumed after this
+	downloadMaxAttempts  = 5                // consecutive failures without progress before giving up
+)
+
+// DownloadFile downloads an object in ranged chunks, so that a stalled or dropped
+// connection, which is likely over a multi-GB model file, resumes from the last byte
+// received instead of failing the whole download. It writes to localPath+".part" and
+// renames on success, so a failed download never destroys an existing good file.
 func (t S3Client) DownloadFile(bucket, key, localPath string) *log.Status {
 	err := os.MkdirAll(filepath.Dir(localPath), 0o755)
 	if err != nil {
 		return log.Error(t.ctx, 500, err, "Could not create path", filepath.Dir(localPath))
 	}
-	out, err := t.Client.GetObject(t.ctx, &s3.GetObjectInput{
+	head, err := t.Client.HeadObject(t.ctx, &s3.HeadObjectInput{
 		Bucket: &bucket,
 		Key:    &key,
 	})
 	if err != nil {
 		return log.Error(t.ctx, 500, err, "Could not get object", bucket, key)
 	}
-	defer out.Body.Close()
-	f, err := os.Create(localPath)
-	if err != nil {
-		return log.Error(t.ctx, 500, err, "Could not create file", localPath)
+	size := aws.ToInt64(head.ContentLength)
+	if t.localMatches(localPath, size, aws.ToString(head.ETag)) {
+		log.Info(t.ctx, "Local file matches", key, "skipping download", localPath)
+		return nil
 	}
-	defer f.Close()
-	_, err = io.Copy(f, out.Body)
+	log.Info(t.ctx, "Downloading file", key)
+	partPath := localPath + ".part"
+	f, err := os.Create(partPath)
 	if err != nil {
-		return log.Error(t.ctx, 500, err, "Could not copy file", localPath)
+		return log.Error(t.ctx, 500, err, "Could not create file", partPath)
+	}
+	var offset int64
+	attempts := 0
+	for offset < size {
+		end := min(offset+downloadChunkSize, size) - 1
+		n, err := t.downloadRange(bucket, key, f, offset, end)
+		offset += n
+		if err == nil {
+			attempts = 0
+			continue
+		}
+		if n > 0 {
+			attempts = 0
+		}
+		attempts++
+		if attempts >= downloadMaxAttempts {
+			f.Close()
+			os.Remove(partPath)
+			return log.Error(t.ctx, 500, err, "Could not copy file", localPath)
+		}
+		log.Warn(t.ctx, "Download of", key, "interrupted at byte", offset, "of", size,
+			"attempt", attempts, "error:", err)
+		time.Sleep(time.Duration(attempts) * 2 * time.Second)
+		_, err = f.Seek(offset, io.SeekStart)
+		if err != nil {
+			f.Close()
+			os.Remove(partPath)
+			return log.Error(t.ctx, 500, err, "Could not seek file", partPath)
+		}
+	}
+	err = f.Close()
+	if err != nil {
+		os.Remove(partPath)
+		return log.Error(t.ctx, 500, err, "Could not close file", partPath)
+	}
+	err = os.Rename(partPath, localPath)
+	if err != nil {
+		return log.Error(t.ctx, 500, err, "Could not rename file", partPath, localPath)
 	}
 	return nil
+}
+
+// localMatches reports whether localPath already holds the object's content: the size
+// must match, and the MD5 must equal the ETag. The ETag is the MD5 only for objects
+// uploaded in a single PutObject, which is how PutFile and PutDirectory upload. A
+// multipart ETag ("<hash>-<parts>") cannot be compared, so it never matches, because
+// same-size files are common (e.g. model runs of one architecture).
+func (t S3Client) localMatches(localPath string, size int64, etag string) bool {
+	etag = strings.Trim(etag, `"`)
+	if etag == "" || strings.Contains(etag, "-") {
+		return false
+	}
+	info, err := os.Stat(localPath)
+	if err != nil || !info.Mode().IsRegular() || info.Size() != size {
+		return false
+	}
+	f, err := os.Open(localPath)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	h := md5.New()
+	_, err = io.Copy(h, f)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(hex.EncodeToString(h.Sum(nil)), etag)
+}
+
+// downloadRange copies bytes start..end (inclusive) of the object to f at its current
+// position, and returns the number of bytes written even when it fails part way.
+func (t S3Client) downloadRange(bucket, key string, f *os.File, start, end int64) (int64, error) {
+	ctx, cancel := context.WithTimeout(t.ctx, downloadChunkTimeout)
+	defer cancel()
+	rng := "bytes=" + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end, 10)
+	out, err := t.Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
+		Range:  &rng,
+	})
+	if err != nil {
+		return 0, err
+	}
+	defer out.Body.Close()
+	n, err := io.Copy(f, out.Body)
+	if err == nil && n != end-start+1 {
+		err = io.ErrUnexpectedEOF
+	}
+	return n, err
 }
