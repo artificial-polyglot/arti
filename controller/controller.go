@@ -10,6 +10,7 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/output/compare_rpt"
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
+	"github.com/artificial-polyglot/arti/cmd/training/validation"
 	"github.com/artificial-polyglot/arti/cmd/training/wav2vec2"
 	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
@@ -245,6 +246,13 @@ func (c *Controller) processSteps() *log.Status {
 				err := os.WriteFile(filepath.Join(path, "arti_request.yaml"), []byte(yamlRequest), 0o644)
 				if err != nil {
 					return log.Error(c.ctx, 500, err, "Could not write arti_request.yaml")
+				}
+				validRpt, status3 := validation.Process(c.database, c.req)
+				if status3 != nil {
+					return status3
+				}
+				if len(validRpt) > 0 {
+					c.bucket.AddOutput(validRpt[0].FilePath)
 				}
 				status = c.bucket.PersistModel(prefix, path)
 				if status != nil {
