@@ -210,7 +210,7 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 	return filePath, nil
 }
 
-// SelectVerseFARank ranks verses exactly as wav2vec2/train VerseDataPruner
+// SelectVerseFARank ranks verses exactly as cmd/training/wav2vec2 VerseDataPruner
 // does (min word fa_score, ties by script_id, headings excluded), so a
 // percentile at or below pctExcludePruneData means the verse was FA pruned.
 func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {

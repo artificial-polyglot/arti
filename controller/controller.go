@@ -10,6 +10,7 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/output/compare_rpt"
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
+	"github.com/artificial-polyglot/arti/cmd/training/wav2vec2"
 	"github.com/artificial-polyglot/arti/courier"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/fetch"
@@ -30,7 +31,6 @@ import (
 	"github.com/artificial-polyglot/arti/request/decode"
 	"github.com/artificial-polyglot/arti/request/validate"
 	"github.com/artificial-polyglot/arti/timestamp"
-	"github.com/artificial-polyglot/arti/wav2vec2/train"
 )
 
 type OutputFiles struct {
@@ -226,7 +226,7 @@ func (c *Controller) processSteps() *log.Status {
 	if !c.req.Training2.NoTraining {
 		log.Info(c.ctx, "Train", c.ident.LanguageISO)
 		if c.req.Training2.NumEpochs != 0 {
-			trainer := train.NewWav2Vec2Trainer(c.ctx, c.database, c.ident.LanguageISO, c.req.Training2)
+			trainer := wav2vec2.NewWav2Vec2Trainer(c.ctx, c.database, c.ident.LanguageISO, c.req.Training2)
 			if c.req.Training2.RedoTraining || !trainer.HasModel() {
 				trainStart := time.Now()
 				status = trainer.Train(audioFiles)

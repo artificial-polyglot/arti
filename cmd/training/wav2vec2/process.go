@@ -4,7 +4,6 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
-	"github.com/artificial-polyglot/arti/wav2vec2/train"
 )
 
 func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Status) {
@@ -14,7 +13,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status != nil {
 		return output, status
 	}
-	trainer := train.NewWav2Vec2Trainer(ctx, database, req.LanguageISO, req.Training2)
+	trainer := NewWav2Vec2Trainer(ctx, database, req.LanguageISO, req.Training2)
 	err := trainer.Train(files)
 	if err != nil {
 		return output, log.Error(ctx, 500, err, "Error in Trainer2")

@@ -1,4 +1,4 @@
-package train
+package wav2vec2
 
 import (
 	"context"
@@ -113,7 +113,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		return log.ErrorNoErr(t.ctx, 500, "Sample Type must be verse|word.  It was: "+t.args.SampleType)
 	}
 	pythonPath := os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`)
-	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "wav2vec2/train/trainer.py")
+	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "cmd/training/wav2vec2/trainer.py")
 	status := stdio_exec.RunScriptWithLogging(t.ctx, pythonPath, pythonScript,
 		t.langISO,                      // 1
 		t.conn.DatabasePath,            // 2

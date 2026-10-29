@@ -1,4 +1,4 @@
-package train
+package wav2vec2
 
 import (
 	"context"

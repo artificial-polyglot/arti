@@ -1,4 +1,4 @@
-package train
+package wav2vec2
 
 // Because the DataPreparation step selects words using their begin and end timestamps, this step does not need to identify
 // Silence between words or between verses.  However, it does need to identify words that have an unreasonably long
