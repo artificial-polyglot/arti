@@ -1,12 +1,8 @@
 package validation
 
 import (
-	"bufio"
 	"context"
 	"database/sql"
-	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
@@ -96,8 +92,8 @@ type knownError struct {
 	faRankFound bool
 	cer         diff.Counts
 	largestDiff int
-	difference  string
-	//rawDiff     []diff.Diff
+	found       bool
+	diffs       []diff.Diff
 }
 
 func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVerse) (map[PruneSource]diff.Counts, map[PruneSource]int) {
@@ -125,6 +121,7 @@ func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRa
 		known.reference = er
 		ref := generic.NewVerseRef(er)
 		vs, found := refMap[ref]
+		known.found = found
 		if found {
 			known.scriptId = vs.ScriptId
 			pruned, ok := prune[vs.ScriptId]
@@ -139,75 +136,11 @@ func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRa
 			pair := vs.ToPair()
 			pair.Text.Diffs = diffs
 			known.largestDiff = pair.LargestLength()
-			known.difference = diff.ReadableDiff(diffs)
-			//known.rawDiff = diffs
-		} else {
-			known.difference = "This verse was not found in data."
+			known.diffs = diffs
 		}
 		result = append(result, known)
 	}
 	return result
-}
-
-func generateReport(ctx context.Context, datasetName string, charCntMap map[PruneSource]diff.Counts, verseCntMap map[PruneSource]int, knownErrors []knownError) (string, *log.Status) {
-	filePath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), datasetName+"_Validation.txt")
-	file, err := os.Create(filePath)
-	if err != nil {
-		return filePath, log.Error(ctx, 500, err, "Could not create Validation.txt at", filePath)
-	}
-	defer file.Close()
-	w := bufio.NewWriter(file)
-	_, _ = w.WriteString("Validation Report for ")
-	_, _ = w.WriteString(datasetName)
-	_, _ = w.WriteString("\n\n")
-	_, _ = w.WriteString("Prune Status\tVerses\tChars\tCER\n")
-	for _, reas := range []PruneSource{NotPruned, FAScore, Silence, Both} {
-		cnt := charCntMap[reas]
-		_, _ = w.WriteString(reas.String())
-		_, _ = w.WriteString("\t")
-		_, _ = w.WriteString(strconv.Itoa(verseCntMap[reas]))
-		_, _ = w.WriteString("\t")
-		_, _ = w.WriteString(strconv.Itoa(cnt.RefLen))
-		_, _ = w.WriteString("\t")
-		_, _ = w.WriteString(strconv.FormatFloat(cnt.ErrorRate(), 'f', 4, 64))
-		_, _ = w.WriteString("\n")
-	}
-	_, _ = w.WriteString("\n\n")
-	var caughtCount int
-	_, _ = w.WriteString("Known Error\tPrune Status\tMin FA\tFA Pctl\tCER\tLargest\tDiff\n")
-	for _, kn := range knownErrors {
-		_, _ = w.WriteString(kn.reference)
-		_, _ = w.WriteString("\t")
-		_, _ = w.WriteString(kn.pruned.String())
-		_, _ = w.WriteString("\t")
-		if kn.faRank.minFAScore.Valid {
-			_, _ = w.WriteString(strconv.FormatFloat(kn.faRank.minFAScore.Float64, 'f', 4, 64))
-		}
-		_, _ = w.WriteString("\t")
-		if kn.faRankFound {
-			_, _ = w.WriteString(strconv.FormatFloat(kn.faRank.percentile, 'f', 1, 64))
-		}
-		_, _ = w.WriteString("\t")
-		_, _ = w.WriteString(strconv.FormatFloat(kn.cer.ErrorRate(), 'f', 3, 64))
-		_, _ = w.WriteString("\t")
-		largest := kn.largestDiff
-		if largest > CompareRptCutoff {
-			caughtCount++
-		}
-		_, _ = w.WriteString(strconv.Itoa(largest))
-		_, _ = w.WriteString("\t")
-		_, _ = w.WriteString(kn.difference)
-		_, _ = w.WriteString("\n")
-		//_, _ = w.WriteString(fmt.Sprint(kn.rawDiff))
-		_, _ = w.WriteString("\n\n")
-	}
-	missed := len(knownErrors) - caughtCount
-	_, _ = w.WriteString("Missed " + strconv.Itoa(missed) + " out of " + strconv.Itoa(len(knownErrors)))
-	err = w.Flush()
-	if err != nil {
-		return filePath, log.Error(ctx, 500, err, "Could not flush Validation.txt")
-	}
-	return filePath, nil
 }
 
 // SelectVerseFARank ranks verses exactly as cmd/training/wav2vec2 VerseDataPruner
