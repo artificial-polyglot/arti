@@ -78,10 +78,14 @@ type prunedVerse struct {
 }
 
 // faRank is a verse's minimum words.fa_score, and its percentile among all
-// verses ranked the same way VerseDataPruner ranks them (lowest = 0).
+// verses ranked the same way VerseDataPruner ranks them (lowest = 0). The
+// char fields are the same ranking by minimum chars.fa_score; charPercentile
+// is only meaningful when charMin is Valid.
 type faRank struct {
-	minFAScore sql.NullFloat64
-	percentile float64
+	minFAScore     sql.NullFloat64
+	percentile     float64
+	charMin        sql.NullFloat64
+	charPercentile float64
 }
 
 type knownError struct {
@@ -146,6 +150,7 @@ func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRa
 // SelectVerseFARank ranks verses exactly as cmd/training/wav2vec2 VerseDataPruner
 // does (min word fa_score, ties by script_id, headings excluded), so a
 // percentile at or below pctExcludePruneData means the verse was FA pruned.
+// Verses with no chars rows sort last in the char ranking and get no char percentile.
 func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 	ctx := database.Ctx
 	var result = make(map[int64]faRank)
@@ -154,11 +159,20 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 			FROM scripts s JOIN words w ON w.script_id = s.script_id
 			WHERE w.ttype = 'W' AND s.verse_str != '0'
 			GROUP BY s.script_id
+		),
+		char_min AS (
+			SELECT w.script_id, MIN(c.fa_score) AS min_char_score
+			FROM words w JOIN chars c ON c.word_id = w.word_id
+			WHERE w.ttype = 'W'
+			GROUP BY w.script_id
 		)
-		SELECT script_id, min_fa_score,
-			ROW_NUMBER() OVER (ORDER BY min_fa_score, script_id) AS rank_num,
-			(SELECT COUNT(*) FROM verse_min) AS total
-		FROM verse_min`
+		SELECT v.script_id, v.min_fa_score,
+			ROW_NUMBER() OVER (ORDER BY v.min_fa_score, v.script_id) AS rank_num,
+			COUNT(*) OVER () AS total,
+			c.min_char_score,
+			ROW_NUMBER() OVER (ORDER BY c.min_char_score IS NULL, c.min_char_score, v.script_id) AS char_rank_num,
+			COUNT(c.min_char_score) OVER () AS char_total
+		FROM verse_min v LEFT JOIN char_min c ON c.script_id = v.script_id`
 	rows, err := database.DB.Query(query)
 	if err != nil {
 		return result, log.Error(ctx, 500, err, "Could not execute ", query)
@@ -169,11 +183,16 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 		var rank faRank
 		var rankNum int
 		var total int
-		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total)
+		var charRankNum int
+		var charTotal int
+		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total, &rank.charMin, &charRankNum, &charTotal)
 		if err != nil {
 			return result, log.Error(ctx, 500, err, `Error scanning in SelectVerseFARank`)
 		}
 		rank.percentile = float64(rankNum) * 100.0 / float64(total)
+		if rank.charMin.Valid {
+			rank.charPercentile = float64(charRankNum) * 100.0 / float64(charTotal)
+		}
 		result[scriptId] = rank
 	}
 	err = rows.Err()
