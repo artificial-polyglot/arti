@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"io/fs"
 	"path/filepath"
 
@@ -78,6 +79,31 @@ func (t S3Client) GetObject(bucket string, key string) ([]byte, *log.Status) {
 		return result, log.Error(t.ctx, 500, err, "Error Reading Object", key)
 	}
 	return body, nil
+}
+
+// ObjectExists reports whether key exists in bucket. A missing object returns false
+// without logging an error; any other failure (missing bucket, auth, network) is returned
+// as an error, so callers do not mistake a misconfiguration or outage for a missing file.
+func (t S3Client) ObjectExists(bucket string, key string) (bool, *log.Status) {
+	_, err := t.Client.HeadObject(t.ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err == nil {
+		return true, nil
+	}
+	var notFound *types.NotFound
+	if !errors.As(err, &notFound) {
+		return false, log.Error(t.ctx, 500, err, "Error checking for object", bucket, key)
+	}
+	// A HEAD 404 has no body, so a missing bucket looks the same as a missing key.
+	_, err = t.Client.HeadBucket(t.ctx, &s3.HeadBucketInput{
+		Bucket: aws.String(bucket),
+	})
+	if err != nil {
+		return false, log.Error(t.ctx, 500, err, "Error checking for bucket", bucket)
+	}
+	return false, nil
 }
 
 func (t S3Client) ListObjects(bucket, prefix string) ([]types.Object, *log.Status) {

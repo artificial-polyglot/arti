@@ -56,11 +56,14 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status1 != nil {
 		return output, status1
 	}
-	faRankMap, status3 := SelectVerseFARank(database)
-	if status3 != nil {
-		return output, status3
+	var knownErrors []knownError
+	if len(knownErrorList) > 0 {
+		faRankMap, status3 := SelectVerseFARank(database)
+		if status3 != nil {
+			return output, status3
+		}
+		knownErrors = checkKnownErrors(verses, prunedMap, faRankMap, knownErrorList)
 	}
-	knownErrors := checkKnownErrors(verses, prunedMap, faRankMap, knownErrorList)
 	rptPath, status2 := generateReport(ctx, req.DatasetName, charCntMap, verseCntMap, knownErrors)
 	if status2 != nil {
 		return output, status2
@@ -202,6 +205,9 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 	return result, nil
 }
 
+// SelectVerses is pulling in all kinds of not needed data from the qa_align tables.  The only
+// data that is used by this module from this data is script_id, book_id, chapter_num, verse_str,
+// text pulled from words table, and transcript from scripts_qa_align.
 func SelectVerses(database db.DBAdapter) ([]generic.Verse2, *log.Status) {
 	verses, status := proofing_rpt.SelectCharData(database)
 	if status != nil {
@@ -224,9 +230,16 @@ func ReadAudioErrorData(ctx context.Context, datasetName string, s3AudioPath str
 	if status != nil {
 		return result, status
 	}
-	bytes, status1 := s3.GetObject(bucket, objKey)
-	if status1 != nil {
-		return result, status1
+	exists, status := s3.ObjectExists(bucket, objKey)
+	if status != nil {
+		return result, status
+	}
+	if !exists {
+		return result, nil // No _Audio_Errors.txt file is OK.
+	}
+	bytes, status := s3.GetObject(bucket, objKey)
+	if status != nil {
+		return result, status
 	}
 	content := strings.TrimSpace(string(bytes))
 	result = strings.Split(content, "\n")
