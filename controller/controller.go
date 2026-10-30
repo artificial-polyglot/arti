@@ -247,13 +247,6 @@ func (c *Controller) processSteps() *log.Status {
 				if err != nil {
 					return log.Error(c.ctx, 500, err, "Could not write arti_request.yaml")
 				}
-				validRpt, status3 := validation.Process(c.database, c.req)
-				if status3 != nil {
-					return status3
-				}
-				if len(validRpt) > 0 {
-					c.bucket.AddOutput(validRpt[0].FilePath)
-				}
 				status = c.bucket.PersistModel(prefix, path)
 				if status != nil {
 					return status
@@ -315,14 +308,14 @@ func (c *Controller) processSteps() *log.Status {
 		if status1 != nil {
 			return status1
 		}
-		c.bucket.AddOutputTypes(reports)
+		c.bucket.AddOutputList(reports)
 	}
 	if c.req.Output.ProofingReport {
 		reports, status1 := proofing_rpt.Process(c.database, c.req)
 		if status1 != nil {
 			return status1
 		}
-		c.bucket.AddOutputTypes(reports)
+		c.bucket.AddOutputList(reports)
 	}
 	if c.req.Output.TimestampData {
 		log.Info(c.ctx, "cmd/output/Timestamp_rpt is not implemented. Must write main.go and process.go")
@@ -535,13 +528,16 @@ func (c *Controller) audioProofing() *log.Status {
 	if status != nil {
 		return status
 	}
-	outputs, status := proofing_rpt.Process(c.database, c.req)
+	outputs, status1 := validation.Process(c.database, c.req)
+	if status1 != nil {
+		return status1
+	}
+	c.bucket.AddOutputList(outputs)
+	outputs, status = proofing_rpt.Process(c.database, c.req)
 	if status != nil {
 		return status
 	}
-	for _, out := range outputs {
-		c.bucket.AddOutput(out.FilePath)
-	}
+	c.bucket.AddOutputList(outputs)
 	if len(outputs) == 0 {
 		return log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
 	}

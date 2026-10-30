@@ -71,7 +71,7 @@ func (b *Courier) AddOutput(outputPath string) {
 	}
 }
 
-func (b *Courier) AddOutputTypes(output []db.Output) {
+func (b *Courier) AddOutputList(output []db.Output) {
 	for _, out := range output {
 		b.outputs = append(b.outputs, out.FilePath)
 	}
