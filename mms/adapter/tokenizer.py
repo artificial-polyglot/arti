@@ -32,6 +32,8 @@ def createTokenizer(database, targetLang):
         index += 1
     vocabDict["[UNK]"] = len(vocabDict)
     vocabDict["[PAD]"] = len(vocabDict)
+    if len(set(vocabDict.values())) != len(vocabDict):
+        raise ValueError("Vocabulary ids are not unique")
     newVocabDict = {targetLang: vocabDict}
     filePath = "vocab.json"
     with open(filePath, 'w', encoding='utf-8') as vocabFile:

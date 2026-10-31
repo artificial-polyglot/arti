@@ -17,6 +17,10 @@ def createTokenizer(database, targetLang):
     #    line = unicodedata.normalize("NFC", vs[0].lower())
         for ch in normalizeText(vs[0]):
             chars.add(ch)
+    if "|" in chars:
+        # "|" is the word delimiter token; if it were also a vocab character, the vocab
+        # would have one fewer key than ids, and [UNK] would share the last letter's id.
+        raise ValueError("The text contains the character '|', which is reserved as the word delimiter")
     ### Possibly excluding or including hyphens should be a language option.
     #chars.discard('\u002d') # hyphen
     #chars.discard('\u2014') # another hyphen
@@ -30,6 +34,8 @@ def createTokenizer(database, targetLang):
         index += 1
     vocabDict["[UNK]"] = len(vocabDict)
     vocabDict["[PAD]"] = len(vocabDict)
+    if len(set(vocabDict.values())) != len(vocabDict):
+        raise ValueError("Vocabulary ids are not unique")
     newVocabDict = {targetLang: vocabDict}
     filePath = "vocab.json"
     with open(filePath, 'w', encoding='utf-8') as vocabFile:

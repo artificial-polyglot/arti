@@ -335,3 +335,34 @@ func TestParseDigits(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenizePipeAsPalochka(t *testing.T) {
+	// Caucasian Cyrillic orthographies often type palochka Ӏ as '|'.
+	assertTokens(t, "к|алам ||", [][2]string{
+		{`W`, "кӀалам"},
+		{`S`, ` `},
+		{`P`, `|`},
+		{`P`, `|`},
+	})
+	assertTokens(t, "|аьла", [][2]string{{`W`, "Ӏаьла"}})
+}
+
+func TestTokenizePipeAsClick(t *testing.T) {
+	// Khoisan Latin orthographies type the clicks ǀ and ǁ as '|' and '||'.
+	assertTokens(t, "|ae ||kxʼà", [][2]string{
+		{`W`, "ǀae"},
+		{`S`, ` `},
+		{`W`, "ǁkxʼà"},
+	})
+}
+
+func TestTokenizePipeAsPunctuation(t *testing.T) {
+	assertTokens(t, "a | 12|", [][2]string{
+		{`W`, "a"},
+		{`S`, ` `},
+		{`P`, `|`},
+		{`S`, ` `},
+		{`W`, "12"},
+		{`P`, `|`},
+	})
+}

@@ -2,6 +2,7 @@ package read
 
 import (
 	"context"
+	"strings"
 	"unicode"
 
 	"golang.org/x/text/unicode/norm"
@@ -66,21 +67,29 @@ func (w *WordParser) Parse() *log.Status {
 	if status != nil {
 		return status
 	}
+	var pipes, pipesUnmapped int
 	for _, rec := range records {
 		tokens, status2 := tokenizeScriptText(w.ctx, rec.ScriptText)
 		if status2 != nil {
 			return status2
 		}
+		pipes += strings.Count(rec.ScriptText, "|")
 		var verseNum = rec.VerseNum
 		for _, tok := range tokens {
 			if tok.ttype == `V` {
 				verseNum = tok.verseNum
+			}
+			if tok.ttype == `P` && tok.text[0] == '|' {
+				pipesUnmapped++
 			}
 			status2 = w.addWord(rec.ScriptId, verseNum, tok.ttype, tok.text)
 			if status2 != nil {
 				return status2
 			}
 		}
+	}
+	if pipes > 0 {
+		log.Info(w.ctx, "WordParser replaced", pipes-pipesUnmapped, "of", pipes, "'|' characters with Ӏ, ǀ or ǁ by context; the rest are punctuation")
 	}
 	GenerateWordPunct(w.records)
 	w.conn.DeleteWords()
@@ -117,14 +126,77 @@ func isCombiningMark(r rune) bool {
 	return unicode.In(r, unicode.Mn, unicode.Mc, unicode.Me)
 }
 
+// mapPipes replaces an ASCII '|' that is typed in place of a letter, deciding
+// from the letters around it, since texts for many languages pass through here:
+//   - touching a Cyrillic letter, each '|' is palochka Ӏ (U+04C0), as typed in
+//     Caucasian orthographies such as Avar or Chechen
+//   - touching a Latin letter, '|' is the dental click ǀ (U+01C0) and '||' the
+//     lateral click ǁ (U+01C1), as typed in Khoisan orthographies such as Naro
+//   - otherwise, e.g. a '|' standing alone between spaces, it is left as is and
+//     the tokenizer treats it as punctuation
+//
+// '|' must not reach the words table inside a word, because it is the MMS word
+// delimiter token; createTokenizer rejects a text that still contains one.
+func mapPipes(text string) string {
+	if !strings.ContainsRune(text, '|') {
+		return text
+	}
+	runes := []rune(text)
+	var result = make([]rune, 0, len(runes))
+	for i := 0; i < len(runes); {
+		if runes[i] != '|' {
+			result = append(result, runes[i])
+			i++
+			continue
+		}
+		end := i
+		for end < len(runes) && runes[end] == '|' {
+			end++
+		}
+		// The letter before is the base rune of whatever combining marks precede the run.
+		var before, after rune
+		for j := i - 1; j >= 0; j-- {
+			if !isCombiningMark(runes[j]) {
+				before = runes[j]
+				break
+			}
+		}
+		if end < len(runes) {
+			after = runes[end]
+		}
+		run := end - i
+		switch {
+		case isScriptLetter(before, unicode.Cyrillic) || (!unicode.IsLetter(before) && isScriptLetter(after, unicode.Cyrillic)):
+			for k := 0; k < run; k++ {
+				result = append(result, 'Ӏ')
+			}
+		case (isScriptLetter(before, unicode.Latin) || (!unicode.IsLetter(before) && isScriptLetter(after, unicode.Latin))) && run <= 2:
+			if run == 1 {
+				result = append(result, 'ǀ')
+			} else {
+				result = append(result, 'ǁ')
+			}
+		default:
+			result = append(result, runes[i:end]...)
+		}
+		i = end
+	}
+	return string(result)
+}
+
+func isScriptLetter(r rune, script *unicode.RangeTable) bool {
+	return unicode.IsLetter(r) && unicode.Is(script, r)
+}
+
 // tokenizeScriptText splits text into a sequence of W/S/P/V tokens. It is a pure
 // function of its input so it can be tested directly, without a database.
 //
-// The text is first stripped of invisible format characters (isIgnorable) and
-// normalized to NFC, so the words table holds exactly one spelling of each word.
+// The text is first stripped of invisible format characters (isIgnorable),
+// normalized to NFC, and has letters typed as '|' replaced (mapPipes), so the
+// words table holds exactly one spelling of each word.
 // The MMS adapter's vocabulary and training labels are built from these words.
 func tokenizeScriptText(ctx context.Context, text string) ([]wordToken, *log.Status) {
-	text = norm.NFC.String(stripIgnorable(text))
+	text = mapPipes(norm.NFC.String(stripIgnorable(text)))
 	const (
 		begin = iota
 		space
