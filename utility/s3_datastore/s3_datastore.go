@@ -487,3 +487,32 @@ func (t S3Client) downloadRange(bucket, key string, f *os.File, start, end int64
 	}
 	return n, err
 }
+
+func (t S3Client) FindLastRun(bucket string, dataset string, username string) (int, *log.Status) {
+	var result int
+	prefix := username + "/" + dataset + "/arti/"
+	output, err := t.Client.ListObjectsV2(t.ctx, &s3.ListObjectsV2Input{
+		Bucket: &bucket,
+		Prefix: &prefix,
+	})
+	if err != nil {
+		return result, log.Error(t.ctx, 500, err, "Error listing bucket objects.")
+	}
+	maxRun := 0
+	for _, obj := range output.Contents {
+		parts := strings.Split(*obj.Key, "/")
+		if len(parts) < 5 {
+			continue
+		}
+		runStr := parts[3]
+		var runNum int
+		runNum, err = strconv.Atoi(runStr)
+		if err != nil {
+			return result, log.Error(t.ctx, 500, err, "Error converting run number to int; value:", runStr)
+		}
+		if runNum > maxRun {
+			maxRun = runNum
+		}
+	}
+	return maxRun, nil
+}
