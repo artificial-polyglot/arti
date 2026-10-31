@@ -3,11 +3,13 @@ package validation
 import (
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"strings"
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
+	"github.com/artificial-polyglot/arti/input/precheck"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/request"
 	"github.com/artificial-polyglot/arti/utility/diff"
@@ -101,6 +103,7 @@ type knownError struct {
 	largestDiff int
 	found       bool
 	diffs       []diff.Diff
+	knownText   string // the script line text from _Audio_Errors.csv, with {=}/{-} markers
 }
 
 func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVerse) (map[PruneSource]diff.Counts, map[PruneSource]int) {
@@ -117,7 +120,7 @@ func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVers
 	return result, verseCount
 }
 
-func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRanks map[int64]faRank, errors []string) []knownError {
+func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRanks map[int64]faRank, errors []audioError) []knownError {
 	var result []knownError
 	var refMap = make(map[generic.VerseRef]generic.Verse2)
 	for _, vs := range verses {
@@ -125,8 +128,9 @@ func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRa
 	}
 	for _, er := range errors {
 		var known knownError
-		known.reference = er
-		ref := generic.NewVerseRef(er)
+		known.reference = er.reference
+		known.knownText = er.text
+		ref := generic.NewVerseRef(er.reference)
 		vs, found := refMap[ref]
 		known.found = found
 		if found {
@@ -220,12 +224,21 @@ func SelectVerses(database db.DBAdapter) ([]generic.Verse2, *log.Status) {
 	return verses, nil
 }
 
-func ReadAudioErrorData(ctx context.Context, datasetName string, s3AudioPath string) ([]string, *log.Status) {
-	var result []string
+// audioError is one row of {dataset}_Audio_Errors.csv: a reference ("MAT 2:3"), the
+// script line number, and the script line text with {=} before text that was
+// recorded and {-} before text the recording team found missing from the audio.
+type audioError struct {
+	reference string
+	lineNo    string
+	text      string
+}
+
+func ReadAudioErrorData(ctx context.Context, datasetName string, s3AudioPath string) ([]audioError, *log.Status) {
+	var result []audioError
 	const scheme = "s3://"
 	parts := strings.SplitN(strings.TrimPrefix(s3AudioPath, scheme), "/", 3)
 	bucket := parts[0]
-	objKey := parts[1] + "/" + datasetName + "_Audio_Errors.txt"
+	objKey := parts[1] + "/" + datasetName + "_Audio_Errors.csv"
 	s3, status := s3_datastore.NewS3Client(ctx)
 	if status != nil {
 		return result, status
@@ -235,14 +248,29 @@ func ReadAudioErrorData(ctx context.Context, datasetName string, s3AudioPath str
 		return result, status
 	}
 	if !exists {
-		return result, nil // No _Audio_Errors.txt file is OK.
+		return result, nil // No _Audio_Errors.csv file is OK.
 	}
 	bytes, status := s3.GetObject(bucket, objKey)
 	if status != nil {
 		return result, status
 	}
-	content := strings.TrimSpace(string(bytes))
-	result = strings.Split(content, "\n")
+	content := strings.TrimPrefix(string(bytes), "\uFEFF")
+	reader := csv.NewReader(strings.NewReader(content))
+	reader.FieldsPerRecord = 3
+	records, err := reader.ReadAll()
+	if err != nil {
+		return result, log.Error(ctx, 500, err, "Could not parse", objKey)
+	}
+	for _, rec := range records {
+		reference := strings.TrimSpace(rec[0])
+		bookId, rest, _ := strings.Cut(reference, " ")
+		corrected := precheck.IsBookId(bookId) // e.g. recording teams use JMS, the database uses JAS
+		if corrected == "" {
+			return result, log.ErrorNoErr(ctx, 500, "Invalid book id", bookId, "in", objKey, "reference", reference)
+		}
+		reference = corrected + " " + rest
+		result = append(result, audioError{reference: reference, lineNo: strings.TrimSpace(rec[1]), text: rec[2]})
+	}
 	return result, nil
 }
 

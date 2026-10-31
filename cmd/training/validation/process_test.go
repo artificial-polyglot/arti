@@ -9,13 +9,13 @@ import (
 
 const validate_rpt_yaml = `
 is_new: false 
-dataset_name: N2CCPBBS
+dataset_name: N2MGUPNG
 username: GaryNTest
-language_iso: skn
+language_iso: mgu
 database:
-    aws_s3: s3://arti-output/GaryNTest/N2CCPBBS/arti/00003/database/N2CCPBBS.db
+    aws_s3: s3://arti-output/GaryNTest/N2MGUPNG/arti/00001/database/N2MGUPNG.db
 audio_data:
-    aws_s3: s3://arti-input/Chakma N2CCPBBS/N2CCPBBS Chapter mp3/*.mp3
+    aws_s3: s3://arti-input/Magi N2MGUPNG/N2MGUPNG Chapter mp3/*.mp3
 `
 
 func TestProcess(t *testing.T) {

@@ -457,13 +457,13 @@ func findTextBookId(filename string) string {
 	dot := strings.Index(filename, ".")
 	for i := 0; i <= dot-3; i++ {
 		code := filename[i : i+3]
-		bookId := isBookId(code)
+		bookId := IsBookId(code)
 		if bookId != "" {
 			if bookId[0] >= 'A' || i+4 > dot {
 				return bookId
 			} else {
 				code = filename[i+1 : i+4]
-				bookId2 := isBookId(code)
+				bookId2 := IsBookId(code)
 				if bookId2 != "" {
 					return bookId2
 				} else {
@@ -484,7 +484,7 @@ func findAudioBookId(parts []string) (string, int, error) {
 	//parts := strings.Split(baseName, "_")
 	for i := len(parts) - 2; i >= 0; i-- {
 		code := parts[i]
-		bookId := isBookId(code)
+		bookId := IsBookId(code)
 		if bookId != "" {
 			chapter, err := strconv.Atoi(parts[i+1])
 			return bookId, chapter, err
@@ -493,7 +493,7 @@ func findAudioBookId(parts []string) (string, int, error) {
 	return "", 0, errors.New("No valid book code on filename " + strings.Join(parts, "_"))
 }
 
-func isBookId(code string) string { //(string, int, int) {
+func IsBookId(code string) string { //(string, int, int) {
 	corrected, found := corrections[code]
 	if found {
 		code = corrected

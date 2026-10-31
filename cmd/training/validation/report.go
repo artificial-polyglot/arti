@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/artificial-polyglot/arti/logger"
@@ -30,7 +31,8 @@ type knownRow struct {
 	Largest   int
 	Found     bool
 	Missed    bool
-	Segments  []segment
+	Segments  []segment // arti's diff of the verse text and the ASR
+	KnownSegs []segment // the recording team's script line from _Audio_Errors.csv
 }
 
 // segment is one piece of the {-}/{+}/{=} diff text: a colored marker followed by plain text.
@@ -88,6 +90,7 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 			row.CER = strconv.FormatFloat(kn.cer.ErrorRate(), 'f', 3, 64)
 			row.Segments = diffSegments(kn.diffs)
 		}
+		row.KnownSegs = knownSegments(kn.knownText)
 		data.Known = append(data.Known, row)
 	}
 	file, err := os.Create(filePath)
@@ -126,6 +129,35 @@ func diffSegments(diffs []diff.Diff) []segment {
 	return result
 }
 
+// knownSegments splits an _Audio_Errors.csv text at its {=} (recorded) and {-}
+// (missing from the audio) markers, using the same classes as diffSegments.
+func knownSegments(text string) []segment {
+	var result []segment
+	class, marker := "eq", ""
+	for {
+		next := len(text)
+		for _, mk := range []string{"{=}", "{-}"} {
+			if i := strings.Index(text, mk); i >= 0 && i < next {
+				next = i
+			}
+		}
+		if next > 0 || marker != "" {
+			result = append(result, segment{Class: class, Marker: marker, Text: text[:next]})
+		}
+		if next == len(text) {
+			break
+		}
+		marker = text[next : next+3]
+		if marker == "{-}" {
+			class = "del"
+		} else {
+			class = "eq"
+		}
+		text = text[next+3:]
+	}
+	return result
+}
+
 var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype html>
 <html lang="en">
 <head>
@@ -160,6 +192,9 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
   .mk.ins { background: #c9f0d1; color: #116329; }
   .mk.eq  { background: #dbeafe; color: #3b6aa0; }
   .notfound { color: var(--bad); font-style: italic; }
+  .line + .line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .lbl { display: inline-block; min-width: 44px; color: var(--muted); font-size: 11px;
+         text-transform: uppercase; letter-spacing: .03em; }
 </style>
 </head>
 <body>
@@ -190,9 +225,14 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <td class="ref">{{.Reference}}</td>
 {{- if .Found}}
 <td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.CharMin}}</td><td class="num">{{.CharPctl}}</td><td class="num">{{.CER}}</td><td class="num largest">{{.Largest}}</td>
-<td class="diff">{{range .Segments}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</td>
+<td class="diff">
+<div class="line"><span class="lbl">arti</span>{{range .Segments}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
+<div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div></td>
 {{- else}}
-<td colspan="7"></td><td class="notfound">This verse was not found in data.</td>
+<td colspan="7"></td><td class="diff">
+<div class="line notfound">This verse was not found in data.</div>
+<div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
+</td>
 {{- end}}
 </tr>
 {{- end}}
