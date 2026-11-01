@@ -49,13 +49,15 @@ func (p *Pair) Deletes() int {
 	return deletes
 }
 
+// LargestLength returns the longest run of inserted/deleted chars. A single
+// equal char between changes does not break the run, and is not counted.
 func (p *Pair) LargestLength() int {
 	var result int
 	var length int
 	for _, df := range p.Text.Diffs {
 		if df.Type != diff.OpEqual {
 			length += utf8.RuneCountInString(df.Text)
-		} else {
+		} else if utf8.RuneCountInString(df.Text) > 1 {
 			if length > result {
 				result = length
 			}
