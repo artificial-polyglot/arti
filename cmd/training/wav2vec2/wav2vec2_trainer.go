@@ -17,7 +17,6 @@ import (
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 )
 
-const pctExcludePruneData = 26
 const stdDevOverMeanPruneSilence = 1.5
 const numVerses2SilencePrune = 400
 
@@ -96,7 +95,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
-		status = WordDataPruner(t.conn, pctExcludePruneData)
+		status = WordDataPruner(t.conn, t.args.FAPrunePct)
 		if status != nil {
 			return status
 		}
@@ -105,7 +104,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
-		status = VerseDataPruner(t.conn, pctExcludePruneData)
+		status = VerseDataPruner(t.conn, t.args.FAPrunePct)
 		if status != nil {
 			return status
 		}

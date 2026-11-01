@@ -30,7 +30,7 @@ type WordRec struct {
 // trustworthy as its worst word, so verses are ranked by the minimum word fa_score.
 // A percentage, rather than a fixed fa_score threshold, is used because fa_scores vary
 // widely by language; a fixed threshold pruned far too many verses in some (e.g. shn).
-func VerseDataPruner(conn db.DBAdapter, pctExclude int) *log.Status {
+func VerseDataPruner(conn db.DBAdapter, pctExclude float64) *log.Status {
 	ctx := conn.Ctx
 	_, err := conn.DB.Exec("DROP TABLE IF EXISTS pruned_data")
 	if err != nil {
@@ -59,7 +59,7 @@ func VerseDataPruner(conn db.DBAdapter, pctExclude int) *log.Status {
 	return nil
 }
 
-func WordDataPruner(conn db.DBAdapter, pctExclude int) *log.Status {
+func WordDataPruner(conn db.DBAdapter, pctExclude float64) *log.Status {
 	ctx := conn.Ctx
 	_, err := conn.DB.Exec("DROP TABLE IF EXISTS pruned_data")
 	if err != nil {
@@ -100,11 +100,11 @@ func selectWords(ctx context.Context, conn db.DBAdapter) ([]WordRec, *log.Status
 	return results, nil
 }
 
-func pruneWords(ctx context.Context, conn db.DBAdapter, words []WordRec, pctExcludeWords int) *log.Status {
+func pruneWords(ctx context.Context, conn db.DBAdapter, words []WordRec, pctExcludeWords float64) *log.Status {
 	sort.Slice(words, func(i, j int) bool {
 		return words[i].faScore < words[j].faScore
 	})
-	cutoff := int(float64(len(words)) * float64(pctExcludeWords) / 100.0)
+	cutoff := int(float64(len(words)) * pctExcludeWords / 100.0)
 	query := "INSERT INTO pruned_data (word_id, fa_score) VALUES (?,?)"
 	tx, err := conn.DB.Begin()
 	if err != nil {
