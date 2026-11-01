@@ -154,7 +154,7 @@ func alignToWords(asrChars []CharResult, words []wordRecord, verseBeginTS float6
 
 func selectWords(conn db.DBAdapter, scriptID int64) ([]wordRecord, *log.Status) {
 	rows, err := conn.DB.Query(
-		`SELECT word_id, lower(word) FROM words WHERE ttype = 'W' AND script_id = ? ORDER BY word_id`,
+		`SELECT word_id, word FROM words WHERE ttype = 'W' AND script_id = ? ORDER BY word_id`,
 		scriptID,
 	)
 	if err != nil {
@@ -168,6 +168,10 @@ func selectWords(conn db.DBAdapter, scriptID int64) ([]wordRecord, *log.Status) 
 		if err = rows.Scan(&w.wordID, &w.word); err != nil {
 			return nil, log.Error(conn.Ctx, 500, err, "selectWords: scan")
 		}
+		// Same as normalizeText in text_normalize.py, which prepared the vocabulary.
+		// SQLite lower() is ASCII only, so it left capitals like Г and Ӏ that the
+		// model never outputs; alignment then scored them as deletions with 1.0.
+		w.word = norm.NFC.String(strings.ToLower(w.word))
 		words = append(words, w)
 	}
 	if err = rows.Err(); err != nil {
