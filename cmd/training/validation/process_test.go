@@ -23,9 +23,9 @@ func TestProcess(t *testing.T) {
 	var runs []run
 	//runs = append(runs, run{name: "N1SKNSEC", audio: "Kolibugan N1SKNSEC/N1SKNSEC Chapter mp3"})
 	//runs = append(runs, run{name: "N2ATGMLT", audio: "Arhe N2ATGMLT/N2ATGMLT Chapter mp3"})
-	//runs = append(runs, run{name: "N2CCPBBS", audio: "Chakma N2CCPBBS/N2CCPBBS Chapter mp3"})
+	runs = append(runs, run{name: "N2CCPBBS", audio: "Chakma N2CCPBBS/N2CCPBBS Chapter mp3"})
 	//runs = append(runs, run{name: "N2MGUPNG", audio: "Magi N2MGUPNG/N2MGUPNG Chapter VOX"})
-	runs = append(runs, run{name: "N2QAEBSP", audio: "Dawasamu N2QAEBSP (Gospels)/N2QAEBSP Chapter VOX"})
+	//runs = append(runs, run{name: "N2QAEBSP", audio: "Dawasamu N2QAEBSP (Gospels)/N2QAEBSP Chapter VOX"})
 	//runs = append(runs, run{name: "N2SHNOMF", audio: "Shan N2SHNOMF/N2SHNOMF Chapter VOX"})
 	//runs = append(runs, run{name: "N2XNRPMS", audio: "Kangri N2XNRPMS/N2XNRPMS Chapter mp3"})
 	//runs = append(runs, run{name: "P2LBEBTI", audio: "Lak P2LBEBTI (Mat-Act, Rev)/P2LBEBTI Chapter mp3"})

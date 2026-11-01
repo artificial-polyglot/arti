@@ -25,8 +25,6 @@ type knownRow struct {
 	Status    string
 	MinFA     string
 	Pctl      string
-	CharMin   string
-	CharPctl  string
 	GeoMin    string
 	GeoPctl   string
 	CER       string
@@ -91,10 +89,6 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 			}
 			if kn.faRankFound {
 				row.Pctl = strconv.FormatFloat(kn.faRank.percentile, 'f', 1, 64)
-			}
-			if kn.faRank.charMin.Valid {
-				row.CharMin = strconv.FormatFloat(kn.faRank.charMin.Float64, 'f', 6, 64)
-				row.CharPctl = strconv.FormatFloat(kn.faRank.charPercentile, 'f', 1, 64)
 			}
 			if kn.faRank.geoMin.Valid {
 				row.GeoMin = strconv.FormatFloat(kn.faRank.geoMin.Float64, 'g', 3, 64)
@@ -235,18 +229,18 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <h2>Known Errors</h2>
 <div class="scroll">
 <table>
-<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th>Char Min</th><th>Char Pctl</th><th title="Minimum over the verse's words of the geometric mean of each word's char fa_score">Geo Min</th><th>Geo Pctl</th><th>CER</th><th>Largest</th><th>Diff</th></tr></thead>
+<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th title="Minimum over the verse's words of the geometric mean of each word's char fa_score">Geo Min</th><th>Geo Pctl</th><th>CER</th><th>Largest</th><th>Diff</th></tr></thead>
 <tbody>
 {{- range .Known}}
 <tr{{if .Missed}} class="missed"{{end}}>
 <td class="ref">{{.Reference}}</td>
 {{- if .Found}}
-<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.CharMin}}</td><td class="num">{{.CharPctl}}</td><td class="num">{{.GeoMin}}</td><td class="num">{{.GeoPctl}}</td><td class="num">{{.CER}}</td><td class="num largest">{{.Largest}}</td>
+<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.GeoMin}}</td><td class="num">{{.GeoPctl}}</td><td class="num">{{.CER}}</td><td class="num largest">{{.Largest}}</td>
 <td class="diff">
 <div class="line"><span class="lbl">arti</span>{{range .Segments}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div></td>
 {{- else}}
-<td colspan="9"></td><td class="diff">
+<td colspan="7"></td><td class="diff">
 <div class="line notfound">This verse was not found in data.</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 </td>
