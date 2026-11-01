@@ -54,6 +54,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 		return output, status
 	}
 	charCntMap, verseCntMap := computeCharLevenshtein(verses, prunedMap)
+	validation := computeValidationSet(verses, prunedMap)
 	knownErrorList, status1 := ReadAudioErrorData(ctx, req.DatasetName, req.AudioData.AWSS3)
 	if status1 != nil {
 		return output, status1
@@ -66,7 +67,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 		}
 		knownErrors = checkKnownErrors(verses, prunedMap, faRankMap, knownErrorList)
 	}
-	rptPath, status2 := generateReport(ctx, req.DatasetName, charCntMap, verseCntMap, knownErrors)
+	rptPath, status2 := generateReport(ctx, req.DatasetName, charCntMap, verseCntMap, validation, knownErrors)
 	if status2 != nil {
 		return output, status2
 	}
@@ -85,12 +86,17 @@ type prunedVerse struct {
 // faRank is a verse's minimum words.fa_score, and its percentile among all
 // verses ranked the same way VerseDataPruner ranks them (lowest = 0). The
 // char fields are the same ranking by minimum chars.fa_score; charPercentile
-// is only meaningful when charMin is Valid.
+// is only meaningful when charMin is Valid. The geo fields are the same ranking
+// by minimum word score, where a word's score is the geometric mean of its
+// chars.fa_score instead of the arithmetic mean stored in words.fa_score; this
+// is an experiment computed only for this report, and nothing is written back.
 type faRank struct {
 	minFAScore     sql.NullFloat64
 	percentile     float64
 	charMin        sql.NullFloat64
 	charPercentile float64
+	geoMin         sql.NullFloat64
+	geoPercentile  float64
 }
 
 type knownError struct {
@@ -118,6 +124,26 @@ func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVers
 		verseCount[reason]++
 	}
 	return result, verseCount
+}
+
+// validationSet is the union of all pruned verses, whatever the prune source.
+// These verses were excluded from training, so they are the validation dataset,
+// and its CER is the single value used to compare models and training parameters.
+type validationSet struct {
+	verses []generic.Verse2
+	cer    diff.Counts
+}
+
+func computeValidationSet(verses []generic.Verse2, pruned map[int64]prunedVerse) validationSet {
+	var result validationSet
+	for _, vs := range verses {
+		if _, ok := pruned[vs.ScriptId]; !ok {
+			continue
+		}
+		result.verses = append(result.verses, vs)
+		result.cer.Add(diff.Count(diff.CharLevenshtein(vs.Text(), vs.ASRText)))
+	}
+	return result
 }
 
 func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRanks map[int64]faRank, errors []audioError) []knownError {
@@ -172,14 +198,29 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 			FROM words w JOIN chars c ON c.word_id = w.word_id
 			WHERE w.ttype = 'W'
 			GROUP BY w.script_id
+		),
+		word_geo AS (
+			SELECT w.script_id, EXP(AVG(LN(MAX(c.fa_score, 1e-12)))) AS geo_score
+			FROM words w JOIN chars c ON c.word_id = w.word_id
+			WHERE w.ttype = 'W'
+			GROUP BY w.word_id
+		),
+		geo_min AS (
+			SELECT script_id, MIN(geo_score) AS min_geo_score
+			FROM word_geo
+			GROUP BY script_id
 		)
 		SELECT v.script_id, v.min_fa_score,
 			ROW_NUMBER() OVER (ORDER BY v.min_fa_score, v.script_id) AS rank_num,
 			COUNT(*) OVER () AS total,
 			c.min_char_score,
 			ROW_NUMBER() OVER (ORDER BY c.min_char_score IS NULL, c.min_char_score, v.script_id) AS char_rank_num,
-			COUNT(c.min_char_score) OVER () AS char_total
-		FROM verse_min v LEFT JOIN char_min c ON c.script_id = v.script_id`
+			COUNT(c.min_char_score) OVER () AS char_total,
+			g.min_geo_score,
+			ROW_NUMBER() OVER (ORDER BY g.min_geo_score IS NULL, g.min_geo_score, v.script_id) AS geo_rank_num,
+			COUNT(g.min_geo_score) OVER () AS geo_total
+		FROM verse_min v LEFT JOIN char_min c ON c.script_id = v.script_id
+		LEFT JOIN geo_min g ON g.script_id = v.script_id`
 	rows, err := database.DB.Query(query)
 	if err != nil {
 		return result, log.Error(ctx, 500, err, "Could not execute ", query)
@@ -192,13 +233,19 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 		var total int
 		var charRankNum int
 		var charTotal int
-		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total, &rank.charMin, &charRankNum, &charTotal)
+		var geoRankNum int
+		var geoTotal int
+		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total, &rank.charMin, &charRankNum, &charTotal,
+			&rank.geoMin, &geoRankNum, &geoTotal)
 		if err != nil {
 			return result, log.Error(ctx, 500, err, `Error scanning in SelectVerseFARank`)
 		}
 		rank.percentile = float64(rankNum) * 100.0 / float64(total)
 		if rank.charMin.Valid {
 			rank.charPercentile = float64(charRankNum) * 100.0 / float64(charTotal)
+		}
+		if rank.geoMin.Valid {
+			rank.geoPercentile = float64(geoRankNum) * 100.0 / float64(geoTotal)
 		}
 		result[scriptId] = rank
 	}

@@ -27,6 +27,8 @@ type knownRow struct {
 	Pctl      string
 	CharMin   string
 	CharPctl  string
+	GeoMin    string
+	GeoPctl   string
 	CER       string
 	Largest   int
 	Found     bool
@@ -43,16 +45,17 @@ type segment struct {
 }
 
 type reportData struct {
-	Dataset   string
-	Generated string
-	Cutoff    int
-	Summary   []summaryRow
-	Known     []knownRow
-	Missed    int
-	Total     int
+	Dataset    string
+	Generated  string
+	Cutoff     int
+	Summary    []summaryRow
+	Validation summaryRow
+	Known      []knownRow
+	Missed     int
+	Total      int
 }
 
-func generateReport(ctx context.Context, datasetName string, charCntMap map[PruneSource]diff.Counts, verseCntMap map[PruneSource]int, knownErrors []knownError) (string, *log.Status) {
+func generateReport(ctx context.Context, datasetName string, charCntMap map[PruneSource]diff.Counts, verseCntMap map[PruneSource]int, validation validationSet, knownErrors []knownError) (string, *log.Status) {
 	filePath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), datasetName+"_Validation.html")
 	data := reportData{
 		Dataset:   datasetName,
@@ -68,6 +71,12 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 			Chars:  cnt.RefLen,
 			CER:    strconv.FormatFloat(cnt.ErrorRate(), 'f', 4, 64),
 		})
+	}
+	data.Validation = summaryRow{
+		Status: "All Pruned (validation)",
+		Verses: len(validation.verses),
+		Chars:  validation.cer.RefLen,
+		CER:    strconv.FormatFloat(validation.cer.ErrorRate(), 'f', 4, 64),
 	}
 	for _, kn := range knownErrors {
 		row := knownRow{Reference: kn.reference, Found: kn.found, Largest: kn.largestDiff}
@@ -86,6 +95,10 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 			if kn.faRank.charMin.Valid {
 				row.CharMin = strconv.FormatFloat(kn.faRank.charMin.Float64, 'f', 6, 64)
 				row.CharPctl = strconv.FormatFloat(kn.faRank.charPercentile, 'f', 1, 64)
+			}
+			if kn.faRank.geoMin.Valid {
+				row.GeoMin = strconv.FormatFloat(kn.faRank.geoMin.Float64, 'g', 3, 64)
+				row.GeoPctl = strconv.FormatFloat(kn.faRank.geoPercentile, 'f', 1, 64)
 			}
 			row.CER = strconv.FormatFloat(kn.cer.ErrorRate(), 'f', 3, 64)
 			row.Segments = diffSegments(kn.diffs)
@@ -183,6 +196,7 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   td.ref { white-space: nowrap; font-weight: 600; }
   td.status { white-space: nowrap; }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--muted); }
   tr.missed td { background: var(--miss-bg); }
   tr.missed td.largest { color: var(--bad); font-weight: 600; }
   td.diff { white-space: pre-wrap; word-break: break-word; min-width: 320px; }
@@ -201,6 +215,8 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <main>
 <h1>Validation Report: {{.Dataset}}</h1>
 <div class="meta">Generated {{.Generated}}. A known error is caught when its largest difference is more than {{.Cutoff}} characters.</div>
+<p class="result">Validation CER {{.Validation.CER}}</p>
+<div class="meta">The union of all pruned verses: {{.Validation.Verses}} verses, {{.Validation.Chars}} chars.</div>
 <p class="result {{if eq .Missed 0}}ok{{else}}bad{{end}}">Missed {{.Missed}} of {{.Total}} known errors</p>
 
 <h2>Character Error Rate by Prune Status</h2>
@@ -212,24 +228,25 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <tr><td class="status">{{.Status}}</td><td class="num">{{.Verses}}</td><td class="num">{{.Chars}}</td><td class="num">{{.CER}}</td></tr>
 {{- end}}
 </tbody>
+<tfoot><tr class="total"><td class="status">{{.Validation.Status}}</td><td class="num">{{.Validation.Verses}}</td><td class="num">{{.Validation.Chars}}</td><td class="num">{{.Validation.CER}}</td></tr></tfoot>
 </table>
 </div>
 
 <h2>Known Errors</h2>
 <div class="scroll">
 <table>
-<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th>Char Min</th><th>Char Pctl</th><th>CER</th><th>Largest</th><th>Diff</th></tr></thead>
+<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th>Char Min</th><th>Char Pctl</th><th title="Minimum over the verse's words of the geometric mean of each word's char fa_score">Geo Min</th><th>Geo Pctl</th><th>CER</th><th>Largest</th><th>Diff</th></tr></thead>
 <tbody>
 {{- range .Known}}
 <tr{{if .Missed}} class="missed"{{end}}>
 <td class="ref">{{.Reference}}</td>
 {{- if .Found}}
-<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.CharMin}}</td><td class="num">{{.CharPctl}}</td><td class="num">{{.CER}}</td><td class="num largest">{{.Largest}}</td>
+<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.CharMin}}</td><td class="num">{{.CharPctl}}</td><td class="num">{{.GeoMin}}</td><td class="num">{{.GeoPctl}}</td><td class="num">{{.CER}}</td><td class="num largest">{{.Largest}}</td>
 <td class="diff">
 <div class="line"><span class="lbl">arti</span>{{range .Segments}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div></td>
 {{- else}}
-<td colspan="7"></td><td class="diff">
+<td colspan="9"></td><td class="diff">
 <div class="line notfound">This verse was not found in data.</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 </td>

@@ -284,15 +284,20 @@ func (m *MMSAlign) processPyOutput(file generic.InputFile, wordRefs []Word, resp
 			word.EndTS = faWd[len(faWd)-1].End
 		}
 		uromanChars := []rune(ref.uroman)
+		var scores []float64
 		for j, ch := range faWd {
-			word.FAScore += ch.Score
+			//word.FAScore += ch.Score
+			scores = append(scores, ch.Score)
 			faWd[j].Seq = j
 			if faWd[j].Uroman != uromanChars[j] {
 				log.ErrorNoErr(m.ctx, 500, "Norm", ref.uroman, "does not match")
 			}
 		}
 		if len(faWd) > 0 {
-			word.FAScore = word.FAScore / float64(len(faWd))
+			//word.FAScore = word.FAScore / float64(len(faWd))
+			// Geometric mean of the char scores, so that one confident char cannot hide
+			// several badly aligned ones, as an arithmetic mean does.
+			word.FAScore = m.geometricMean(scores)
 		}
 		word.Chars = faWd
 		words = append(words, word)
@@ -358,21 +363,34 @@ func (m *MMSAlign) summarizeByVerse(chapter [][]db.Audio) []db.Audio {
 		}
 		vs.Text = strings.Join(text, " ")
 		vs.Uroman = strings.Join(uroman, " ")
-		vs.FAScore = m.average(scores, 5)
+		//vs.FAScore = m.average(scores, 5)
+		vs.FAScore = m.geometricMean(scores)
 		result = append(result, vs)
 	}
 	return result
 }
 
-func (m *MMSAlign) average(scores []float64, precision int) float64 {
-	var sum float64
+//func (m *MMSAlign) average(scores []float64, precision int) float64 {
+//	var sum float64
+//	for _, scr := range scores {
+//		sum += scr
+//	}
+//	avg := sum / float64(len(scores))
+//	pow := math.Pow10(precision)
+//	result := math.Round(avg*pow) / pow
+//	return result
+//}
+
+// minFAScore keeps math.Log finite when a score is 0.
+const minFAScore = 1e-12
+
+// geometricMean is exp(mean(log(score))), rounded to precision decimal places.
+func (m *MMSAlign) geometricMean(scores []float64) float64 {
+	var logSum float64
 	for _, scr := range scores {
-		sum += scr
+		logSum += math.Log(math.Max(scr, minFAScore))
 	}
-	avg := sum / float64(len(scores))
-	pow := math.Pow10(precision)
-	result := math.Round(avg*pow) / pow
-	return result
+	return math.Exp(logSum / float64(len(scores)))
 }
 
 // midPoint eliminates time gaps between the end of one verse and the beginning of the next.
