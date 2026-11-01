@@ -15,7 +15,7 @@ func (r *RequestValidator) Validate(req *request.Request) {
 	r.checkSTTDecoder(&req.STTDecoder)
 	r.checkDetail(&req.Detail)
 	r.checkTimestamps(&req.Timestamps)
-	r.checkTraining(&req.Training)
+	r.checkTraining(&req.Training, &req.Training2)
 	r.checkCompareChoice(&req.Compare.CompareSettings.DoubleQuotes, "DoubleQuotes")
 	r.checkCompareChoice(&req.Compare.CompareSettings.Apostrophe, "Apostrophe")
 	r.checkCompareChoice(&req.Compare.CompareSettings.Hyphen, "Hyphen")
@@ -166,7 +166,11 @@ func (r *RequestValidator) checkTimestamps(req *request.Timestamps) {
 	}
 }
 
-func (r *RequestValidator) checkTraining(req *request.Training) {
+// defaultFAPrunePct is the percent of verses, lowest minimum word fa_score first,
+// that wav2vec2 training excludes when training2 fa_prune_pct is not set.
+const defaultFAPrunePct = 14.0
+
+func (r *RequestValidator) checkTraining(req *request.Training, req2 *request.Training2) {
 	var count int
 	if req.MMSAdapter.NumEpochs != 0 {
 		count += 1
@@ -175,6 +179,9 @@ func (r *RequestValidator) checkTraining(req *request.Training) {
 		req.NoTraining = true
 	} else if count > 1 {
 		r.errors = append(r.errors, "Only 1 field can be set on Training")
+	}
+	if req2.NumEpochs != 0 && req2.FAPrunePct == 0 {
+		req2.FAPrunePct = defaultFAPrunePct
 	}
 }
 
