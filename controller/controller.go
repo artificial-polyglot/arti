@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/artificial-polyglot/arti/cmd/delineation/mms_align"
 	"github.com/artificial-polyglot/arti/cmd/output/compare_rpt"
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
@@ -23,7 +24,6 @@ import (
 	"github.com/artificial-polyglot/arti/mms"
 	"github.com/artificial-polyglot/arti/mms/adapter"
 	"github.com/artificial-polyglot/arti/mms/asr_align"
-	"github.com/artificial-polyglot/arti/mms/mms_align"
 	"github.com/artificial-polyglot/arti/mms/mms_asr"
 	"github.com/artificial-polyglot/arti/output"
 	"github.com/artificial-polyglot/arti/read"
