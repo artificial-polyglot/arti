@@ -8,6 +8,7 @@ import (
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
+// WordRec
 // DataPruner reduces the data being trained to exclude data that likely includes errors.
 // The arti program, also called Artificial Polyglot is being used to proof
 // the correctness of audio files, but there is a fundamental problem with this that
@@ -15,11 +16,8 @@ import (
 // To mitigate this problem, this step is using data found during forced alignment to remove
 // verses that are likely to have errors.
 // The forced alignment is returning a pair of timestamps and a probability of correctness for each
-// character.  I summarize these probabilities of correctness to an average for each word,
+// character.  I summarize these probabilities of correctness to a geometric mean for each word,
 // and each script line.
-// It is my experience that most characters and words that are missing from the audio or in the
-// wrong sequence have a probability assigned to them of less that 0.0001.  To make sure
-// that all errors are removed, I eliminate more lines that just those.
 type WordRec struct {
 	wordId  int64
 	faScore float64

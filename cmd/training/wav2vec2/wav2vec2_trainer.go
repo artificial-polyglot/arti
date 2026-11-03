@@ -99,7 +99,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
-	} else if t.args.SampleType == "verse" {
+	} else if t.args.SampleType == "verse" || t.args.SampleType == "phrase" {
 		status := VerseSilencePruner(t.ctx, numVerses2SilencePrune, t.conn)
 		if status != nil {
 			return status
@@ -109,7 +109,7 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 			return status
 		}
 	} else {
-		return log.ErrorNoErr(t.ctx, 500, "Sample Type must be verse|word.  It was: "+t.args.SampleType)
+		return log.ErrorNoErr(t.ctx, 500, "Sample Type must be verse|word|phrase.  It was: "+t.args.SampleType)
 	}
 	pythonPath := os.Getenv(`FCBH_MMS_ADAPTER_PYTHON`)
 	pythonScript := filepath.Join(os.Getenv("GOPROJ"), "cmd/training/wav2vec2/trainer.py")
