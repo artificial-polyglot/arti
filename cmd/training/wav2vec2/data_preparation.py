@@ -127,7 +127,7 @@ def preparePhraseDataset(scriptsDB, samplesDB, audioDir, processor):
         WHERE w.ttype IN ('W', 'P')
         ORDER BY w.script_id, w.word_seq
         """
-    phrases = groupPhrases(scriptsDB.select(query,()))
+    phrases = mergeSingleWords(groupPhrases(scriptsDB.select(query,())))
     padded = padWordTimestamps(phrases)
     data = [p for p in padded if not p[1]]     # now drop phrases of pruned verses
     data.sort(key=lambda row: row[5] - row[4]) # sort by size
@@ -177,6 +177,30 @@ def groupPhrases(rows):
             phraseNum = 0
     return phrases
 
+
+def mergeSingleWords(phrases):
+    """phrases: the rows groupPhrases returns.  Joins each single-word phrase to the phrase before or after it
+    in the same script, whichever is separated from it by the shorter pause, and renumbers the references.
+    A script that contains only one word in total stays a single-word phrase."""
+    scripts = {}
+    for phrase in phrases:
+        scripts.setdefault(phrase[0], []).append(phrase)
+    result = []
+    for verse in scripts.values():
+        i = 0
+        while i < len(verse) and len(verse) > 1:
+            if ' ' in verse[i][6]:
+                i += 1
+                continue
+            toPrev = i == len(verse) - 1 or (i > 0 and verse[i][4] - verse[i - 1][5] <= verse[i + 1][4] - verse[i][5])
+            first = i - 1 if toPrev else i
+            a, b = verse[first], verse[first + 1]
+            verse[first:first + 2] = [a[:4] + (a[4], b[5], a[6] + ' ' + b[6])]
+            i = first + 1
+        for num, phrase in enumerate(verse, start=1):
+            reference = phrase[2].rsplit('.', 1)[0]
+            result.append(phrase[:2] + (f"{reference}.{num}",) + phrase[3:])
+    return result
 
 
 def prepareWordDataset(scriptsDB, samplesDB, audioDir, processor):
