@@ -44,6 +44,7 @@ type segment struct {
 
 type reportData struct {
 	Dataset    string
+	Unit       string
 	Generated  string
 	Cutoff     int
 	Summary    []summaryRow
@@ -53,10 +54,11 @@ type reportData struct {
 	Total      int
 }
 
-func generateReport(ctx context.Context, datasetName string, charCntMap map[PruneSource]diff.Counts, verseCntMap map[PruneSource]int, validation validationSet, knownErrors []knownError) (string, *log.Status) {
+func generateReport(ctx context.Context, datasetName string, unit string, charCntMap map[PruneSource]diff.Counts, verseCntMap map[PruneSource]int, validation validationSet, knownErrors []knownError) (string, *log.Status) {
 	filePath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), datasetName+"_Validation.html")
 	data := reportData{
 		Dataset:   datasetName,
+		Unit:      unit,
 		Generated: time.Now().Format("Jan 2, 2006 3:04 pm MST"),
 		Cutoff:    CompareRptCutoff,
 		Total:     len(knownErrors),
@@ -72,7 +74,7 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 	}
 	data.Validation = summaryRow{
 		Status: "All Pruned (validation)",
-		Verses: len(validation.verses),
+		Verses: validation.count,
 		Chars:  validation.cer.RefLen,
 		CER:    strconv.FormatFloat(validation.cer.ErrorRate(), 'f', 4, 64),
 	}
@@ -84,6 +86,9 @@ func generateReport(ctx context.Context, datasetName string, charCntMap map[Prun
 		}
 		if kn.found {
 			row.Status = kn.pruned.String()
+			if kn.status != "" {
+				row.Status = kn.status
+			}
 			if kn.faRank.minFAScore.Valid {
 				row.MinFA = strconv.FormatFloat(kn.faRank.minFAScore.Float64, 'f', 4, 64)
 			}
@@ -210,13 +215,13 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <h1>Validation Report: {{.Dataset}}</h1>
 <div class="meta">Generated {{.Generated}}. A known error is caught when its largest difference is more than {{.Cutoff}} characters.</div>
 <p class="result">Validation CER {{.Validation.CER}}</p>
-<div class="meta">The union of all pruned verses: {{.Validation.Verses}} verses, {{.Validation.Chars}} chars.</div>
+<div class="meta">The union of all pruned samples: {{.Validation.Verses}} {{.Unit}}, {{.Validation.Chars}} chars.</div>
 <p class="result {{if eq .Missed 0}}ok{{else}}bad{{end}}">Missed {{.Missed}} of {{.Total}} known errors</p>
 
 <h2>Character Error Rate by Prune Status</h2>
 <div class="scroll">
 <table>
-<thead><tr><th>Prune Status</th><th>Verses</th><th>Chars</th><th>CER</th></tr></thead>
+<thead><tr><th>Prune Status</th><th>{{.Unit}}</th><th>Chars</th><th>CER</th></tr></thead>
 <tbody>
 {{- range .Summary}}
 <tr><td class="status">{{.Status}}</td><td class="num">{{.Verses}}</td><td class="num">{{.Chars}}</td><td class="num">{{.CER}}</td></tr>

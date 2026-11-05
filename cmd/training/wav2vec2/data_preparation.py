@@ -117,27 +117,24 @@ def preparePhraseDataset(scriptsDB, samplesDB, audioDir, processor):
     samplesDB.execute('DROP TABLE IF EXISTS samples', ())
     samples = 'CREATE TABLE samples (idx INTEGER PRIMARY KEY, input_values BLOB, labels BLOB, text TEXT, reference TEXT, memory_mb FLOAT)'
     samplesDB.execute(samples,())
+    # The phrases, their padded timestamps, and their pruning are all created in phrase_preparation.go
     query = """
-        SELECT s.script_id, s.book_id || ' ' || s.chapter_num || ':' || s.verse_str as ref,
-            s.audio_file, w.word_begin_ts, w.word_end_ts, w.ttype, w.word,
-            (s.script_id IN (SELECT script_id FROM pruned_data)
-             OR s.script_id IN (SELECT script_id FROM pruned_silence)) AS pruned
-        FROM scripts s
-        JOIN words w ON w.script_id = s.script_id
-        WHERE w.ttype IN ('W', 'P')
-        ORDER BY w.script_id, w.word_seq
+        SELECT s.book_id || ' ' || s.chapter_num || ':' || s.verse_str || '.' || p.phrase_num AS ref,
+            s.audio_file, p.begin_ts, p.end_ts, p.text
+        FROM phrases p
+        JOIN scripts s ON s.script_id = p.script_id
+        WHERE p.phrase_id NOT IN (SELECT phrase_id FROM pruned_data)
+        AND p.phrase_id NOT IN (SELECT phrase_id FROM pruned_silence)
+        ORDER BY p.end_ts - p.begin_ts
         """
-    phrases = mergeSingleWords(groupPhrases(scriptsDB.select(query,())))
-    padded = padWordTimestamps(phrases)
-    data = [p for p in padded if not p[1]]     # now drop phrases of pruned verses
-    data.sort(key=lambda row: row[5] - row[4]) # sort by size
+    data = scriptsDB.select(query,())
 
     index = -1
     vocab = processor.tokenizer.get_vocab()
     unkId = processor.tokenizer.unk_token_id
     numUnk = 0
     missingChars = set()
-    for (scriptId, pruned, reference, audioFile, beginTS, endTS, text) in data:
+    for (reference, audioFile, beginTS, endTS, text) in data:
         if endTS <= beginTS:
             continue
         index += 1
@@ -154,53 +151,6 @@ def preparePhraseDataset(scriptsDB, samplesDB, audioDir, processor):
         print(f"WARNING: {numUnk} [UNK] tokens in training labels. Characters not in vocab: {chars}",
               file=sys.stderr, flush=True)
     return index + 1
-
-
-def groupPhrases(rows):
-    """rows: (scriptId, reference, audioFile, beginTS, endTS, ttype, word, pruned), in reading order.
-    Every punctuation token ends a phrase, and so does the end of the script.  Mid-word punctuation is
-    part of its word, so it does not break a phrase.  Returns one row per phrase, in order:
-    (scriptId, pruned, reference.phraseNum, audioFile, beginTS, endTS, text), the shape padWordTimestamps uses."""
-    phrases = []
-    current = []
-    phraseNum = 0
-    for i, (scriptId, reference, audioFile, beginTS, endTS, ttype, word, pruned) in enumerate(rows):
-        if ttype == 'W' and endTS > beginTS:     # drop zero-length words (e.g. footnote references)
-            current.append((beginTS, endTS, word))
-        lastInScript = i + 1 == len(rows) or rows[i + 1][0] != scriptId
-        if current and (ttype == 'P' or lastInScript):
-            phraseNum += 1
-            text = ' '.join(w[2] for w in current)
-            phrases.append((scriptId, pruned, f"{reference}.{phraseNum}", audioFile, current[0][0], current[-1][1], text))
-            current = []
-        if lastInScript:
-            phraseNum = 0
-    return phrases
-
-
-def mergeSingleWords(phrases):
-    """phrases: the rows groupPhrases returns.  Joins each single-word phrase to the phrase before or after it
-    in the same script, whichever is separated from it by the shorter pause, and renumbers the references.
-    A script that contains only one word in total stays a single-word phrase."""
-    scripts = {}
-    for phrase in phrases:
-        scripts.setdefault(phrase[0], []).append(phrase)
-    result = []
-    for verse in scripts.values():
-        i = 0
-        while i < len(verse) and len(verse) > 1:
-            if ' ' in verse[i][6]:
-                i += 1
-                continue
-            toPrev = i == len(verse) - 1 or (i > 0 and verse[i][4] - verse[i - 1][5] <= verse[i + 1][4] - verse[i][5])
-            first = i - 1 if toPrev else i
-            a, b = verse[first], verse[first + 1]
-            verse[first:first + 2] = [a[:4] + (a[4], b[5], a[6] + ' ' + b[6])]
-            i = first + 1
-        for num, phrase in enumerate(verse, start=1):
-            reference = phrase[2].rsplit('.', 1)[0]
-            result.append(phrase[:2] + (f"{reference}.{num}",) + phrase[3:])
-    return result
 
 
 def prepareWordDataset(scriptsDB, samplesDB, audioDir, processor):

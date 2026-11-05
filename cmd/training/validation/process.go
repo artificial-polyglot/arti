@@ -49,12 +49,29 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status != nil {
 		return output, status
 	}
-	prunedMap, status := SelectPrunedData(database)
+	phraseMode, status := UsesPhrasePruning(database)
 	if status != nil {
 		return output, status
 	}
-	charCntMap, verseCntMap := computeCharLevenshtein(verses, prunedMap)
-	validation := computeValidationSet(verses, prunedMap)
+	var prunedMap map[int64]prunedVerse
+	var phrases phraseData
+	var charCntMap map[PruneSource]diff.Counts
+	var sampleCntMap map[PruneSource]int
+	var validation validationSet
+	if phraseMode {
+		phrases, status = SelectPhraseData(database)
+		if status != nil {
+			return output, status
+		}
+		charCntMap, sampleCntMap, validation = computePhraseLevenshtein(verses, phrases)
+	} else {
+		prunedMap, status = SelectPrunedData(database)
+		if status != nil {
+			return output, status
+		}
+		charCntMap, sampleCntMap = computeCharLevenshtein(verses, prunedMap)
+		validation = computeValidationSet(verses, prunedMap)
+	}
 	knownErrorList, status1 := ReadAudioErrorData(ctx, req.DatasetName, req.AudioData.AWSS3)
 	if status1 != nil {
 		return output, status1
@@ -66,8 +83,15 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 			return output, status3
 		}
 		knownErrors = checkKnownErrors(verses, prunedMap, faRankMap, knownErrorList)
+		if phraseMode {
+			addPhraseStatus(knownErrors, phrases)
+		}
 	}
-	rptPath, status2 := generateReport(ctx, req.DatasetName, charCntMap, verseCntMap, validation, knownErrors)
+	unit := "Verses"
+	if phraseMode {
+		unit = "Phrases"
+	}
+	rptPath, status2 := generateReport(ctx, req.DatasetName, unit, charCntMap, sampleCntMap, validation, knownErrors)
 	if status2 != nil {
 		return output, status2
 	}
@@ -100,6 +124,7 @@ type knownError struct {
 	reference   string
 	scriptId    int64
 	pruned      PruneSource
+	status      string // when set, reported instead of pruned
 	faRank      faRank
 	faRankFound bool
 	cer         diff.Counts
@@ -123,12 +148,12 @@ func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVers
 	return result, verseCount
 }
 
-// validationSet is the union of all pruned verses, whatever the prune source.
-// These verses were excluded from training, so they are the validation dataset,
+// validationSet is the union of all pruned verses or phrases, whatever the prune source.
+// These samples were excluded from training, so they are the validation dataset,
 // and its CER is the single value used to compare models and training parameters.
 type validationSet struct {
-	verses []generic.Verse2
-	cer    diff.Counts
+	count int
+	cer   diff.Counts
 }
 
 func computeValidationSet(verses []generic.Verse2, pruned map[int64]prunedVerse) validationSet {
@@ -137,7 +162,7 @@ func computeValidationSet(verses []generic.Verse2, pruned map[int64]prunedVerse)
 		if _, ok := pruned[vs.ScriptId]; !ok {
 			continue
 		}
-		result.verses = append(result.verses, vs)
+		result.count++
 		result.cer.Add(diff.Count(diff.CharLevenshtein(vs.Text(), vs.ASRText)))
 	}
 	return result

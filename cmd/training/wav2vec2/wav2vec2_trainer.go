@@ -99,12 +99,25 @@ func (t *Wav2Vec2Trainer) Train(files []generic.InputFile) *log.Status {
 		if status != nil {
 			return status
 		}
-	} else if t.args.SampleType == "verse" || t.args.SampleType == "phrase" {
+	} else if t.args.SampleType == "verse" {
 		status := VerseSilencePruner(t.ctx, numVerses2SilencePrune, t.conn)
 		if status != nil {
 			return status
 		}
 		status = VerseDataPruner(t.conn, t.args.FAPrunePct)
+		if status != nil {
+			return status
+		}
+	} else if t.args.SampleType == "phrase" {
+		status := PreparePhrases(t.conn)
+		if status != nil {
+			return status
+		}
+		status = PhraseSilencePruner(t.conn, numPhrases2SilencePrune)
+		if status != nil {
+			return status
+		}
+		status = PhraseDataPruner(t.conn, t.args.FAPrunePct)
 		if status != nil {
 			return status
 		}
