@@ -307,11 +307,14 @@ func (m *MMSAlign) processPyOutput(file generic.InputFile, wordRefs []Word, resp
 	wordsByLine = m.groupByLine(words)
 	var verses []db.Audio
 	verses = m.summarizeByVerse(wordsByLine)
-	verses = m.midPoint(verses)
-	verses[len(verses)-1].EndTS, status = ffmpeg.GetAudioDuration(m.ctx, file.Directory, file.Filename)
+	verses = m.padVerses(verses)
+	duration, status := ffmpeg.GetAudioDuration(m.ctx, file.Directory, file.Filename)
 	if status != nil {
 		return status
 	}
+	last := len(verses) - 1
+	verses[last].EndTS = min(verses[last].EndTS, duration)
+	verses[last].PlayEndTS = duration
 	status = m.conn.UpdateScriptFATimestamps(verses)
 	if status != nil {
 		return status
@@ -353,6 +356,19 @@ func (m *MMSAlign) summarizeByVerse(chapter [][]db.Audio) []db.Audio {
 	for _, verse := range chapter {
 		var vs = verse[0]
 		vs.EndTS = verse[len(verse)-1].EndTS
+		// A word with no FA chars has a zero-length time at the previous word's end, which can be
+		// in the previous verse, so the verse's speech is bounded by its aligned words when it has any.
+		aligned := false
+		for _, word := range verse {
+			if len(word.Chars) == 0 {
+				continue
+			}
+			if !aligned {
+				vs.BeginTS = word.BeginTS
+				aligned = true
+			}
+			vs.EndTS = word.EndTS
+		}
 		var text []string
 		var uroman []string
 		var scores []float64
@@ -393,15 +409,32 @@ func (m *MMSAlign) geometricMean(scores []float64) float64 {
 	return math.Exp(logSum / float64(len(scores)))
 }
 
-// midPoint eliminates time gaps between the end of one verse and the beginning of the next.
-func (m *MMSAlign) midPoint(parts []db.Audio) []db.Audio {
+// padVerses adds generic.AudioPadSec before the first word and after the last word of each verse
+// of one audio file, limited to half the gap to the neighbouring verse.  Phrase samples are
+// padded by the same rule, so that training on phrases and ASR of verses hear the same context.
+// It also sets the play times used by the reports, which leave no audio out: each verse plays
+// from the midpoint of the gap before it to the midpoint of the gap after it, the first verse
+// from 0, and the last verse to the end of the file, which the caller sets.
+func (m *MMSAlign) padVerses(parts []db.Audio) []db.Audio {
+	speech := make([]db.Audio, len(parts))
+	copy(speech, parts)
 	for i := range parts {
-		if i == 0 {
-			parts[0].BeginTS = 0.0
-		} else {
-			midPoint := (parts[i].BeginTS + parts[i-1].EndTS) / 2.0
-			parts[i].BeginTS = midPoint
-			parts[i-1].EndTS = midPoint
+		var prevEnd, nextBegin float64
+		if i > 0 {
+			prevEnd = speech[i-1].EndTS
+		}
+		if i+1 < len(parts) {
+			nextBegin = speech[i+1].BeginTS
+		}
+		parts[i].BeginTS = generic.PadBegin(speech[i].BeginTS, prevEnd, i > 0)
+		parts[i].EndTS = generic.PadEnd(speech[i].EndTS, nextBegin, i+1 < len(parts))
+		parts[i].PlayBeginTS = 0.0
+		if i > 0 {
+			parts[i].PlayBeginTS = (prevEnd + speech[i].BeginTS) / 2
+		}
+		parts[i].PlayEndTS = parts[i].EndTS
+		if i+1 < len(parts) {
+			parts[i].PlayEndTS = (speech[i].EndTS + nextBegin) / 2
 		}
 	}
 	return parts
@@ -410,7 +443,7 @@ func (m *MMSAlign) midPoint(parts []db.Audio) []db.Audio {
 // fillEmptyWords gives each word that received no characters from forced alignment
 // (e.g. a footnote reference like "12:13", which uroman reduces to nothing) a
 // zero-length timestamp at the end of the previous word, so verse rollups and
-// midPoint never see the default 0 timestamps.
+// padVerses never see the default 0 timestamps.
 func (m *MMSAlign) fillEmptyWords(words []db.Audio) {
 	for i := range words {
 		if len(words[i].Chars) > 0 {

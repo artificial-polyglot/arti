@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/artificial-polyglot/arti/db"
+	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 )
 
-const phrasePad = 0.20 // seconds of context added on each side, limited to half the gap to the neighbouring phrase
 const numPhrases2SilencePrune = 400
 
 type phraseRow struct {
@@ -248,22 +248,25 @@ func mergeSingleWords(phrases []phrase) []phrase {
 	return result
 }
 
-// padPhrases adds context to each side of every phrase, limited to half the gap to the
-// neighbouring phrase in the same audio file.  It must be given every phrase in reading order,
-// including those that will be pruned, so that each phrase's neighbours are its real neighbours.
+// padPhrases adds generic.AudioPadSec to each side of every phrase, limited to half the gap to
+// the neighbouring phrase in the same audio file.  mms_align pads verses by the same rule, so a
+// phrase at the start or end of a verse hears the same lead-in or tail-off as the verse that ASR
+// is run on.  It must be given every phrase in reading order, including those that will be
+// pruned, so that each phrase's neighbours are its real neighbours.
 func padPhrases(phrases []phrase) []phrase {
 	result := make([]phrase, len(phrases))
 	for i, p := range phrases {
-		beginTS := p.beginTS - phrasePad
-		if i > 0 && phrases[i-1].audioFile == p.audioFile {
-			beginTS = max(beginTS, (phrases[i-1].endTS+p.beginTS)/2)
+		hasPrev := i > 0 && phrases[i-1].audioFile == p.audioFile
+		hasNext := i+1 < len(phrases) && phrases[i+1].audioFile == p.audioFile
+		var prevEnd, nextBegin float64
+		if hasPrev {
+			prevEnd = phrases[i-1].endTS
 		}
-		endTS := p.endTS + phrasePad
-		if i+1 < len(phrases) && phrases[i+1].audioFile == p.audioFile {
-			endTS = min(endTS, (p.endTS+phrases[i+1].beginTS)/2)
+		if hasNext {
+			nextBegin = phrases[i+1].beginTS
 		}
-		p.beginTS = max(beginTS, 0.0)
-		p.endTS = endTS
+		p.beginTS = generic.PadBegin(p.beginTS, prevEnd, hasPrev)
+		p.endTS = generic.PadEnd(p.endTS, nextBegin, hasNext)
 		result[i] = p
 	}
 	return result

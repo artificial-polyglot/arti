@@ -204,7 +204,10 @@ func (a *AlignSilence) countErrors(lines []generic.AlignLine) {
 }
 
 func (a *AlignSilence) SelectDuration(scriptId int64) (float64, *log.Status) {
-	query := `SELECT script_end_ts FROM scripts WHERE script_id = ?`
+	// play_end_ts of a chapter's last verse is the duration of the audio file.  A database
+	// aligned before play times existed has none, but there script_end_ts is the duration.
+	query := `SELECT CASE WHEN play_end_ts > 0 THEN play_end_ts ELSE script_end_ts END
+		FROM scripts WHERE script_id = ?`
 	row := a.conn.DB.QueryRow(query, scriptId)
 	var timestamp float64
 	err := row.Scan(&timestamp)

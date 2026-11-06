@@ -159,8 +159,12 @@ func createDatabase(db *sql.DB) {
 		script_begin_ts REAL NOT NULL DEFAULT 0.0,
 		script_end_ts REAL NOT NULL DEFAULT 0.0,
 		fa_score REAL NOT NULL DEFAULT 0.0,
+		play_begin_ts REAL NOT NULL DEFAULT 0.0, /* for listening: midpoints between verses, 0 to file duration */
+		play_end_ts REAL NOT NULL DEFAULT 0.0,
 		FOREIGN KEY(dataset_id) REFERENCES ident(dataset_id)) STRICT`
 	execDDL(db, query)
+	addColumnIfMissing(db, "scripts", "play_begin_ts", "REAL NOT NULL DEFAULT 0.0")
+	addColumnIfMissing(db, "scripts", "play_end_ts", "REAL NOT NULL DEFAULT 0.0")
 	query = `CREATE UNIQUE INDEX IF NOT EXISTS scripts_idx
 		ON scripts (book_id, chapter_num, verse_str)`
 	execDDL(db, query)
@@ -277,6 +281,19 @@ func (d *DBAdapter) EraseDatabase() {
 	execDDL(d.DB, `DELETE FROM script_mfcc`)
 	execDDL(d.DB, `DELETE FROM word_mfcc`)
 	execDDL(d.DB, `DELETE FROM chars`)
+}
+
+// addColumnIfMissing adds a column to a table created by an older version of this code.
+func addColumnIfMissing(db *sql.DB, table string, column string, definition string) {
+	var count int
+	query := `SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`
+	err := db.QueryRow(query, table, column).Scan(&count)
+	if err != nil {
+		log.Panic(context.Background(), err, query)
+	}
+	if count == 0 {
+		execDDL(db, `ALTER TABLE `+table+` ADD COLUMN `+column+` `+definition)
+	}
 }
 
 func execDDL(db *sql.DB, sql string) {
@@ -1072,12 +1089,17 @@ func (d *DBAdapter) UpdateScriptText(audio []Audio) (int, *log.Status) {
 
 func (d *DBAdapter) UpdateScriptFATimestamps(audio []Audio) *log.Status {
 	query := `UPDATE scripts SET audio_file = ?, script_begin_ts = ?,
-		script_end_ts = ?, fa_score = ?, uroman = ? WHERE script_id = ?`
+		script_end_ts = ?, fa_score = ?, uroman = ?, play_begin_ts = ?, play_end_ts = ? WHERE script_id = ?`
 	tx, stmt := d.prepareDML(query)
 	defer d.closeDef(stmt, "UpdateScriptFATimestamps stmt")
 	var rowsUpdated int64
 	for _, rec := range audio {
-		res, err := stmt.Exec(rec.AudioFile, rec.BeginTS, rec.EndTS, rec.FAScore, rec.Uroman, rec.ScriptId)
+		playBeginTS, playEndTS := rec.PlayBeginTS, rec.PlayEndTS
+		if playEndTS <= playBeginTS { // a caller that does not compute play times
+			playBeginTS, playEndTS = rec.BeginTS, rec.EndTS
+		}
+		res, err := stmt.Exec(rec.AudioFile, rec.BeginTS, rec.EndTS, rec.FAScore, rec.Uroman,
+			playBeginTS, playEndTS, rec.ScriptId)
 		if err != nil {
 			return log.Error(d.Ctx, 500, err, `Error while updating script FA timestamps.`)
 		}

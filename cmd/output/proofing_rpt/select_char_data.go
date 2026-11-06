@@ -15,7 +15,7 @@ import (
 // the qa_align module using a model for the language, not MMS.
 func SelectCharData(conn db.DBAdapter) ([]generic.Verse2, *log.Status) {
 	var verses []generic.Verse2
-	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, qs.begin_ts, qs.end_ts,
+	var query = `SELECT s.script_id, s.book_id, s.chapter_num, s.verse_str, qs.begin_ts, qs.end_ts, s.play_begin_ts, s.play_end_ts,
 				w.word_id, w.word, w.word_punct, w.uroman, qw.begin_ts, qw.end_ts, qw.fa_score,
 				qc.seq, qc.char, qc.begin_ts, qc.end_ts, qc.fa_score
 				FROM scripts s JOIN words w ON s.script_id = w.script_id
@@ -62,9 +62,10 @@ func SelectCharData(conn db.DBAdapter) ([]generic.Verse2, *log.Status) {
 		var wordText, wordPunct, wordUroman string
 		var charSeq int
 		var chr string
+		var playBeginTS, playEndTS float64
 		var scriptBeginTS, scriptEndTS, wordBeginTS, wordEndTS, charBeginTS, charEndTS, wordFAScore, charFAScore float64
 		err = rows.Scan(&scriptId, &lineRef.BookId, &lineRef.ChapterNum, &lineRef.VerseStr,
-			&scriptBeginTS, &scriptEndTS,
+			&scriptBeginTS, &scriptEndTS, &playBeginTS, &playEndTS,
 			&wordId, &wordText, &wordPunct, &wordUroman, &wordBeginTS, &wordEndTS, &wordFAScore,
 			&charSeq, &chr, &charBeginTS, &charEndTS, &charFAScore)
 		if err != nil {
@@ -72,7 +73,8 @@ func SelectCharData(conn db.DBAdapter) ([]generic.Verse2, *log.Status) {
 		}
 		if !haveVerse || scriptId != verse.ScriptId {
 			flushVerse()
-			verse = generic.Verse2{ScriptId: scriptId, LineRef: lineRef, BeginTS: scriptBeginTS, EndTS: scriptEndTS}
+			verse = generic.Verse2{ScriptId: scriptId, LineRef: lineRef, BeginTS: scriptBeginTS, EndTS: scriptEndTS,
+				PlayBeginTS: playBeginTS, PlayEndTS: playEndTS}
 			verse.Duration = scriptEndTS - scriptBeginTS
 			words = nil
 			haveVerse = true

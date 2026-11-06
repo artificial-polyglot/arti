@@ -3,13 +3,15 @@ package generic
 import "strings"
 
 type Verse2 struct {
-	ScriptId int64
-	LineRef  VerseRef
-	ASRText  string  // Transcript
-	BeginTS  float64 // Used in report to play audio
-	EndTS    float64 // Used in report to play audio
-	Duration float64 // Displayed in audio
-	Words    []Word2
+	ScriptId    int64
+	LineRef     VerseRef
+	ASRText     string  // Transcript
+	BeginTS     float64 // Start of the audio given to ASR and qa_align
+	EndTS       float64 // End of the audio given to ASR and qa_align
+	PlayBeginTS float64 // Used in report to play audio, see scripts.play_begin_ts
+	PlayEndTS   float64 // Used in report to play audio
+	Duration    float64 // Displayed in audio
+	Words       []Word2
 }
 type Word2 struct {
 	WordId    int64
@@ -39,6 +41,15 @@ type Char2 struct {
 	IsASR       bool
 }
 
+// PlayTimes returns the audio a report plays for this verse.  A database aligned before the
+// play times existed has none, and then plays the verse's ASR audio.
+func (v Verse2) PlayTimes() (float64, float64) {
+	if v.PlayEndTS > v.PlayBeginTS {
+		return v.PlayBeginTS, v.PlayEndTS
+	}
+	return v.BeginTS, v.EndTS
+}
+
 // ToPair builds a Pair whose Base is this verse's lowercased word text and
 // whose Comp is compText, attributed to compScriptId.
 func (v Verse2) ToPair() Pair {
@@ -46,8 +57,7 @@ func (v Verse2) ToPair() Pair {
 	p.Ref.BookId = v.LineRef.BookId
 	p.Ref.ChapterNum = v.LineRef.ChapterNum
 	p.Ref.VerseStr = v.LineRef.VerseStr
-	p.BeginTS = v.BeginTS
-	p.EndTS = v.EndTS
+	p.BeginTS, p.EndTS = v.PlayTimes()
 	p.Base.ScriptId = v.ScriptId
 	p.Base.Text = v.Text()
 	p.Base.Uroman = v.Uroman()

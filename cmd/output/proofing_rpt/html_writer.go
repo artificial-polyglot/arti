@@ -126,9 +126,10 @@ func (h *HTMLWriter) WriteLine(verse generic.Verse2, audioURL generic.AudioFile)
 	var params []string
 	params = append(params, "this")
 	params = append(params, "'"+audioURL.UnsignedURL+"'")
-	params = append(params, strconv.FormatFloat(verse.BeginTS, 'f', 4, 64))
-	params = append(params, strconv.FormatFloat(verse.EndTS, 'f', 4, 64))
-	h.writeCell("<button title=\"" + minSecFormat(verse.BeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
+	playBeginTS, playEndTS := verse.PlayTimes()
+	params = append(params, strconv.FormatFloat(playBeginTS, 'f', 4, 64))
+	params = append(params, strconv.FormatFloat(playEndTS, 'f', 4, 64))
+	h.writeCell("<button title=\"" + minSecFormat(playBeginTS) + "\" onclick=\"playVerse(" + strings.Join(params, ",") + ")\">Play</button>")
 	h.writeCell(verse.LineRef.Description())
 	_, _ = h.out.WriteString(`<td>`)
 	var span string
