@@ -10,6 +10,7 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/diff"
 )
 
 // A hallucination filter for ASR transcripts.  When ASR produces whole words that are not in the
@@ -31,6 +32,8 @@ import (
 const MinInsertLetters = 3 // shorter inserts are not judged, and always kept
 const NeedFraction = 0.5   // the fraction of the time an insert needs that must be found
 const NormalPercentile = 90
+const ReplaceWindow = 3    // words of the text on each side of an insert, beyond its own length, to look for a replaced word
+const MaxReplaceDiff = 0.5 // the fraction of its chars by which a replaced word may differ
 
 // Clip is the audio given to ASR and qa_align for one verse.
 type Clip struct {
@@ -55,10 +58,14 @@ type Insert struct {
 	NeedSec   float64
 	NearSec   float64 // spare time near the insert
 	VerseSec  float64 // spare time in the whole verse
+	Replaces  string  // a nearby word of the text, missing from the transcript, that is like an inserted word
 	Kept      bool
 }
 
 func (in Insert) Reason() string {
+	if in.Replaces != "" {
+		return "replacement: like [" + in.Replaces + "] of the text, which the transcript does not have"
+	}
 	if in.Kept {
 		return "audio has " + strconv.FormatFloat(max(in.NearSec, in.VerseSec), 'f', 2, 64) +
 			"s spare for " + strconv.FormatFloat(in.NeedSec, 'f', 2, 64) + "s of words"
@@ -151,7 +158,8 @@ func Filter(verses []generic.Verse2, clips map[int64]Clip, stats Stats) ([]gener
 		verseSec := sum(spare)
 		remove := make([]bool, len(asr))
 		removed := false
-		for _, run := range wordInserts(text, asr) {
+		runs, matched := wordInserts(text, asr)
+		for _, run := range runs {
 			words := asr[run.asrBegin:run.asrEnd]
 			insText := strings.Join(words, " ")
 			if utf8.RuneCountInString(strings.Join(words, "")) < MinInsertLetters {
@@ -159,12 +167,13 @@ func Filter(verses []generic.Verse2, clips map[int64]Clip, stats Stats) ([]gener
 			}
 			in := Insert{ScriptId: vs.ScriptId, LineRef: vs.LineRef, WordIndex: run.textIndex, Text: insText,
 				VerseSec: verseSec}
+			in.Replaces = replacedWord(words, text, matched, run.textIndex)
 			in.NeedSec = float64(utf8.RuneCountInString(insText)+1) * stats.SecPerChar
 			lo := max(0, run.textIndex-len(words))
 			hi := min(len(spare)-1, run.textIndex+len(words))
 			in.NearSec = slices.Max(spare[lo : hi+1])
 			need := NeedFraction * in.NeedSec
-			in.Kept = (in.NearSec >= need && in.NearSec > stats.NearLimitSec) ||
+			in.Kept = in.Replaces != "" || (in.NearSec >= need && in.NearSec > stats.NearLimitSec) ||
 				(in.VerseSec >= need && in.VerseSec > stats.VerseLimitSec)
 			if !in.Kept {
 				for j := run.asrBegin; j < run.asrEnd; j++ {
@@ -223,9 +232,9 @@ type insertRun struct {
 
 // wordInserts aligns the words of the text and the transcript by their longest common
 // subsequence, and returns each run of transcript words that falls between two matched words
-// with no text word between them.  A run with text words on both sides is a replacement, not
-// an insert.
-func wordInserts(text []string, asr []string) []insertRun {
+// with no text word between them, and which words of the text are matched.  A run with text
+// words on both sides is a replacement, not an insert.
+func wordInserts(text []string, asr []string) ([]insertRun, []bool) {
 	n, m := len(text), len(asr)
 	lcs := make([][]int, n+1)
 	for i := range lcs {
@@ -241,6 +250,7 @@ func wordInserts(text []string, asr []string) []insertRun {
 		}
 	}
 	var runs []insertRun
+	matched := make([]bool, n)
 	i, j := 0, 0
 	prevI, prevJ := 0, 0
 	addGap := func(ti int, tj int) {
@@ -251,6 +261,7 @@ func wordInserts(text []string, asr []string) []insertRun {
 	for i < n && j < m {
 		if text[i] == asr[j] {
 			addGap(i, j)
+			matched[i] = true
 			i++
 			j++
 			prevI, prevJ = i, j
@@ -261,7 +272,37 @@ func wordInserts(text []string, asr []string) []insertRun {
 		}
 	}
 	addGap(n, m)
-	return runs
+	return runs, matched
+}
+
+// replacedWord returns a word of the text, missing from the transcript and within ReplaceWindow
+// words of an insert, that is the same as an inserted word or differs from it by less than
+// MaxReplaceDiff of its chars.  The insert is then a word read in another order, or a misspelled
+// word that the alignment matched to another copy of a word nearby, and not a hallucination.
+// It returns "" when there is none.
+func replacedWord(words []string, text []string, matched []bool, textIndex int) string {
+	lo := max(0, textIndex-len(words)-ReplaceWindow)
+	hi := min(len(text), textIndex+len(words)+ReplaceWindow)
+	for t := lo; t < hi; t++ {
+		if matched[t] {
+			continue
+		}
+		for _, wd := range words {
+			if similarWords(wd, text[t]) {
+				return text[t]
+			}
+		}
+	}
+	return ""
+}
+
+func similarWords(a string, b string) bool {
+	if a == b {
+		return true
+	}
+	cnt := diff.Count(diff.CharLevenshtein(a, b))
+	longest := max(utf8.RuneCountInString(a), utf8.RuneCountInString(b))
+	return float64(cnt.ErrorCount()) < MaxReplaceDiff*float64(longest)
 }
 
 // readingSpeed is the median seconds per char of verses of at least 4 words, counting the spaces.

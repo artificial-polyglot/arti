@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/artificial-polyglot/arti/cmd/speech_to_text/filters"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
@@ -16,9 +17,16 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	var output []db.Output
 	ctx := database.Ctx
 
-	records, fileMap, status := CompareReport(database, req.LanguageISO)
+	records, fileMap, filterResults, status := CompareReport(database, req.LanguageISO, req.STTFilters)
 	if status != nil {
 		return output, status
+	}
+	if filters.AnyOn(req.STTFilters) {
+		filterPath, status1 := filters.WriteReport(ctx, req.DatasetName, filterResults)
+		if status1 != nil {
+			return output, status1
+		}
+		output = append(output, db.Output{Component: "compare_rpt", Report: "filters.html", FilePath: filterPath})
 	}
 	s3, status := s3_datastore.NewS3Client(ctx)
 	if status != nil {

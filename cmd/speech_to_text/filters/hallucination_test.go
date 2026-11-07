@@ -10,25 +10,56 @@ import (
 
 // TestFilterN1SKNSEC checks the decisions on every whole-word insert in N1SKNSEC run 00003.
 // ROM 3:26 is the verse read twice.  In ACT 23:31 the reader appears to restart a phrase, and in
-// ACT 26:22 to read a phrase in another place.  The other inserts are judged hallucinations.
+// ACT 26:22 to read a phrase in another place.  The replaced inserts are words of the text read in
+// another order, or misspelled words that the alignment matched to another copy of a word nearby.
+// The other inserts are judged hallucinations.
 func TestFilterN1SKNSEC(t *testing.T) {
 	fx := readFixture(t)
 	real := map[string]bool{"ROM 3:26": true, "ACT 23:31": true, "ACT 26:22": true}
+	replaced := map[string]bool{"MAT 6:16": true, "LUK 13:16": true, "ACT 15:17": true, "EPH 1:2": true,
+		"EPH 5:27": true, "2PE 1:20": true, "REV 8:10": true}
 	result, inserts := Filter(fx.Verses, fx.Clips, fx.Stats)
 	if len(inserts) != 14 {
 		t.Errorf("expected 14 whole-word inserts, got %d", len(inserts))
 	}
 	for _, in := range inserts {
 		ref := in.LineRef.BookId + " " + strconv.Itoa(in.LineRef.ChapterNum) + ":" + in.LineRef.VerseStr
-		if in.Kept != real[ref] {
+		if in.Kept != (real[ref] || replaced[ref]) || (in.Replaces != "") != replaced[ref] {
 			t.Errorf("%s +[%s]: kept %v, %s", ref, in.Text, in.Kept, in.Reason())
 		}
 	}
 	for i, vs := range result {
 		before, after := len(strings.Fields(fx.Verses[i].ASRText)), len(strings.Fields(vs.ASRText))
 		ref := vs.LineRef.BookId + " " + strconv.Itoa(vs.LineRef.ChapterNum) + ":" + vs.LineRef.VerseStr
-		if real[ref] && after != before || !real[ref] && after >= before {
+		keep := real[ref] || replaced[ref]
+		if keep && after != before || !keep && after >= before {
 			t.Errorf("%s: transcript went from %d to %d words", ref, before, after)
+		}
+	}
+}
+
+func TestReplacedWord(t *testing.T) {
+	cases := []struct {
+		name, text, asr, want string
+	}{
+		{"reordered", "aaaa pppp bbbb cccc", "aaaa bbbb pppp cccc", "pppp"},
+		{"misspelled, matched to another copy", "tuhan og gommaꞌ taꞌ bug panghuꞌ ta isa al-masih", // EPH 1:2
+			"tuhan og gommaꞌ ta bu panghuꞌ isa al-masih", "bug"},
+		{"hallucination", "aaaa bbbb cccc dddd", "aaaa bbbb xyzw cccc dddd", ""},
+		{"unlike missing word", "aaaa bbbb cccc dddd", "aaaa xyzw cccc dddd", ""},
+		{"too far away", "pppp aaaa bbbb cccc dddd eeee ffff", "aaaa bbbb cccc dddd eeee ffff pppp", ""},
+	}
+	for _, c := range cases {
+		text, asr := strings.Fields(c.text), strings.Fields(c.asr)
+		runs, matched := wordInserts(text, asr)
+		got := ""
+		for _, run := range runs {
+			if r := replacedWord(asr[run.asrBegin:run.asrEnd], text, matched, run.textIndex); r != "" {
+				got = r
+			}
+		}
+		if got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
 	}
 }
@@ -92,7 +123,7 @@ func TestFilterSynthetic(t *testing.T) {
 
 func TestWordInserts(t *testing.T) {
 	text := strings.Fields("a b c d")
-	got := wordInserts(text, strings.Fields("x a b y z c q d w"))
+	got, _ := wordInserts(text, strings.Fields("x a b y z c q d w"))
 	want := []insertRun{{0, 0, 1}, {2, 3, 5}, {3, 6, 7}, {4, 8, 9}}
 	if len(got) != len(want) {
 		t.Fatalf("got %+v", got)

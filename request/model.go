@@ -27,6 +27,7 @@ type Request struct {
 	Training     Training     `yaml:"training,omitempty" json:"training,omitempty"`
 	SpeechToText SpeechToText `yaml:"speech_to_text,omitempty" json:"speech_to_text,omitempty"`
 	STTDecoder   STTDecoder   `yaml:"stt_decoder,omitempty" json:"stt_decoder,omitempty"`
+	STTFilters   STTFilters   `yaml:"stt_filters,omitempty" json:"stt_filters,omitempty"`
 	Detail       Detail       `yaml:"detail,omitempty" json:"detail,omitempty"`
 	AudioProof   AudioProof   `yaml:"audio_proof,omitempty" json:"audio_proof,omitempty"`
 	Compare      Compare      `yaml:"compare,omitempty" json:"compare,omitempty"`
@@ -292,6 +293,14 @@ func (d STTDecoder) String() string {
 	} else {
 		return "greedy"
 	}
+}
+
+type STTFilters struct {
+	SpaceHyphen    bool `yaml:"space_hyphen,omitempty" json:"space_hyphen,omitempty"`
+	FABoundary     bool `yaml:"fa_boundary,omitempty" json:"fa_boundary,omitempty"`
+	CharPairs      bool `yaml:"char_pairs,omitempty" json:"char_pairs,omitempty"`
+	Hallucinations bool `yaml:"hallucinations,omitempty" json:"hallucinations,omitempty"`
+	MissingWords   bool `yaml:"missing_words,omitempty" json:"missing_words,omitempty"`
 }
 
 type Detail struct {
