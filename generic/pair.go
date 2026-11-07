@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"strings"
 	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/utility/diff"
@@ -53,20 +54,22 @@ func (p *Pair) Deletes() int {
 // equal char between changes does not break the run, and is not counted.
 func (p *Pair) LargestLength() int {
 	var result int
-	var length int
+	var run strings.Builder
+	endRun := func() {
+		length := utf8.RuneCountInString(strings.TrimSpace(run.String()))
+		if length > result {
+			result = length
+		}
+		run.Reset()
+	}
 	for _, df := range p.Text.Diffs {
 		if df.Type != diff.OpEqual {
-			length += utf8.RuneCountInString(df.Text)
+			run.WriteString(df.Text)
 		} else if utf8.RuneCountInString(df.Text) > 1 {
-			if length > result {
-				result = length
-			}
-			length = 0
+			endRun()
 		}
 	}
-	if length > result {
-		result = length
-	}
+	endRun()
 	return result
 }
 
