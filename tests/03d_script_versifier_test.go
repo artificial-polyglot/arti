@@ -12,7 +12,6 @@ username: Tests
 language_iso: ako
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 text_data:
   aws_s3: s3://arti-input/03d_script_versifier_test_data/Text_Aokho_N2IKHMLT.xlsx

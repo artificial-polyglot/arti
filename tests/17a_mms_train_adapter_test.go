@@ -12,7 +12,6 @@ username: Tests
 language_iso: atx
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 testament:
   nt_books: [3JN] # All of 1JN,2JN,3JN,JUD are available
@@ -61,7 +60,6 @@ dataset_name: 17a_mms_adapter
 language_iso: atg
 username: Tests
 output:
-  directory: ~/Downloads
   csv: yes
   sqlite: yes
 text_data:

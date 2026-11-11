@@ -12,7 +12,6 @@ bible_id: ENGWEB
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 audio_data:
   aws_s3: s3://arti-input/03a_zip_file_test_data/ENGWEBN2DA.zip

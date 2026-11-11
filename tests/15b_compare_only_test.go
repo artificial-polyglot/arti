@@ -14,7 +14,6 @@ bible_id: ENGWEB
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 database:
   aws_s3: s3://arti-output/Tests/15a_mms_asr/arti/00001/database/15a_mms_asr_audio.db

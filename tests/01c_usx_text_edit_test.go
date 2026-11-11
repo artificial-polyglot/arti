@@ -15,7 +15,6 @@ notify_err: [ntfy/arti2]
 testament:
   nt: yes
 output:
-  directory: ~/Downloads
   csv: yes
 text_data:
   bible_brain:

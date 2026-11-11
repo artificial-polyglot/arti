@@ -36,8 +36,10 @@ training:
         learning_rate: 0.001
         warmup_pct: 12
         grad_norm_max: 0.4
-audio_proof:
-    html_report: true
+speech_to_text:
+    qa_align: true
+output:
+    proofing_report: true
 `
 
 func TestRunAnything(t *testing.T) {

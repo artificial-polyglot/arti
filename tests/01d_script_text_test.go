@@ -13,7 +13,6 @@ bible_id: {bibleId}
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 text_data:
   file: ../read/script_reader/test_data/CORE_Scr_1065p_1Eng__14_Spkr_Tajik_N2_TGK_IBT_arti.xlsx

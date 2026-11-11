@@ -12,7 +12,6 @@ bible_id: IKHMLT
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Download
   csv: yes
 database:
   aws_s3: s3://arti-input/15d_script_compare_audio_test_data/15d_script_compare_audio.db

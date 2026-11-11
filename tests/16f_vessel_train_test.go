@@ -13,7 +13,6 @@ username: Tests
 language_iso: eng
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 testament:
   nt_books: [TIT]

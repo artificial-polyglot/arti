@@ -12,7 +12,6 @@ language_iso: qae
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 text_data:
   aws_s3: s3://arti-input/N2QAEBSP/Text Files/SFM Text/*.SFM

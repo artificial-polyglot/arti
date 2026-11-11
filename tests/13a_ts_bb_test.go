@@ -13,7 +13,6 @@ bible_id: {bibleId}
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 text_data:
   bible_brain:

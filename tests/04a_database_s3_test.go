@@ -12,7 +12,6 @@ bible_id: ENGWEB
 username: Tests
 notify_err: [ntfy/arti2]
 output:
-  directory: ~/Downloads
   csv: yes
 database:
   aws_s3: s3://arti-output/GaryNTest/N2ATGMLT/arti/00001/database/N2ATGMLT.db
