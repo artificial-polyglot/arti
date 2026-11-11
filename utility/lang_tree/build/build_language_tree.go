@@ -24,6 +24,7 @@ func BuildLanguageTree() {
 	languages = loadAIToolCompatibility(languages, "data/mms_lid.tab", search.MMSLID, 0, 1)
 	languages = loadAIToolCompatibility(languages, "data/mms_tts.tab", search.MMSTTS, 0, 1)
 	languages = loadAIToolCompatibility(languages, "data/whisper.tab", search.Whisper, 1, 0)
+	languages = loadAIToolCompatibility(languages, "data/omni_asr.tab", search.OmniASR, 0, 1)
 	if len(languages) != numLanguages {
 		fmt.Println("Load Iso6393: Expected ", numLanguages, " got ", len(languages))
 		os.Exit(1)
@@ -189,6 +190,8 @@ func setLanguage(language search.Language, toolName string, iso639 string) searc
 		language.MMSTTS = iso639
 	case search.Whisper:
 		language.Whisper = iso639
+	case search.OmniASR:
+		language.OmniASR = iso639
 	default:
 		panic("Unknown tool name: " + toolName)
 	}

@@ -6,6 +6,7 @@ const (
 	MMSLID  = "mms_lid"
 	MMSTTS  = "mms_tts"
 	Whisper = "whisper"
+	OmniASR = "omni_asr"
 )
 
 type Language struct {
@@ -23,6 +24,7 @@ type Language struct {
 	MMSLID      string      `json:"mms_lid"`
 	MMSTTS      string      `json:"mms_tts"`
 	Whisper     string      `json:"whisper"`
+	OmniASR     string      `json:"omni_asr"`
 	Parent      *Language   `json:"-"`
 	Children    []*Language `json:"-"`
 }

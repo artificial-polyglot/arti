@@ -180,6 +180,8 @@ func (l *LanguageTree) validateSearch(search string) bool {
 		return true
 	case Whisper:
 		return true
+	case OmniASR:
+		return true
 	default:
 		return false
 	}
@@ -197,6 +199,8 @@ func (l *LanguageTree) isMatch(lang *Language, search string) string {
 		return lang.MMSTTS
 	case Whisper:
 		return lang.Whisper
+	case OmniASR:
+		return lang.OmniASR
 	default:
 		return ""
 	}

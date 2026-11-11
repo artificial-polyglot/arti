@@ -26,7 +26,7 @@ Use the lang_tree executable as follows:
 Usage: lang_tree [-v] <iso-code> <ai-tool>
 optional -v is used for a detailed response
 iso-code can be any iso639-3 or iso639-1 code
-ai-tool can one of the following: espeak, mms_asr, mms_lid, mms_tts, whisper
+ai-tool can one of the following: espeak, mms_asr, mms_lid, mms_tts, whisper, omni_asr
 ```
 ---
 
@@ -46,6 +46,7 @@ The AI tools supported are as follows:
 * mms_lid
 * mms_tts
 * whisper
+* omni_asr (Meta Omnilingual ASR; build/data/omni_asr.tab holds its training hours)
 
 The search returns a slice of iso639 codes that are related and are
 supported by the AI tool.  The list can be empty if none are found.
@@ -74,6 +75,7 @@ type Language struct {
 	MMSLID      string      `json:"mms_lid"`
 	MMSTTS      string      `json:"mms_tts"`
 	Whisper     string      `json:"whisper"`
+	OmniASR     string      `json:"omni_asr"`
 	Parent      *Language   `json:"-"`
 	Children    []*Language `json:"-"`
 }

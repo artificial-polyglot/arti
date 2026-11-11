@@ -25,7 +25,7 @@ func main() {
 		fmt.Println("Usage: lang_tree [-v] <iso-code> <ai-tool>")
 		fmt.Println("optional -v is used for a detailed response")
 		fmt.Println("iso-code can be any iso639-3 or iso639-1 code")
-		fmt.Println("ai-tool can one of the following: espeak, mms_asr, mms_lid, mms_tts, whisper")
+		fmt.Println("ai-tool can one of the following: espeak, mms_asr, mms_lid, mms_tts, whisper, omni_asr")
 		os.Exit(1)
 	}
 	var tree = search.NewLanguageTree(context.Background())
@@ -37,7 +37,7 @@ func main() {
 	if detail {
 		langs, distance, err2 := tree.DetailSearch(isoCode, aiTool)
 		if err2 != nil {
-			fmt.Println(err)
+			fmt.Println(err2)
 			os.Exit(1)
 		}
 		bytes, err3 := json.MarshalIndent(langs, "", "    ")
@@ -49,7 +49,7 @@ func main() {
 	} else {
 		langs, distance, err2 := tree.Search(isoCode, aiTool)
 		if err2 != nil {
-			fmt.Println(err)
+			fmt.Println(err2)
 			os.Exit(1)
 		}
 		for _, lang := range langs {
