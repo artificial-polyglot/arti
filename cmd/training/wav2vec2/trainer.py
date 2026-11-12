@@ -5,7 +5,6 @@ import json
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from transformers import get_linear_schedule_with_warmup
 import logging
 # from train_adapter
 import sys
@@ -21,7 +20,7 @@ from debug import *
 from model import getWav2Vec2ForCTCModel
 from validation import prepareValidationSet, runValidation
 from checkpoint import CheckpointManager
-from early_stop import EarlyStopper
+from early_stop import EarlyStopper, LRPlan, COOLDOWN, STOP
 sys.path.insert(0, os.path.abspath(os.path.join(os.environ['GOPROJ'], 'logger')))
 from error_handler import setup_error_handler
 
@@ -33,18 +32,19 @@ setup_error_handler()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
-                     warmup_steps=100, max_grad_norm=1.0, log_steps=50, use_bf16=False, on_epoch_end=None):
+def train_wav2vec2(model, dataset, lr_plan, num_epochs=3, lr=5e-5,
+                     max_grad_norm=1.0, log_steps=50, use_bf16=False, on_epoch_end=None):
     """
     Train Wav2Vec2 Model with PyTorch
     Args:
         model: Wav2Vec2 model
         dataset: Your custom dataset that returns padded batches as dicts
-        num_epochs: The most epochs to train; the learning rate decays over all of them
+        lr_plan: LRPlan giving the learning rate multiplier of each update; its totalSteps
+            must be num_epochs * len(dataset).  on_epoch_end may start its cool-down.
+        num_epochs: The most epochs to train
         on_epoch_end: Called as on_epoch_end(epoch, global_step, avg_epoch_loss) after each epoch;
             training stops when it returns True
         lr: Learning rate
-        warmup_steps: Warmup steps for lr scheduler
         max_grad_norm: Max gradient norm for clipping
         log_steps: Steps between logging
         use_bf16: Run the forward pass under bf16 autocast (CUDA only, no GradScaler needed)
@@ -52,10 +52,7 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
     dataloader = DataLoader(dataset, batch_size=None, shuffle=True)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    total_steps = len(dataloader) * num_epochs
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps
-    )
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_plan)
 
     model.train()
     global_step = 0
@@ -218,6 +215,7 @@ modelName = modelBase.replace("/", "-")
 outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
 checkpoints = CheckpointManager(modelName, targetLang, processor, isAdapter)
 stopper = EarlyStopper(numEpochs)
+lrPlan = LRPlan(warmupSteps, len(dataset) * numEpochs)
 hasValidation = validationSet is not None and len(validationSet) > 0
 epochResults = []
 lastEpoch = 0
@@ -231,7 +229,12 @@ def onEpochEnd(epoch, globalStep, avgLoss):
     record = {"epoch": epoch, "updates": globalStep, "loss": round(avgLoss, 4)}
     if hasValidation:
         result = runValidation(model, processor, validationSet, batchSizeMB, useBF16)
-        stop = stopper.update(epoch, globalStep, result)
+        decision = stopper.update(epoch, globalStep, result)
+        stop = decision == STOP
+        if decision == COOLDOWN:
+            lrPlan.startCooldown(globalStep, globalStep + (stopper.cooldownEnd - epoch) * len(dataset))
+            logger.info(f"Epoch {epoch}: CER has leveled off; cutting the learning rate to zero "
+                        f"by epoch {stopper.cooldownEnd}")
         record["validation"] = result
         logger.info(f"Epoch {epoch} validation: " + ", ".join(
             f"{g} CER {r['cer']} ({r['num_samples']} samples, {r['empty_fraction']} empty)" for g, r in result.items()))
@@ -244,9 +247,9 @@ def onEpochEnd(epoch, globalStep, avgLoss):
 trainedModel, epochLosses = train_wav2vec2(
         model,
         dataset,
+        lrPlan,
         num_epochs = numEpochs,
         lr = learningRate,
-        warmup_steps = warmupSteps,
         max_grad_norm = gradNormMax,
         log_steps = loggingSteps,
         use_bf16 = useBF16,
