@@ -32,9 +32,11 @@ type PairDiff struct {
 
 func (p *Pair) Inserts() int {
 	var inserts int
-	for _, df := range p.Text.Diffs {
-		if df.Type == diff.OpInsert {
-			inserts += utf8.RuneCountInString(df.Text)
+	if p.Ref.VerseStr != "0" {
+		for _, df := range p.Text.Diffs {
+			if df.Type == diff.OpInsert {
+				inserts += utf8.RuneCountInString(df.Text)
+			}
 		}
 	}
 	return inserts
@@ -42,9 +44,11 @@ func (p *Pair) Inserts() int {
 
 func (p *Pair) Deletes() int {
 	var deletes int
-	for _, df := range p.Text.Diffs {
-		if df.Type == diff.OpDelete {
-			deletes += utf8.RuneCountInString(df.Text)
+	if p.Ref.VerseStr != "0" {
+		for _, df := range p.Text.Diffs {
+			if df.Type == diff.OpDelete {
+				deletes += utf8.RuneCountInString(df.Text)
+			}
 		}
 	}
 	return deletes
