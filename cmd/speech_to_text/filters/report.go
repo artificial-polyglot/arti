@@ -119,6 +119,35 @@ func (r *Results) addStage(name string, verses []generic.Verse2) {
 	r.stages = append(r.stages, st)
 }
 
+// VerseStage is a verse as it was after one stage: "Before filters", then each filter that ran.
+type VerseStage struct {
+	Name  string
+	Verse generic.Verse2
+}
+
+// VerseStages returns a verse as it was before the filters and after each filter that ran, in
+// the order they ran.  It returns nil if the verse was not given to RunFilters.
+func (r *Results) VerseStages(scriptId int64) []VerseStage {
+	i, ok := r.index[scriptId]
+	if !ok {
+		return nil
+	}
+	result := make([]VerseStage, 0, len(r.stages))
+	for _, st := range r.stages {
+		result = append(result, VerseStage{Name: st.name, Verse: st.verses[i]})
+	}
+	return result
+}
+
+// StageNames returns the names of the filters that ran, without "Before filters".
+func (r *Results) StageNames() []string {
+	var result []string
+	for _, st := range r.stages[min(1, len(r.stages)):] {
+		result = append(result, st.name)
+	}
+	return result
+}
+
 // stageIndex returns the index of the stage of a filter, or -1 if it was not run.
 func (r *Results) stageIndex(name string) int {
 	return slices.IndexFunc(r.stages, func(st stage) bool { return st.name == name })

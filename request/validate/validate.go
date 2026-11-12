@@ -114,6 +114,9 @@ func (r *RequestValidator) checkSpeechToText(req *request.SpeechToText) {
 	if req.MMSASRAlign {
 		count += 1
 	}
+	if req.QAAlign {
+		count += 1
+	}
 	if count == 0 {
 		req.NoSpeechToText = true
 	} else if count > 1 {

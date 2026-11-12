@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,25 +15,30 @@ import (
 )
 
 type summaryRow struct {
-	Status string
-	Verses int
-	Chars  int
-	CER    string
+	Status   string
+	Verses   int
+	Chars    int
+	CER      string
+	CERAfter string // after the STT filters, when they ran
 }
 
 type knownRow struct {
-	Reference string
-	Status    string
-	MinFA     string
-	Pctl      string
-	GeoMin    string
-	GeoPctl   string
-	CER       string
-	Largest   int
-	Found     bool
-	Missed    bool
-	Segments  []segment // arti's diff of the verse text and the ASR
-	KnownSegs []segment // the recording team's script line from _Audio_Errors.csv
+	Reference  string
+	Status     string
+	MinFA      string
+	Pctl       string
+	GeoMin     string
+	GeoPctl    string
+	CER        string
+	Largest    int
+	Found      bool
+	Missed     bool
+	Before     int       // largest difference before the STT filters, when they ran
+	RemovedBy  string    // the filter that took a caught error below the cutoff
+	Changed    bool      // the filters changed the diff
+	Segments   []segment // arti's diff of the verse text and the ASR
+	BeforeSegs []segment // the diff before the STT filters, when they changed it
+	KnownSegs  []segment // the recording team's script line from _Audio_Errors.csv
 }
 
 // segment is one piece of the {-}/{+}/{=} diff text: a colored marker followed by plain text.
@@ -51,10 +57,13 @@ type reportData struct {
 	Validation summaryRow
 	Known      []knownRow
 	Missed     int
+	Removed    int // known errors caught before the filters, but missed after
 	Total      int
+	Filtered   bool   // the STT filters ran, and CER and known errors are after them
+	Filters    string // the filters that ran, in order
 }
 
-func generateReport(ctx context.Context, datasetName string, unit string, charCntMap map[PruneSource]diff.Counts, verseCntMap map[PruneSource]int, validation validationSet, knownErrors []knownError) (string, *log.Status) {
+func generateReport(ctx context.Context, datasetName string, unit string, before cerResult, after *cerResult, filterNames []string, knownErrors []knownError) (string, *log.Status) {
 	filePath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), datasetName+"_Validation.html")
 	data := reportData{
 		Dataset:   datasetName,
@@ -62,27 +71,45 @@ func generateReport(ctx context.Context, datasetName string, unit string, charCn
 		Generated: time.Now().Format("Jan 2, 2006 3:04 pm MST"),
 		Cutoff:    CompareRptCutoff,
 		Total:     len(knownErrors),
+		Filtered:  after != nil,
+		Filters:   strings.Join(filterNames, ", "),
 	}
+	rate := func(c diff.Counts) string { return strconv.FormatFloat(c.ErrorRate(), 'f', 4, 64) }
 	for _, reas := range []PruneSource{NotPruned, FAScore, Silence, Both} {
-		cnt := charCntMap[reas]
-		data.Summary = append(data.Summary, summaryRow{
-			Status: reas.String(),
-			Verses: verseCntMap[reas],
-			Chars:  cnt.RefLen,
-			CER:    strconv.FormatFloat(cnt.ErrorRate(), 'f', 4, 64),
-		})
+		cnt := before.charCnt[reas]
+		row := summaryRow{Status: reas.String(), Verses: before.sampleCnt[reas], Chars: cnt.RefLen, CER: rate(cnt)}
+		if after != nil {
+			row.CERAfter = rate(after.charCnt[reas])
+		}
+		data.Summary = append(data.Summary, row)
 	}
 	data.Validation = summaryRow{
 		Status: "All Pruned (validation)",
-		Verses: validation.count,
-		Chars:  validation.cer.RefLen,
-		CER:    strconv.FormatFloat(validation.cer.ErrorRate(), 'f', 4, 64),
+		Verses: before.validation.count,
+		Chars:  before.validation.cer.RefLen,
+		CER:    rate(before.validation.cer),
+	}
+	if after != nil {
+		data.Validation.CERAfter = rate(after.validation.cer)
 	}
 	for _, kn := range knownErrors {
 		row := knownRow{Reference: kn.reference, Found: kn.found, Largest: kn.largestDiff}
 		row.Missed = kn.largestDiff <= CompareRptCutoff
 		if row.Missed {
 			data.Missed++
+		}
+		if kn.filtered {
+			row.Before = kn.beforeLargest
+			row.RemovedBy = kn.removedBy
+			if kn.removedBy != "" {
+				data.Removed++
+			}
+			before := diffSegments(kn.beforeDiffs)
+			after := diffSegments(kn.diffs)
+			if !slices.Equal(before, after) {
+				row.Changed = true
+				row.BeforeSegs = before
+			}
 		}
 		if kn.found {
 			row.Status = kn.pruned.String()
@@ -204,6 +231,7 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
   .mk.del { background: #ffcfcf; color: #a40e26; }
   .mk.ins { background: #c9f0d1; color: #116329; }
   .mk.eq  { background: #dbeafe; color: #3b6aa0; }
+  td.removed { color: var(--bad); font-weight: 600; }
   .notfound { color: var(--bad); font-style: italic; }
   .line + .line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
   .lbl { display: inline-block; min-width: 44px; color: var(--muted); font-size: 11px;
@@ -214,38 +242,47 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <main>
 <h1>Validation Report: {{.Dataset}}</h1>
 <div class="meta">Generated {{.Generated}}. A known error is caught when its largest difference is more than {{.Cutoff}} characters.</div>
-<p class="result">Validation CER {{.Validation.CER}}</p>
+<p class="result">Validation CER {{.Validation.CER}}{{if .Filtered}}, after filters {{.Validation.CERAfter}}{{end}}</p>
 <div class="meta">The union of all pruned samples: {{.Validation.Verses}} {{.Unit}}, {{.Validation.Chars}} chars.</div>
+{{- if .Filtered}}
+<div class="meta">STT filters run: {{.Filters}}. Known errors are counted after the filters.</div>
+{{- end}}
 <p class="result {{if eq .Missed 0}}ok{{else}}bad{{end}}">Missed {{.Missed}} of {{.Total}} known errors</p>
+{{- if .Filtered}}
+<p class="result {{if eq .Removed 0}}ok{{else}}bad{{end}}">Filters removed {{.Removed}} known errors that were caught before them</p>
+{{- end}}
 
 <h2>Character Error Rate by Prune Status</h2>
 <div class="scroll">
 <table>
-<thead><tr><th>Prune Status</th><th>{{.Unit}}</th><th>Chars</th><th>CER</th></tr></thead>
+<thead><tr><th>Prune Status</th><th>{{.Unit}}</th><th>Chars</th><th>CER</th>{{if .Filtered}}<th>CER After Filters</th>{{end}}</tr></thead>
 <tbody>
 {{- range .Summary}}
-<tr><td class="status">{{.Status}}</td><td class="num">{{.Verses}}</td><td class="num">{{.Chars}}</td><td class="num">{{.CER}}</td></tr>
+<tr><td class="status">{{.Status}}</td><td class="num">{{.Verses}}</td><td class="num">{{.Chars}}</td><td class="num">{{.CER}}</td>{{if $.Filtered}}<td class="num">{{.CERAfter}}</td>{{end}}</tr>
 {{- end}}
 </tbody>
-<tfoot><tr class="total"><td class="status">{{.Validation.Status}}</td><td class="num">{{.Validation.Verses}}</td><td class="num">{{.Validation.Chars}}</td><td class="num">{{.Validation.CER}}</td></tr></tfoot>
+<tfoot><tr class="total"><td class="status">{{.Validation.Status}}</td><td class="num">{{.Validation.Verses}}</td><td class="num">{{.Validation.Chars}}</td><td class="num">{{.Validation.CER}}</td>{{if .Filtered}}<td class="num">{{.Validation.CERAfter}}</td>{{end}}</tr></tfoot>
 </table>
 </div>
 
 <h2>Known Errors</h2>
 <div class="scroll">
 <table>
-<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th title="Minimum over the verse's words of the geometric mean of each word's char fa_score">Geo Min</th><th>Geo Pctl</th><th>CER</th><th>Largest</th><th>Diff</th></tr></thead>
+<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th title="Minimum over the verse's words of the geometric mean of each word's char fa_score">Geo Min</th><th>Geo Pctl</th><th>CER</th>{{if .Filtered}}<th>Largest Before Filters</th>{{end}}<th>Largest</th>{{if .Filtered}}<th>Removed By</th>{{end}}<th>Diff</th></tr></thead>
 <tbody>
 {{- range .Known}}
 <tr{{if .Missed}} class="missed"{{end}}>
 <td class="ref">{{.Reference}}</td>
 {{- if .Found}}
-<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.GeoMin}}</td><td class="num">{{.GeoPctl}}</td><td class="num">{{.CER}}</td><td class="num largest">{{.Largest}}</td>
+<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.GeoMin}}</td><td class="num">{{.GeoPctl}}</td><td class="num">{{.CER}}</td>{{if $.Filtered}}<td class="num">{{.Before}}</td>{{end}}<td class="num largest">{{.Largest}}</td>{{if $.Filtered}}<td class="status removed">{{.RemovedBy}}</td>{{end}}
 <td class="diff">
+{{- if .Changed}}
+<div class="line"><span class="lbl">before</span>{{range .BeforeSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
+{{- end}}
 <div class="line"><span class="lbl">arti</span>{{range .Segments}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div></td>
 {{- else}}
-<td colspan="7"></td><td class="diff">
+<td colspan="{{if $.Filtered}}9{{else}}7{{end}}"></td><td class="diff">
 <div class="line notfound">This verse was not found in data.</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 </td>

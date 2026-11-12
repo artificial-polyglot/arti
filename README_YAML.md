@@ -47,15 +47,15 @@ text_data:
 timestamps:
   mms_align: yes
 
-speech_to_text:
-  mms_asr: yes
+training2:
+  model_base: facebook/mms-1b
+  num_epochs: 16
 
-audio_proof:
-  html_report: yes
+speech_to_text:
+  qa_align: yes
 
 output:
-  directory: /output
-  html_report: yes
+  proofing_report: yes
 ```
 
 ### Text Comparison
@@ -103,7 +103,6 @@ training:
     grad_max_norm: 4.0
 
 output:
-  directory: /output
   sqlite: yes
 ```
 
@@ -226,13 +225,17 @@ Specify the format and location of output files. **Multiple output formats can b
 
 ```yaml
 output:
-  directory: /path/to/output   # Server directory path where output should be written
   csv: yes                     # Mark yes for CSV output
   json: yes                    # Mark yes for JSON output
   sqlite: yes                  # Mark yes for SQLite database output
+  proofing_report: yes         # HTML proofing report (requires speech_to_text.qa_align)
+  compare_report: yes          # HTML ASR-vs-text compare report (requires speech_to_text.qa_align)
+  timestamp_data: yes          # Timestamp data (not yet implemented)
 ```
 
-**Multiple Formats:** You can enable any combination of CSV, JSON, and SQLite outputs simultaneously. Each format will be generated as a separate file in the specified output directory.  All outputs are uploaded to the S3 output bucket at the end of run.  One does not normally need to specify a directory.
+**Multiple Formats:** You can enable any combination of outputs simultaneously. Each is generated as a separate file, and all outputs are uploaded to the S3 output bucket at the end of the run.
+
+**Reports:** `proofing_report` and `compare_report` read the results of `speech_to_text.qa_align`.  Request `qa_align` in the same run, or use `is_new: no` with an existing database (`database.aws_s3`) that already has qa_align results and no other speech_to_text.
 
 ### Speech-to-Text Options
 
@@ -242,6 +245,7 @@ Choose speech-to-text method (only one can be selected):
 speech_to_text:
   mms_asr: yes                 # Use Meta's multilingual MMS model (supports 1,100+ languages)
   adapter_asr: yes             # Use language-specific MMS adapter (requires prior training)
+  qa_align: yes                # ASR and forced alignment with the trained model (training2); feeds the proofing and compare reports
   whisper:                     # Use OpenAI's Speech-to-Text model
     model:                     # Choose one Whisper model size
       large: yes               # Most accurate, slowest
@@ -298,27 +302,23 @@ timestamps:
 
 ### Audio Proofing
 
-Generate audio proofing reports that compare speech-to-text results against original text:
+The audio proofing report is now requested in the `output` section, not in a separate `audio_proof` section:
 
 ```yaml
-audio_proof:
-  html_report: yes             # Mark yes to receive HTML proof report
-  base_dataset: dataset_name   # Required when "is_new: no" to specify which dataset contains the original USX text
+speech_to_text:
+  qa_align: yes                # ASR and forced alignment using the model trained for the language
+output:
+  proofing_report: yes         # HTML proofing report
+  compare_report: yes          # HTML comparison of ASR to the text (optional)
 ```
 
 **What audio proofing does:**
-- Compares speech-to-text results against original USX text
-- Generates an interactive HTML report showing alignment scores and differences
-- Allows audio playback validation of specific verses/lines
+- Uses the forced alignment scores and ASR transcripts from `qa_align` to highlight words that are probably wrong in the audio
+- Generates an interactive HTML report with audio playback of specific verses
 
 **Requirements:**
-- For new datasets: requires `timestamps.mms_align: yes` and `speech_to_text.mms_asr: yes`
-- For existing datasets: requires `base_dataset` to be specified
-
-**How `base_dataset` works:**
-- **If `is_new: yes`**: Uses current dataset's text data for comparison (any `base_dataset` value is ignored)
-- **If `is_new: no`**: Uses `base_dataset` to reference a **different existing dataset** that contains the original USX text to compare against
-- This allows comparing speech-to-text results against known good text from another dataset
+- For new datasets: requires `speech_to_text.qa_align: yes`, with a trained model (`training2`, in this run or a previous one)
+- For existing datasets: use `is_new: no` and `database.aws_s3` pointing to a database that already has qa_align results
 
 ### Text Comparison
 
@@ -354,7 +354,7 @@ compare:
 
 Both generate HTML reports, but serve different purposes:
 
-- **Audio Proofing (`audio_proof.html_report`)**: Uses probability data from the mms_align timestamp process to highlight words that might be incorrect.  And it uses speech-to-text results to identify words added to the audio.  This method of proofing has been found to be extremely accurate for English, and is probabably very good for related languages, but has produced very poor results for small population languages.
+- **Audio Proofing (`output.proofing_report`)**: Uses the forced alignment scores and ASR transcripts from `speech_to_text.qa_align`, produced with a model trained for the language, to highlight words that are probably wrong in the audio.
 
 - **Text Comparison (`compare.html_report`)**: Compares text between two different datasets. It is most often used to compare USX or Script text to text generated by speech to text, such as mms_asr or adapter_asr.  It can also be used to compare two different versions of a USX or two versions of a script or to compare a USX file to a script.
 
@@ -370,7 +370,7 @@ Both generate HTML reports, but serve different purposes:
   3. If a difference pattern occurs more than the threshold, it's considered a "false positive" and removed from the report
   4. Uses a database of known words to avoid filtering legitimate differences
 - **Example**: If "the" vs "The" appears 50 times, and threshold is 4, this difference is ignored as a systematic formatting issue
-- **Only for text comparison**: Gordon filter is only available in the `compare` section, not in `audio_proof`
+- **Only for text comparison**: Gordon filter is only available in the `compare` section, not in the proofing report
 
 **Unicode Normalization Forms Explained:**
 
@@ -557,7 +557,6 @@ text_data:
   post: {mediaId}_{A/Bseq}_{book}_{chapter}_{verse}-{chapter_end}_{verse_end}
 
 output:
-  directory: /output
   json: yes
 ```
 

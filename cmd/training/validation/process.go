@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
+	"github.com/artificial-polyglot/arti/cmd/speech_to_text/filters"
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	"github.com/artificial-polyglot/arti/input/precheck"
@@ -49,28 +50,45 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status != nil {
 		return output, status
 	}
+	// The STT filters run here as they do in compare_rpt, so the report shows what they do to
+	// the CER, and whether any of them removed a known error.
+	var filtered []generic.Verse2
+	var filterRes filters.Results
+	if filters.AnyOn(req.STTFilters) {
+		filtered, filterRes, status = filters.RunFilters(database, verses, req.STTFilters)
+		if status != nil {
+			return output, status
+		}
+	}
 	phraseMode, status := UsesPhrasePruning(database)
 	if status != nil {
 		return output, status
 	}
 	var prunedMap map[int64]prunedVerse
 	var phrases phraseData
-	var charCntMap map[PruneSource]diff.Counts
-	var sampleCntMap map[PruneSource]int
-	var validation validationSet
 	if phraseMode {
 		phrases, status = SelectPhraseData(database)
-		if status != nil {
-			return output, status
-		}
-		charCntMap, sampleCntMap, validation = computePhraseLevenshtein(verses, phrases)
 	} else {
 		prunedMap, status = SelectPrunedData(database)
-		if status != nil {
-			return output, status
+	}
+	if status != nil {
+		return output, status
+	}
+	computeCER := func(vss []generic.Verse2) cerResult {
+		var r cerResult
+		if phraseMode {
+			r.charCnt, r.sampleCnt, r.validation = computePhraseLevenshtein(vss, phrases)
+		} else {
+			r.charCnt, r.sampleCnt = computeCharLevenshtein(vss, prunedMap)
+			r.validation = computeValidationSet(vss, prunedMap)
 		}
-		charCntMap, sampleCntMap = computeCharLevenshtein(verses, prunedMap)
-		validation = computeValidationSet(verses, prunedMap)
+		return r
+	}
+	before := computeCER(verses)
+	var after *cerResult
+	if filtered != nil {
+		r := computeCER(filtered)
+		after = &r
 	}
 	knownErrorList, status1 := ReadAudioErrorData(ctx, req.DatasetName, req.AudioData.AWSS3)
 	if status1 != nil {
@@ -83,6 +101,9 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 			return output, status3
 		}
 		knownErrors = checkKnownErrors(verses, prunedMap, faRankMap, knownErrorList)
+		if filtered != nil {
+			knownErrors = checkFilteredKnownErrors(knownErrors, filtered, prunedMap, faRankMap, knownErrorList, filterRes)
+		}
 		if phraseMode {
 			addPhraseStatus(knownErrors, phrases)
 		}
@@ -91,13 +112,45 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if phraseMode {
 		unit = "Phrases"
 	}
-	rptPath, status2 := generateReport(ctx, req.DatasetName, unit, charCntMap, sampleCntMap, validation, knownErrors)
+	rptPath, status2 := generateReport(ctx, req.DatasetName, unit, before, after, filterRes.StageNames(), knownErrors)
 	if status2 != nil {
 		return output, status2
 	}
 	var out = db.Output{Component: "Validate", Report: "Validation Report", FilePath: rptPath}
 	output = append(output, out)
 	return output, nil
+}
+
+// cerResult is the char error counts by prune status, and of the validation set.
+type cerResult struct {
+	charCnt    map[PruneSource]diff.Counts
+	sampleCnt  map[PruneSource]int
+	validation validationSet
+}
+
+// checkFilteredKnownErrors checks the known errors again after the STT filters.  The result
+// is what the filters leave, with what was found before the filters kept beside it.  An error
+// that was caught before the filters, but is not caught after, records the filter that removed it.
+func checkFilteredKnownErrors(beforeErrs []knownError, filtered []generic.Verse2, prune map[int64]prunedVerse,
+	faRanks map[int64]faRank, errors []audioError, res filters.Results) []knownError {
+	result := checkKnownErrors(filtered, prune, faRanks, errors)
+	for i := range result {
+		bf := beforeErrs[i]
+		result[i].filtered = true
+		result[i].beforeLargest = bf.largestDiff
+		result[i].beforeDiffs = bf.diffs
+		if !result[i].found || bf.largestDiff <= CompareRptCutoff || result[i].largestDiff > CompareRptCutoff {
+			continue
+		}
+		stages := res.VerseStages(result[i].scriptId)
+		for _, st := range stages[min(1, len(stages)):] {
+			if _, largest, _ := verseDiff(st.Verse); largest <= CompareRptCutoff {
+				result[i].removedBy = st.Name
+				break
+			}
+		}
+	}
+	return result
 }
 
 type prunedVerse struct {
@@ -132,6 +185,11 @@ type knownError struct {
 	found       bool
 	diffs       []diff.Diff
 	knownText   string // the script line text from _Audio_Errors.csv, with {=}/{-} markers
+	// Set when the STT filters ran; the fields above are then after the filters.
+	filtered      bool
+	beforeLargest int
+	beforeDiffs   []diff.Diff
+	removedBy     string // the filter that took the error below the cutoff, if one did
 }
 
 func computeCharLevenshtein(verses []generic.Verse2, pruned map[int64]prunedVerse) (map[PruneSource]diff.Counts, map[PruneSource]int) {
@@ -190,16 +248,21 @@ func checkKnownErrors(verses []generic.Verse2, prune map[int64]prunedVerse, faRa
 				known.pruned = NotPruned
 			}
 			known.faRank, known.faRankFound = faRanks[vs.ScriptId]
-			known.cer = diff.Count(diff.CharLevenshtein(vs.Text(), vs.ASRText))
-			diffs := diff.DiffConvert(vs.Text(), vs.ASRText)
-			pair := vs.ToPair()
-			pair.Text.Diffs = diffs
-			known.largestDiff = pair.LargestLength()
-			known.diffs = diffs
+			known.cer, known.largestDiff, known.diffs = verseDiff(vs)
 		}
 		result = append(result, known)
 	}
 	return result
+}
+
+// verseDiff returns the char error counts of a verse's ASR, the length of its largest difference,
+// and the diff itself.
+func verseDiff(vs generic.Verse2) (diff.Counts, int, []diff.Diff) {
+	cer := diff.Count(diff.CharLevenshtein(vs.Text(), vs.ASRText))
+	diffs := diff.DiffConvert(vs.Text(), vs.ASRText)
+	pair := vs.ToPair()
+	pair.Text.Diffs = diffs
+	return cer, pair.LargestLength(), diffs
 }
 
 // SelectVerseFARank ranks verses exactly as cmd/training/wav2vec2 VerseDataPruner
@@ -290,6 +353,9 @@ func ReadAudioErrorData(ctx context.Context, datasetName string, s3AudioPath str
 	var result []audioError
 	const scheme = "s3://"
 	parts := strings.SplitN(strings.TrimPrefix(s3AudioPath, scheme), "/", 3)
+	if !strings.HasPrefix(s3AudioPath, scheme) || len(parts) < 2 {
+		return result, nil // Audio is not in S3 (e.g. Bible Brain), so there is no errors file
+	}
 	bucket := parts[0]
 	objKey := parts[1] + "/" + datasetName + "_Audio_Errors.csv"
 	s3, status := s3_datastore.NewS3Client(ctx)
