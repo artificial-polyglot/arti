@@ -45,13 +45,12 @@ func Marshal(req request.Request) ([]byte, error) {
 	w.nested(0, "speech_to_text", func(sub *yamlBuilder, d int) { appendSpeechToText(sub, d, req.SpeechToText) })
 	w.nested(0, "stt_decoder", func(sub *yamlBuilder, d int) { appendSTTDecoder(sub, d, req.STTDecoder) })
 	w.nested(0, "detail", func(sub *yamlBuilder, d int) { appendDetail(sub, d, req.Detail) })
-	w.nested(0, "audio_proof", func(sub *yamlBuilder, d int) { appendAudioProof(sub, d, req.AudioProof) })
+	//w.nested(0, "audio_proof", func(sub *yamlBuilder, d int) { appendAudioProof(sub, d, req.AudioProof) })
 	w.nested(0, "compare", func(sub *yamlBuilder, d int) { appendCompare(sub, d, req.Compare) })
 	return []byte(w.sb.String()), nil
 }
 
 func appendOutput(w *yamlBuilder, depth int, o request.Output) {
-	w.str(depth, "directory", o.Directory, false)
 	w.boolean(depth, "csv", o.CSV, true)
 	w.boolean(depth, "json", o.JSON, true)
 	w.boolean(depth, "sqlite", o.Sqlite, true)
@@ -145,6 +144,7 @@ func appendSpeechToText(w *yamlBuilder, depth int, s request.SpeechToText) {
 	w.boolean(depth, "mms_asr", s.MMS, true)
 	w.boolean(depth, "adapter_asr", s.MMSAdapter, true)
 	w.boolean(depth, "mms_asr_align", s.MMSASRAlign, true)
+	w.boolean(depth, "qa_align", s.QAAlign, true)
 	w.boolean(depth, "no_speech_to_text", s.NoSpeechToText, true)
 }
 
@@ -162,9 +162,9 @@ func appendDetail(w *yamlBuilder, depth int, d request.Detail) {
 	w.boolean(depth, "words", d.Words, true)
 }
 
-func appendAudioProof(w *yamlBuilder, depth int, a request.AudioProof) {
-	w.boolean(depth, "html_report", a.HTMLReport, true)
-}
+//func appendAudioProof(w *yamlBuilder, depth int, a request.AudioProof) {
+//	w.boolean(depth, "html_report", a.HTMLReport, true)
+//}
 
 func appendCompare(w *yamlBuilder, depth int, c request.Compare) {
 	w.boolean(depth, "html_report", c.HTMLReport, true)

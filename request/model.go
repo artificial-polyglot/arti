@@ -29,9 +29,8 @@ type Request struct {
 	STTDecoder   STTDecoder   `yaml:"stt_decoder,omitempty" json:"stt_decoder,omitempty"`
 	STTFilters   STTFilters   `yaml:"stt_filters,omitempty" json:"stt_filters,omitempty"`
 	Detail       Detail       `yaml:"detail,omitempty" json:"detail,omitempty"`
-	AudioProof   AudioProof   `yaml:"audio_proof,omitempty" json:"audio_proof,omitempty"`
-	Compare      Compare      `yaml:"compare,omitempty" json:"compare,omitempty"`
-	//	UpdateDBP     UpdateDBP     `yaml:"update_dbp,omitempty" json:"update_dbp,omitempty"`
+	//	AudioProof   AudioProof   `yaml:"audio_proof,omitempty" json:"audio_proof,omitempty"`
+	Compare Compare `yaml:"compare,omitempty" json:"compare,omitempty"`
 }
 
 func ModelS3PrefixAndPath(modelBase string, langISO string) (string, string) {
@@ -50,13 +49,13 @@ func GetTestUser() string {
 }
 
 type Output struct {
-	Directory      string `yaml:"directory" json:"directory"`
-	CSV            bool   `yaml:"csv,omitempty" json:"csv,omitempty"`
-	JSON           bool   `yaml:"json,omitempty" json:"json,omitempty"`
-	Sqlite         bool   `yaml:"sqlite,omitempty" json:"sqlite,omitempty"`
-	CompareReport  bool   `yaml:"compare_report,omitempty" json:"compare_report,omitempty"`
-	ProofingReport bool   `yaml:"proofing_report,omitempty" json:"proofing_report,omitempty"`
-	TimestampData  bool   `yaml:"timestamp_data,omitempty" json:"timestamp_data,omitempty"`
+	//	Directory      string `yaml:"directory" json:"directory"`
+	CSV            bool `yaml:"csv,omitempty" json:"csv,omitempty"`
+	JSON           bool `yaml:"json,omitempty" json:"json,omitempty"`
+	Sqlite         bool `yaml:"sqlite,omitempty" json:"sqlite,omitempty"`
+	CompareReport  bool `yaml:"compare_report,omitempty" json:"compare_report,omitempty"`
+	ProofingReport bool `yaml:"proofing_report,omitempty" json:"proofing_report,omitempty"`
+	TimestampData  bool `yaml:"timestamp_data,omitempty" json:"timestamp_data,omitempty"`
 }
 
 type Testament struct {
@@ -270,6 +269,7 @@ type SpeechToText struct {
 	MMS            bool `yaml:"mms_asr,omitempty" json:"mms_asr,omitempty"`
 	MMSAdapter     bool `yaml:"adapter_asr,omitempty" json:"adapter_asr,omitempty"`
 	MMSASRAlign    bool `yaml:"mms_asr_align,omitempty" json:"mms_asr_align,omitempty"`
+	QAAlign        bool `yaml:"qa_align,omitempty" json:"qa_align,omitempty"`
 	NoSpeechToText bool `yaml:"no_speech_to_text,omitempty" json:"no_speech_to_text,omitempty"`
 }
 
@@ -316,9 +316,9 @@ type Timestamps struct {
 	NoTimestamps bool `yaml:"no_timestamps,omitempty" json:"no_timestamps,omitempty"`
 }
 
-type AudioProof struct {
-	HTMLReport bool `yaml:"html_report,omitempty" json:"html_report,omitempty"`
-}
+//type AudioProof struct {
+//	HTMLReport bool `yaml:"html_report,omitempty" json:"html_report,omitempty"`
+//}
 
 type Compare struct {
 	HTMLReport      bool            `yaml:"html_report,omitempty" json:"html_report,omitempty"`

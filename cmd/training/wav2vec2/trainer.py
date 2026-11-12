@@ -14,13 +14,14 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import Wav2Vec2Processor
 from transformers import Wav2Vec2ForCTC
 from tokenizer import createTokenizer
-from safetensors.torch import save_file as safe_save_file
-from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 from sqlite_utility import *
 from data_preparation import *
 from dataset import *
 from debug import *
 from model import getWav2Vec2ForCTCModel
+from validation import prepareValidationSet, runValidation
+from checkpoint import CheckpointManager
+from early_stop import EarlyStopper
 sys.path.insert(0, os.path.abspath(os.path.join(os.environ['GOPROJ'], 'logger')))
 from error_handler import setup_error_handler
 
@@ -33,13 +34,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
-                     warmup_steps=100, max_grad_norm=1.0, log_steps=50, use_bf16=False):
+                     warmup_steps=100, max_grad_norm=1.0, log_steps=50, use_bf16=False, on_epoch_end=None):
     """
     Train Wav2Vec2 Model with PyTorch
     Args:
         model: Wav2Vec2 model
         dataset: Your custom dataset that returns padded batches as dicts
-        num_epochs: Number of training epochs
+        num_epochs: The most epochs to train; the learning rate decays over all of them
+        on_epoch_end: Called as on_epoch_end(epoch, global_step, avg_epoch_loss) after each epoch;
+            training stops when it returns True
         lr: Learning rate
         warmup_steps: Warmup steps for lr scheduler
         max_grad_norm: Max gradient norm for clipping
@@ -60,6 +63,7 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
     epochLosses = []
     for epoch in range(num_epochs):
         logger.info(f"Starting epoch {epoch + 1}/{num_epochs}")
+        model.train()   # validation in on_epoch_end leaves the model in eval mode
         epoch_loss = 0
 
         for step, batch in enumerate(dataloader):
@@ -104,6 +108,8 @@ def train_wav2vec2(model, dataset, num_epochs=3, lr=5e-5,
         avg_epoch_loss = epoch_loss / len(dataloader)
         epochLosses.append(round(avg_epoch_loss, 4))
         logger.info(f"Epoch {epoch + 1} completed. Average loss: {avg_epoch_loss:.4f}")
+        if on_epoch_end is not None and on_epoch_end(epoch + 1, global_step, avg_epoch_loss):
+            break
 
     logger.info("Training completed!")
     return model, epochLosses
@@ -160,6 +166,7 @@ processor = Wav2Vec2Processor(
 )
 
 sampleDB = dataPreparation(database, databasePath, audioDirectory, sampleType, processor, batchSizeMB, minAudioSec)
+validationSet = prepareValidationSet(database, audioDirectory, sampleType, processor, minAudioSec)
 database.close()
 
 ADAPTER_BASE = "facebook/mms-1b-all"
@@ -206,6 +213,34 @@ useBF16 = (useBF16Arg == "true" and device.type == "cuda" and torch.cuda.is_bf16
 dataset = MyDataset(sampleDB)
 warmupSteps = int(len(dataset) * numEpochs * warmupPct / 100.0)
 print("warmupSteps", warmupSteps)
+
+modelName = modelBase.replace("/", "-")
+outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
+checkpoints = CheckpointManager(modelName, targetLang, processor, isAdapter)
+stopper = EarlyStopper(numEpochs)
+hasValidation = validationSet is not None and len(validationSet) > 0
+epochResults = []
+lastEpoch = 0
+
+def onEpochEnd(epoch, globalStep, avgLoss):
+    """Validates, decides whether to stop, and saves this epoch's model.  Without a validation set
+    every epoch runs, and the last one is published."""
+    global lastEpoch
+    lastEpoch = epoch
+    stop = False
+    record = {"epoch": epoch, "updates": globalStep, "loss": round(avgLoss, 4)}
+    if hasValidation:
+        result = runValidation(model, processor, validationSet, batchSizeMB, useBF16)
+        stop = stopper.update(epoch, globalStep, result)
+        record["validation"] = result
+        logger.info(f"Epoch {epoch} validation: " + ", ".join(
+            f"{g} CER {r['cer']} ({r['num_samples']} samples, {r['empty_fraction']} empty)" for g, r in result.items()))
+    epochResults.append(record)
+    checkpoints.save(model, epoch, keepEpochs=[stopper.bestEpoch, epoch])
+    if stop:
+        logger.info(f"Stopping after epoch {epoch}: {stopper.reason}")
+    return stop
+
 trainedModel, epochLosses = train_wav2vec2(
         model,
         dataset,
@@ -214,15 +249,15 @@ trainedModel, epochLosses = train_wav2vec2(
         warmup_steps = warmupSteps,
         max_grad_norm = gradNormMax,
         log_steps = loggingSteps,
-        use_bf16 = useBF16
+        use_bf16 = useBF16,
+        on_epoch_end = onEpochEnd
 )
 numSamples = countSamples(sampleDB)
 numTensors = len(dataset)
 sampleDB.close()
 logger.info("Training completed!")
-modelName = modelBase.replace("/", "-")
-outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
 os.makedirs(outputDir, exist_ok=True)
+publishEpoch = stopper.bestEpoch if hasValidation else lastEpoch
 info = {
     "model_base": modelBase,
     "base_revision": PINNED_REVISIONS.get(modelBase) or "main",
@@ -234,17 +269,24 @@ info = {
     "num_samples": numSamples,                  # after pruning
     "num_batches": numTensors,
     "epoch_losses": epochLosses,                # average loss per epoch
+    "max_epochs": numEpochs,
+    "epochs_run": lastEpoch,
+    "published_epoch": None if stopper.failed else publishEpoch,
+    "hit_max_epochs": lastEpoch >= numEpochs and not stopper.failed,
+    "stop_reason": stopper.reason,
+    "early_stop": stopper.settings() if hasValidation else None,
+    "epochs": epochResults,                     # loss and validation CER of each epoch
     "started": startTime, "finished": time.strftime("%Y-%m-%d %H:%M:%S"),
 }
 with open(os.path.join(outputDir, "training_info.json"), "w") as f:
     json.dump(info, f, indent=2)
-if isAdapter:
-    adapterFile = os.path.join(outputDir, WAV2VEC2_ADAPTER_SAFE_FILE.format(targetLang))
-    safe_save_file(model._get_adapters(), adapterFile, metadata={"format": "pt"})
-    processor.save_pretrained(os.path.join(outputDir, "processor_" + targetLang))
-else:
-    model.save_pretrained(outputDir)
-    processor.save_pretrained(outputDir)  # Saves both feature extractor and tokenizer
-logger.info(f"Model and processor saved to {outputDir}")
+if stopper.failed:
+    # No model is published, so VerifyTrained in Go also fails if this exit status is missed.
+    checkpoints.cleanup()
+    print("Training failed: " + stopper.reason, file=sys.stderr, flush=True)
+    sys.exit(1)
+checkpoints.publish(publishEpoch, outputDir)
+checkpoints.cleanup()
+logger.info(f"Model and processor of epoch {publishEpoch} saved to {outputDir}")
 
 

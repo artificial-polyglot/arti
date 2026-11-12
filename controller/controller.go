@@ -88,7 +88,7 @@ func (c *Controller) ProcessV2() (OutputFiles, *log.Status) {
 		c.bucket.AddOutput(filename)
 	}
 	var output OutputFiles
-	output.Directory = c.req.Output.Directory
+	output.Directory = os.Getenv("FCBH_DATASET_TMP")
 	output.FilePaths = c.bucket.GetOutputPaths()
 	log.Info(c.ctx, "Duration", time.Since(start))
 	log.Debug(c.ctx)
@@ -255,16 +255,16 @@ func (c *Controller) processSteps() *log.Status {
 		}
 	}
 	// Audio Proofing
-	if c.req.AudioProof.HTMLReport {
-		log.Info(c.ctx, "Perform audio proof Report.")
-		status = c.audioProofing()
-		if status != nil {
-			return status
-		}
-	}
+	//	if c.req.AudioProof.HTMLReport {
+	//		log.Info(c.ctx, "Perform audio proof Report.")
+	//		status = c.audioProofing()
+	//		if status != nil {
+	//			return status
+	//		}
+	//	}
 	// Copy for STT
 	//if !c.req.TextData.NoText &&
-	if !c.req.SpeechToText.NoSpeechToText {
+	if !c.req.SpeechToText.NoSpeechToText && !c.req.SpeechToText.QAAlign {
 		c.req.Compare.BaseDataset = c.database.Project
 		// This makes a copy of database, and closes it.  Names the new database *_audio, and returns new
 		c.database, status = c.database.CopyDatabase(`_audio`)
@@ -283,6 +283,14 @@ func (c *Controller) processSteps() *log.Status {
 		status = c.speechToText(audioFiles)
 		if status != nil {
 			return status
+		}
+		// Validation reads the qa_align tables, so it only runs after qa_align
+		if c.req.SpeechToText.QAAlign {
+			outputs, status1 := validation.Process(c.database, c.req)
+			if status1 != nil {
+				return status1
+			}
+			c.bucket.AddOutputList(outputs)
 		}
 	}
 	// Original Compare Report
@@ -517,32 +525,34 @@ func (c *Controller) speechToText(audioFiles []generic.InputFile) *log.Status {
 		var asr asr_align.ASRAlign
 		asr = asr_align.NewASRAlign(c.ctx, c.database, c.ident.LanguageISO, c.req.AltLanguage, false)
 		status = asr.ProcessFiles(audioFiles)
+	} else if c.req.SpeechToText.QAAlign {
+		_, status = qa_align.Process(c.database, c.req)
 	} else {
 		log.Warn(c.ctx, "No Training Module Identified.")
 	}
 	return status
 }
 
-func (c *Controller) audioProofing() *log.Status {
-	_, status := qa_align.Process(c.database, c.req)
-	if status != nil {
-		return status
-	}
-	outputs, status1 := validation.Process(c.database, c.req)
-	if status1 != nil {
-		return status1
-	}
-	c.bucket.AddOutputList(outputs)
-	outputs, status = proofing_rpt.Process(c.database, c.req)
-	if status != nil {
-		return status
-	}
-	c.bucket.AddOutputList(outputs)
-	if len(outputs) == 0 {
-		return log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
-	}
-	return nil
-}
+//func (c *Controller) audioProofing() *log.Status {
+//	_, status := qa_align.Process(c.database, c.req)
+//	if status != nil {
+//		return status
+//	}
+//	outputs, status1 := validation.Process(c.database, c.req)
+//	if status1 != nil {
+//		return status1
+//	}
+//	c.bucket.AddOutputList(outputs)
+//	outputs, status = proofing_rpt.Process(c.database, c.req)
+//	if status != nil {
+//		return status
+//	}
+//	c.bucket.AddOutputList(outputs)
+//	if len(outputs) == 0 {
+//		return log.ErrorNoErr(c.ctx, 500, "Proofing Report returned no output.")
+//	}
+//	return nil
+//}
 
 func (c *Controller) matchText() (string, *log.Status) {
 	var records []diff.Pair

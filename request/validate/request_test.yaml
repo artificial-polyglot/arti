@@ -16,10 +16,11 @@ notify_err: [jb@fcbhmail.org, gary@shortsands.com] # recipients of errors
 alt_language: # To force the use of an alternate language, use this field
 
 output: # Use to specify form of output
-  directory: # Enter the server's directory path where output should be written
   csv: # Mark yes for csv output
   json: # Mark yes for json output
   sqlite: # Mark yes for sqlite database output
+  proofing_report: # Mark yes for the HTML proofing report (needs speech_to_text qa_align)
+  compare_report: # Mark yes for the HTML compare report (needs speech_to_text qa_align)
 
 testament: # Choose one or both
   nt: yes # Mark Yes for entire New Testament
@@ -74,6 +75,7 @@ training: # Include if training in a language is required
 speech_to_text: # If STT is source Yes by desired type
   mms_asr: # This is Meta's MMS Speech to Text model
   adapter_asr: # This is to use an mms_adapter for speech to text
+  qa_align: # ASR and forced alignment with the trained model, for the proofing and compare reports
   no_speech_to_text: #
 # Default: no_speech_to_text
 
@@ -81,9 +83,6 @@ detail: # Choose word or both
   lines: # Mark yes to process script lines
   words: # Mark yes to process individual words
 # Default: lines
-
-audio_proof:
-  html_report: # Mark yes to receive proof report
 
 compare: # To do a compare, put the names of the two projects here
   html_report: # Mark yes to receive compare report

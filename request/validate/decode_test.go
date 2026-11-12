@@ -36,7 +36,6 @@ alt_language: en
 notify_ok: [emille@fcbhmail.org]
 notify_err: [jbarndt@fcbhmail.org]
 output:
-  directory: /Users/gary
   csv: Yes
   json: Yes
   sqlite: Yes
@@ -89,8 +88,6 @@ audio_encoding:
 text_encoding:
   fast_text: yes
   no_encoding: yes
-audio_proof:
-  html_report: yes
 compare:
   html_report: yes
   base_dataset: UseProject1
@@ -140,7 +137,6 @@ compare:
 		req.SpeechToText.NoSpeechToText,
 		req.Detail.Lines,
 		req.Detail.Words,
-		req.AudioProof.HTMLReport,
 		req.Compare.HTMLReport,
 		req.Compare.CompareSettings.LowerCase,
 		req.Compare.CompareSettings.RemovePromptChars,
@@ -164,7 +160,6 @@ compare:
 	var strs = []string{req.DatasetName,
 		req.BibleId,
 		req.Username,
-		req.Output.Directory,
 		req.AudioData.File,
 		req.AudioData.AWSS3,
 		req.TextData.File,

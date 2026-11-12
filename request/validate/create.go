@@ -18,7 +18,6 @@ func createRequestFromMap(reqMap map[string]string) request.Request {
 	req.Priority = 3 // Default, I think
 	req.NotifyOk = strings.Split(reqMap["notifyOk"], ",")
 	req.NotifyErr = strings.Split(reqMap["notifyErr"], ",")
-	req.Output.Directory = "" // Not set by HTML Form
 	req.Output.CSV = false
 	req.Output.JSON = false
 	req.Output.Sqlite = false
@@ -46,7 +45,6 @@ func createRequestFromMap(reqMap map[string]string) request.Request {
 	}
 	req.Timestamps.MMSAlign = reqMap["timestamps_mms_align"] == "true"
 	req.Timestamps.MMSFAVerse = reqMap["timestamps_mms_fa_verse"] == "true"
-	req.AudioProof.HTMLReport = reqMap["proofing"] == "true"
 	if reqMap["compare"] == "true" {
 		req.Compare.HTMLReport = true
 		req.Compare.GordonFilter, _ = strconv.Atoi(reqMap["gordonFilter"])

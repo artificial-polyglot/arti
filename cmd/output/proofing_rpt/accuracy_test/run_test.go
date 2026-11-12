@@ -46,7 +46,7 @@ func CreateYaml(test testCase) string {
 	req.Testament = test.Testament
 	req.Database.AWSS3 = "s3://" + OUTPUT_BUCKET + "/" + test.SetupDBOutput
 	req.AudioData.AWSS3 = fmt.Sprintf("s3://%s/%s/%s", INPUT_BUCKET, test.MediaName, test.AudioFilesKey)
-	req.AudioProof.HTMLReport = true
+	//	req.AudioProof.HTMLReport = true
 	//req.Compare.HTMLReport = true
 	//req.Compare.CompareSettings.LowerCase = true
 	//req.Compare.CompareSettings.RemovePromptChars = true

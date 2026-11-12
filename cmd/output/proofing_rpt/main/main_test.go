@@ -14,8 +14,8 @@ username: GaryNTest
 language_iso: tts
 database:
     aws_s3: s3://arti-output/GaryNTest/N2TTS/arti/00007/database/N2TTS.db
-audio_proof:
-    html_report: true
+output:
+    proofing_report: true
 `
 
 func TestRun(t *testing.T) {

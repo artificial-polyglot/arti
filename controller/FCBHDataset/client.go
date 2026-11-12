@@ -5,15 +5,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/artificial-polyglot/arti/request/decode"
-	"github.com/artificial-polyglot/arti/request/validate"
-	"gopkg.in/yaml.v3"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/artificial-polyglot/arti/request/decode"
+	"github.com/artificial-polyglot/arti/request/validate"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -53,7 +54,7 @@ func main() {
 	} else {
 		fileType = ".txt"
 	}
-	filename := filepath.Join(request.Output.Directory, request.DatasetName+fileType)
+	filename := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), request.DatasetName+fileType)
 	statusCode := Response(filename, httpReq)
 	DisplayOutput(filename)
 	fmt.Println(statusCode, filename)

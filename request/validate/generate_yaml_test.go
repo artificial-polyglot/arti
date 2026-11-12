@@ -30,7 +30,7 @@ func buildTestRequest() request.Request {
 	req.Training.MMSAdapter.GradNormMax = 0.4
 	req.SpeechToText.MMSAdapter = true
 	req.Timestamps.MMSAlign = true
-	req.AudioProof.HTMLReport = true
+	//	req.AudioProof.HTMLReport = true
 	req.Compare.HTMLReport = true
 	req.Compare.GordonFilter = 2
 	req.Compare.CompareSettings.LowerCase = true
