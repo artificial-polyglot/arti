@@ -16,11 +16,7 @@ import (
 
 func TimestampWriters(ctx context.Context, verses []generic.Verse2) []db.Output {
 	var reports []db.Output
-	dir, err := os.MkdirTemp("", "arti-rpt-*")
-	if err != nil {
-		log.Warn(ctx, err, "Could not Marshal Timestamps")
-		return reports
-	}
+	dir := os.Getenv("FCBH_DATASET_TMP")
 	jsonOut := JSONTimestampHierachyRpt(ctx, dir, verses)
 	reports = append(reports, jsonOut)
 	scriptsOut := CSVScripts(ctx, dir, verses)
@@ -33,7 +29,7 @@ func TimestampWriters(ctx context.Context, verses []generic.Verse2) []db.Output 
 }
 
 func JSONTimestampHierachyRpt(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
-	var output = db.Output{Component: "proofing_rpt", Report: "all_timestamps_json"}
+	var output = db.Output{Component: "timestamp_rpt", Report: "all_timestamps_json"}
 	bytes, err := json.MarshalIndent(verses, "", "  ")
 	if err != nil {
 		log.Warn(ctx, err, "Could not Marshal Timestamps")
@@ -50,7 +46,7 @@ func JSONTimestampHierachyRpt(ctx context.Context, dir string, verses []generic.
 }
 
 func CSVScripts(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
-	var output = db.Output{Component: "proofing_rpt", Report: "script_timestamps_csv"}
+	var output = db.Output{Component: "timestamp_rpt", Report: "script_timestamps_csv"}
 	filePath := filepath.Join(dir, "script_timestamps.csv")
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -89,7 +85,7 @@ func CSVScripts(ctx context.Context, dir string, verses []generic.Verse2) db.Out
 }
 
 func CSVWords(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
-	var output = db.Output{Component: "proofing_rpt", Report: "word_timestamps_csv"}
+	var output = db.Output{Component: "timestamp_rpt", Report: "word_timestamps_csv"}
 	filePath := filepath.Join(dir, "word_timestamps.csv")
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -127,7 +123,7 @@ func CSVWords(ctx context.Context, dir string, verses []generic.Verse2) db.Outpu
 }
 
 func CSVChars(ctx context.Context, dir string, verses []generic.Verse2) db.Output {
-	var output = db.Output{Component: "proofing_rpt", Report: "char_timestamps_csv"}
+	var output = db.Output{Component: "timestamp_rpt", Report: "char_timestamps_csv"}
 	filePath := filepath.Join(dir, "char_timestamps.csv")
 	file, err := os.Create(filePath)
 	if err != nil {

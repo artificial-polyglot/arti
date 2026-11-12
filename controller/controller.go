@@ -10,6 +10,7 @@ import (
 	"github.com/artificial-polyglot/arti/cmd/delineation/mms_align"
 	"github.com/artificial-polyglot/arti/cmd/output/compare_rpt"
 	"github.com/artificial-polyglot/arti/cmd/output/proofing_rpt"
+	"github.com/artificial-polyglot/arti/cmd/output/timestamp_rpt"
 	"github.com/artificial-polyglot/arti/cmd/speech_to_text/qa_align"
 	"github.com/artificial-polyglot/arti/cmd/training/validation"
 	"github.com/artificial-polyglot/arti/cmd/training/wav2vec2"
@@ -326,7 +327,11 @@ func (c *Controller) processSteps() *log.Status {
 		c.bucket.AddOutputList(reports)
 	}
 	if c.req.Output.TimestampData {
-		log.Info(c.ctx, "cmd/output/Timestamp_rpt is not implemented. Must write main.go and process.go")
+		reports, status1 := timestamp_rpt.Process(c.database, c.req)
+		if status1 != nil {
+			return status1
+		}
+		c.bucket.AddOutputList(reports)
 	}
 	return status
 }
