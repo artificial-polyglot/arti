@@ -8,7 +8,8 @@
 STOP_METRIC = "all"         # validation group whose CER decides: "fa_score", "silence" or "all"
 PATIENCE = 4                # start the cool-down after this many epochs in a row without a real gain
 MIN_RELATIVE_GAIN = 0.005   # a gain is real when CER falls by at least 0.5% of the reference CER
-COOLDOWN_EPOCHS = 2         # epochs over which the learning rate is cut to zero before stopping
+COOLDOWN_EPOCHS = 4         # epochs over which the learning rate is cut to zero before stopping;
+                            # it never runs past maxEpochs, where the base schedule is already at zero
 MAX_EMPTY_FRACTION = 0.5    # while at least this fraction of transcripts is empty, the model has
                             # not yet left the all-blank phase, and patience is not counted
 BLANK_FAIL_UPDATES = 4000   # training fails if it is still in the all-blank phase after this many updates
@@ -63,8 +64,8 @@ class EarlyStopper:
         if self.cooldownStart is not None:
             if epoch >= self.cooldownEnd:
                 self.reason = (f"No {MIN_RELATIVE_GAIN:.1%} gain in {STOP_METRIC} CER for {PATIENCE} epochs "
-                               f"after epoch {self.cooldownStart - PATIENCE}; cooled down over epochs "
-                               f"{self.cooldownStart + 1}-{self.cooldownEnd}; " + self.bestText())
+                               f"after epoch {self.cooldownStart - PATIENCE}; cooled down over " +
+                               self.cooldownText() + "; " + self.bestText())
                 return STOP
             return CONTINUE
         if epoch >= self.maxEpochs:
@@ -81,6 +82,10 @@ class EarlyStopper:
         self.cooldownEnd = min(epoch + COOLDOWN_EPOCHS, self.maxEpochs)
         self.settledFrom = min(self.settledFrom, epoch + 1)
         return COOLDOWN
+
+    def cooldownText(self):
+        first, last = self.cooldownStart + 1, self.cooldownEnd
+        return f"epoch {last}" if first == last else f"epochs {first}-{last}"
 
     def bestText(self):
         text = f"published epoch {self.bestEpoch} CER {self.cers.get(self.bestEpoch)}"
