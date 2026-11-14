@@ -56,7 +56,7 @@ func CSVScripts(ctx context.Context, dir string, verses []generic.Verse2) db.Out
 	defer file.Close()
 	writer := csv.NewWriter(file)
 	defer writer.Flush() // REQUIRED — the writer buffers
-	err = writer.Write([]string{"ref", "book_id", "chapter", "verse", "begin_ts", "end_ts", "text"})
+	err = writer.Write([]string{"book_id", "chapter", "verse", "begin_ts", "end_ts", "text"})
 	if err != nil {
 		log.Warn(ctx, err, "Could not write header to script timestamps")
 		return output
@@ -67,7 +67,6 @@ func CSVScripts(ctx context.Context, dir string, verses []generic.Verse2) db.Out
 			script = append(script, wd.Text)
 		}
 		err = writer.Write([]string{
-			vs.LineRef.Description(),
 			vs.LineRef.BookId,
 			strconv.Itoa(vs.LineRef.ChapterNum),
 			vs.LineRef.VerseStr,
@@ -95,7 +94,7 @@ func CSVWords(ctx context.Context, dir string, verses []generic.Verse2) db.Outpu
 	defer file.Close()
 	writer := csv.NewWriter(file)
 	defer writer.Flush() // REQUIRED — the writer buffers
-	err = writer.Write([]string{"ref", "book_id", "chapter", "verse", "word_seq", "begin_ts", "end_ts", "word"})
+	err = writer.Write([]string{"book_id", "chapter", "verse", "word_seq", "begin_ts", "end_ts", "word"})
 	if err != nil {
 		log.Warn(ctx, err, "Could not write header to word timestamps")
 		return output
@@ -103,7 +102,6 @@ func CSVWords(ctx context.Context, dir string, verses []generic.Verse2) db.Outpu
 	for _, vs := range verses {
 		for i, wd := range vs.Words {
 			err = writer.Write([]string{
-				vs.LineRef.Description(),
 				vs.LineRef.BookId,
 				strconv.Itoa(vs.LineRef.ChapterNum),
 				vs.LineRef.VerseStr,
@@ -133,7 +131,7 @@ func CSVChars(ctx context.Context, dir string, verses []generic.Verse2) db.Outpu
 	defer file.Close()
 	writer := csv.NewWriter(file)
 	defer writer.Flush() // REQUIRED — the writer buffers
-	err = writer.Write([]string{"ref", "book_id", "chapter", "verse", "word_seq", "char_seq",
+	err = writer.Write([]string{"book_id", "chapter", "verse", "word_seq", "char_seq",
 		"begin_ts", "end_ts", "char"})
 	if err != nil {
 		log.Warn(ctx, err, "Could not write header to char timestamps")
@@ -143,7 +141,6 @@ func CSVChars(ctx context.Context, dir string, verses []generic.Verse2) db.Outpu
 		for i, wd := range vs.Words {
 			for j, ch := range wd.Chars {
 				err = writer.Write([]string{
-					vs.LineRef.Description(),
 					vs.LineRef.BookId,
 					strconv.Itoa(vs.LineRef.ChapterNum),
 					vs.LineRef.VerseStr,
