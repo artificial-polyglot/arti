@@ -43,6 +43,19 @@ export async function deleteOutputRun(bucket, username, mediaId, module, runNum)
   return keys.length;
 }
 
+// file_types that describe the run itself, shown outside any category.
+const RUN_FILE_TYPES = new Set(["runtime", "duration", "request", "status", "notes"]);
+// file_types listed under the hard-coded "Internal" category.
+const INTERNAL_FILE_TYPES = new Set(["log", "database"]);
+const INTERNAL_CATEGORY = "Internal";
+
+// The category heading for a file_type, e.g. "output" -> "Output".
+function categoryName(fileType) {
+  return fileType.charAt(0).toUpperCase() + fileType.slice(1);
+}
+
+// Each row has a category: null for Runtime/Duration/Request/Status, which
+// the page shows on their own; otherwise the heading the row is listed under.
 export async function getOutputDetailRows(bucket, username, mediaId, module, runNum) {
   const prefix = outputRunPrefix(username, mediaId, module, runNum);
   const objects = await listAllObjects(bucket, prefix);
@@ -65,17 +78,27 @@ export async function getOutputDetailRows(bucket, username, mediaId, module, run
   const stringValue = (fileType) => first(fileType)?.content ?? "";
 
   const rows = [];
-  rows.push({ label: "Runtime", value: stringValue("runtime"), viewMode: null, viewKey: null, downloadKey: null });
-  rows.push({ label: "Duration", value: stringValue("duration"), viewMode: null, viewKey: null, downloadKey: null });
+  rows.push({ label: "Runtime", value: stringValue("runtime"), viewMode: null, viewKey: null, downloadKey: null, category: null });
+  rows.push({ label: "Duration", value: stringValue("duration"), viewMode: null, viewKey: null, downloadKey: null, category: null });
   rows.push(fileRow("Request", first("request"), true));
-  for (const row of numberedRows("Output", byType.get("output") || [], true)) rows.push(row);
-  rows.push(fileRow("Log file", first("log"), true));
   rows.push(fileRow("Status", first("status"), true));
+
+  // Every file_type that isn't one of the run's own fixed entries is a
+  // category of output (today just "output"; later one per kind of report),
+  // listed in name order with each of its files under it.
+  const categories = [...byType.keys()].filter((t) => !RUN_FILE_TYPES.has(t) && !INTERNAL_FILE_TYPES.has(t)).sort();
+  for (const fileType of categories) {
+    const category = categoryName(fileType);
+    for (const row of numberedRows(category, byType.get(fileType), true)) rows.push({ ...row, category });
+  }
+
+  // The run's log and database(s) go last, under a fixed "Internal" category.
+  rows.push({ ...fileRow("Log file", first("log"), true), category: INTERNAL_CATEGORY });
   const databases = byType.get("database") || [];
   if (databases.length > 1) {
-    for (const row of numberedRows("Database", databases, false)) rows.push(row);
+    for (const row of numberedRows("Database", databases, false)) rows.push({ ...row, category: INTERNAL_CATEGORY });
   } else {
-    rows.push(fileRow("Database", databases[0] || null, false));
+    rows.push({ ...fileRow("Database", databases[0] || null, false), category: INTERNAL_CATEGORY });
   }
   return rows;
 }

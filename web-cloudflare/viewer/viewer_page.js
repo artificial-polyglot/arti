@@ -24,6 +24,7 @@ export const PAGE_HTML = `<!doctype html>
   th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid rgba(128,128,128,0.25); }
   th { cursor: pointer; user-select: none; white-space: nowrap; }
   th.sortable:hover { text-decoration: underline; }
+  th.category { cursor: default; padding-top: 18px; font-size: 1.05rem; }
   th .arrow { opacity: 0.6; font-size: 0.8em; }
   button.action { padding: 3px 10px; cursor: pointer; }
   input[type=number] { width: 4em; }
@@ -432,9 +433,18 @@ export const PAGE_HTML = `<!doctype html>
     const tbody = document.createElement("tbody");
     let requestRow = null;
     let statusRow = null;
+    let category = null;
     rows.forEach((row) => {
       if (row.label === "Request") { requestRow = row; return; }
       if (row.label === "Status") { statusRow = row; return; }
+      if (row.category && row.category !== category) {
+        category = row.category;
+        const headTr = document.createElement("tr");
+        const headTh = document.createElement("th");
+        headTh.colSpan = 3; headTh.className = "category"; headTh.textContent = category;
+        headTr.append(headTh);
+        tbody.append(headTr);
+      }
       const tr = document.createElement("tr");
       const viewTd = document.createElement("td");
       if (row.viewMode) {
