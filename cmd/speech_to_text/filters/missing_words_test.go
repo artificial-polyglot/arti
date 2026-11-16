@@ -3,6 +3,7 @@ package filters
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -129,4 +130,61 @@ func TestFindMissingWordsSynthetic(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestRestoreWords(t *testing.T) {
+	text := "aaaa bbbb cccc dddd"
+	vs := generic.Verse2{ScriptId: 1}
+	for i, wd := range strings.Fields(text) {
+		vs.Words = append(vs.Words, generic.Word2{WordId: int64(i + 1), Text: wd})
+	}
+	// bbbb is confirmed missing; aaaa, cccc and dddd were heard by the base model
+	mms := map[int64]float64{1: 0.9, 2: 0.01, 3: 0.9, 4: 0.9}
+	cases := []struct{ name, asr, want string }{
+		{"nothing missing", "aaaa bbbb cccc dddd", "aaaa bbbb cccc dddd"},
+		{"confirmed stays missing", "aaaa cccc dddd", "aaaa cccc dddd"},
+		{"heard word restored", "aaaa bbbb dddd", "aaaa bbbb cccc dddd"},
+		{"two words, one restored", "aaaa dddd", "aaaa cccc dddd"},
+		{"first word restored", "bbbb cccc dddd", "aaaa bbbb cccc dddd"},
+		{"last word restored", "aaaa bbbb cccc", "aaaa bbbb cccc dddd"},
+		{"written as other letters", "aaaa bbbb xy dddd", "aaaa bbbb cccc xy dddd"},
+		{"partly missing is kept", "aaaa bbbb cc dddd", "aaaa bbbb cc dddd"},
+	}
+	for _, c := range cases {
+		vs.ASRText = c.asr
+		verses := []generic.Verse2{vs}
+		result := RestoreWords(verses, FindMissingWords(verses, mms))
+		if result[0].ASRText != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, result[0].ASRText, c.want)
+		}
+		if verses[0].ASRText != c.asr {
+			t.Errorf("%s: the input verses were changed", c.name)
+		}
+	}
+}
+
+// TestRestoreWordsN1SKNSEC checks that after restoring, the only missing words left are the confirmed ones.
+func TestRestoreWordsN1SKNSEC(t *testing.T) {
+	fx := readMissingFixture(t)
+	missing := FindMissingWords(fx.Verses, fx.MMSScores)
+	if len(missing) == 0 {
+		t.Skip("the fixture finds no missing words; see TestFindMissingWordsN1SKNSEC")
+	}
+	var confirmed []string
+	restored := 0
+	for _, m := range missing {
+		if m.Confirmed {
+			confirmed = append(confirmed, refString(m.LineRef)+" "+m.Text)
+		} else {
+			restored++
+		}
+	}
+	var after []string
+	for _, m := range FindMissingWords(RestoreWords(fx.Verses, missing), fx.MMSScores) {
+		after = append(after, refString(m.LineRef)+" "+m.Text)
+	}
+	if !slices.Equal(after, confirmed) {
+		t.Errorf("after restoring %d words, missing words are %v, want the confirmed %v", restored, after, confirmed)
+	}
+	t.Logf("%d confirmed, %d restored", len(confirmed), restored)
 }

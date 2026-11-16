@@ -1,13 +1,16 @@
 package filters
 
 import (
+	"slices"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
 	"github.com/artificial-polyglot/arti/utility/diff"
+	"github.com/artificial-polyglot/arti/utility/fa"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -22,8 +25,11 @@ import (
 // When some letters are deleted, it is usually an ASR spelling error, not missing audio.  Words with
 // digits are skipped, because neither model can align digits that the reader says as words.
 //
-// This filter reports, and does not change the verses.  Run it after FilterAlignmentErrors, so that
-// words moved to another verse are not reported as missing.
+// A confirmed word stays missing, and is reported as a reading error.  A doubtful word, one the base
+// model found in the audio, is taken as an ASR error and restored to the transcript where the diff
+// deleted it, so later reports do not show it as a difference.  Run it after FilterAlignmentErrors, so
+// that words moved to another verse are not reported as missing, and after the hallucination filter,
+// so that a restored word cannot be removed again as an insert.
 
 // MMSLimit is the most mms_align fa_score of a missing word that is confirmed.  In N1SKNSEC, missing
 // words scored either 0.175 or less, or 0.61 or more, and 11.9% of words that ASR heard score below it.
@@ -35,9 +41,9 @@ type MissingWord struct {
 	LineRef   generic.VerseRef
 	WordIndex int
 	Text      string
-	QAScore   float64 // mean qa_align score of the word's chars, from the trained model
+	QAScore   float64 // geometric mean of the qa_align scores of the word's chars, from the trained model
 	MMSScore  float64 // mms_align fa_score of the word, from the base model
-	Confirmed bool    // both models find the word missing from the audio
+	Confirmed bool    // mms_align finds the word missing from the audio; otherwise it is restored
 }
 
 func (m MissingWord) Reason() string {
@@ -45,18 +51,89 @@ func (m MissingWord) Reason() string {
 	if m.Confirmed {
 		return "missing from audio: mms_align score " + score
 	}
-	return "doubtful: mms_align score " + score + " says the word may have been read"
+	return "restored: mms_align score " + score + " says the word was read"
 }
 
-// FilterMissingWords returns verses unchanged, and every whole word missing from a transcript, with
-// the decision made about it.  verses must have qa_align chars and ASR transcripts, as
-// proofing_rpt.SelectCharData and AddASRTranscript return them.
+// FilterMissingWords returns every whole word missing from a transcript, with the decision made about
+// it, and the verses with each doubtful word restored to the transcript.  The input verses are not
+// changed.  verses must have qa_align chars and ASR transcripts, as proofing_rpt.SelectCharData and
+// AddASRTranscript return them.
 func FilterMissingWords(conn db.DBAdapter, verses []generic.Verse2) ([]generic.Verse2, []MissingWord, *log.Status) {
 	scores, status := SelectMMSScores(conn)
 	if status != nil {
 		return verses, nil, status
 	}
-	return verses, FindMissingWords(verses, scores), nil
+	missing := FindMissingWords(verses, scores)
+	return RestoreWords(verses, missing), missing, nil
+}
+
+// RestoreWords returns a copy of verses with every missing word that is not confirmed put back into
+// its transcript.
+func RestoreWords(verses []generic.Verse2, missing []MissingWord) []generic.Verse2 {
+	restore := make(map[int64]map[int]bool) // word indexes to restore, by script id
+	for _, m := range missing {
+		if m.Confirmed {
+			continue
+		}
+		if restore[m.ScriptId] == nil {
+			restore[m.ScriptId] = make(map[int]bool)
+		}
+		restore[m.ScriptId][m.WordIndex] = true
+	}
+	result := slices.Clone(verses)
+	for i, vs := range result {
+		if words, ok := restore[vs.ScriptId]; ok {
+			result[i].ASRText = restoreVerse(vs, words)
+		}
+	}
+	return result
+}
+
+// restoreVerse rebuilds the verse's transcript from the character diff, keeping what ASR wrote and
+// adding back the deleted letters of the words in restore.  The spaces deleted by the diff are not
+// used; a restored word is separated by a space from whatever is next to it.  The letters are counted
+// the same way as in deletedLetters, so the k-th letter of the text belongs to word owner[k].
+func restoreVerse(vs generic.Verse2, restore map[int]bool) string {
+	var owner []int
+	for w, wd := range vs.Words {
+		for _, r := range wd.Text {
+			if !unicode.IsSpace(r) {
+				owner = append(owner, w)
+			}
+		}
+	}
+	var out []rune
+	lastWord := -1 // the word of the last restored letter written, while it is the last rune written
+	write := func(r rune, word int) {
+		if len(out) > 0 && !unicode.IsSpace(r) && !unicode.IsSpace(out[len(out)-1]) && lastWord != word {
+			if lastWord >= 0 || word >= 0 {
+				out = append(out, ' ')
+			}
+		}
+		out = append(out, r)
+		lastWord = word
+	}
+	k := 0
+	for _, df := range diff.DiffMatchPatch(vs.Text(), vs.ASRText) {
+		for _, r := range df.Text {
+			switch {
+			case df.Type == diffmatchpatch.DiffInsert:
+				write(r, -1)
+			case unicode.IsSpace(r):
+				if df.Type == diffmatchpatch.DiffEqual {
+					write(r, -1)
+				}
+			default:
+				if df.Type == diffmatchpatch.DiffEqual {
+					write(r, -1)
+				} else if k < len(owner) && restore[owner[k]] {
+					write(r, owner[k])
+				}
+				k++
+			}
+		}
+	}
+	return strings.Join(strings.Fields(string(out)), " ")
 }
 
 // SelectMMSScores reads the fa_score that mms_align gave each word.
@@ -110,7 +187,7 @@ func FindMissingWords(verses []generic.Verse2, mmsScores map[int64]float64) []Mi
 				continue
 			}
 			mw := MissingWord{ScriptId: vs.ScriptId, LineRef: vs.LineRef, WordIndex: w, Text: wd.Text,
-				QAScore: meanCharScore(wd), MMSScore: mmsScores[wd.WordId]}
+				QAScore: geoCharScore(wd), MMSScore: mmsScores[wd.WordId]}
 			mw.Confirmed = mw.MMSScore < MMSLimit
 			result = append(result, mw)
 		}
@@ -134,15 +211,15 @@ func deletedLetters(ref string, asr string) []bool {
 	return result
 }
 
-func meanCharScore(wd generic.Word2) float64 {
+func geoCharScore(wd generic.Word2) float64 {
 	if len(wd.Chars) == 0 {
 		return wd.FAScore
 	}
-	var total float64
-	for _, ch := range wd.Chars {
-		total += ch.FAScore
+	scores := make([]float64, len(wd.Chars))
+	for i, ch := range wd.Chars {
+		scores[i] = ch.FAScore
 	}
-	return total / float64(len(wd.Chars))
+	return fa.GeometricMean(scores)
 }
 
 func hasDigit(text string) bool {

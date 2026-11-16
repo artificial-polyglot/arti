@@ -288,7 +288,7 @@ func (r *Results) reportData(datasetName string) reportData {
 		{stageHallucinations, r.Settings.Hallucinations, len(r.Inserts),
 			itoa(removed) + " removed, " + itoa(len(r.Inserts)-removed) + " kept"},
 		{stageMissingWords, r.Settings.MissingWords, len(r.Missing),
-			itoa(confirmed) + " confirmed, " + itoa(len(r.Missing)-confirmed) + " doubtful"},
+			itoa(confirmed) + " confirmed, " + itoa(len(r.Missing)-confirmed) + " restored"},
 	}
 	before := r.summaryRow(0)
 	before.Stage, before.Run = stageBefore, true
@@ -476,9 +476,10 @@ func (r *Results) missingSection() section {
 	sec := section{Id: "missing-words", Title: stageMissingWords,
 		Intro: "Each whole word of the text that is missing from the transcript is checked with the mms_align score of the base model.  " +
 			"It is confirmed missing from the audio when the score is below " + strconv.FormatFloat(MMSLimit, 'f', 2, 64) +
-			".  Transcripts are not changed.  Numbers are not checked."}
+			".  Otherwise the base model heard the word, and it is restored to the transcript as an ASR error.  " +
+			"The QA Score is shown for comparison only.  Numbers are not checked."}
 	headers := []string{"Reference", "Word", "QA Score", "MMS Score", "Diff"}
-	doubtful := table{Title: "Doubtful: the base model may have heard the word", Headers: headers, Diff: true}
+	doubtful := table{Title: "Restored: the base model heard the word", Headers: headers, Diff: true}
 	confirmed := table{Title: "Confirmed missing from the audio", Headers: headers, Diff: true}
 	for _, m := range r.Missing {
 		rw := row{Cells: []cell{{Text: refString(m.LineRef), Class: "ref"}, {Text: m.Text, Class: "word"},
