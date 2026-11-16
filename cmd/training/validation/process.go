@@ -160,17 +160,12 @@ type prunedVerse struct {
 	reference  generic.VerseRef
 }
 
-// faRank is a verse's minimum words.fa_score, and its percentile among all
-// verses ranked the same way VerseDataPruner ranks them (lowest = 0). The geo
-// fields are the same ranking by minimum word score, where a word's score is the
-// geometric mean of its chars.fa_score instead of the arithmetic mean stored in
-// words.fa_score; this is an experiment computed only for this report, and
-// nothing is written back.
+// faRank is a verse's minimum words.fa_score, which mms_align stores as the
+// geometric mean of each word's char fa_scores, and its percentile among all
+// verses ranked the same way VerseDataPruner ranks them (lowest = 0).
 type faRank struct {
-	minFAScore    sql.NullFloat64
-	percentile    float64
-	geoMin        sql.NullFloat64
-	geoPercentile float64
+	minFAScore sql.NullFloat64
+	percentile float64
 }
 
 type knownError struct {
@@ -268,7 +263,6 @@ func verseDiff(vs generic.Verse2) (diff.Counts, int, []diff.Diff) {
 // SelectVerseFARank ranks verses exactly as cmd/training/wav2vec2 VerseDataPruner
 // does (min word fa_score, ties by script_id, headings excluded), so a
 // percentile at or below pctExcludePruneData means the verse was FA pruned.
-// Verses with no chars rows sort last in the geo ranking and get no geo percentile.
 func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 	ctx := database.Ctx
 	var result = make(map[int64]faRank)
@@ -277,25 +271,11 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 			FROM scripts s JOIN words w ON w.script_id = s.script_id
 			WHERE w.ttype = 'W' AND s.verse_str != '0'
 			GROUP BY s.script_id
-		),
-		word_geo AS (
-			SELECT w.script_id, EXP(AVG(LN(MAX(c.fa_score, 1e-12)))) AS geo_score
-			FROM words w JOIN chars c ON c.word_id = w.word_id
-			WHERE w.ttype = 'W'
-			GROUP BY w.word_id
-		),
-		geo_min AS (
-			SELECT script_id, MIN(geo_score) AS min_geo_score
-			FROM word_geo
-			GROUP BY script_id
 		)
 		SELECT v.script_id, v.min_fa_score,
 			ROW_NUMBER() OVER (ORDER BY v.min_fa_score, v.script_id) AS rank_num,
-			COUNT(*) OVER () AS total,
-			g.min_geo_score,
-			ROW_NUMBER() OVER (ORDER BY g.min_geo_score IS NULL, g.min_geo_score, v.script_id) AS geo_rank_num,
-			COUNT(g.min_geo_score) OVER () AS geo_total
-		FROM verse_min v LEFT JOIN geo_min g ON g.script_id = v.script_id`
+			COUNT(*) OVER () AS total
+		FROM verse_min v`
 	rows, err := database.DB.Query(query)
 	if err != nil {
 		return result, log.Error(ctx, 500, err, "Could not execute ", query)
@@ -306,16 +286,11 @@ func SelectVerseFARank(database db.DBAdapter) (map[int64]faRank, *log.Status) {
 		var rank faRank
 		var rankNum int
 		var total int
-		var geoRankNum int
-		var geoTotal int
-		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total, &rank.geoMin, &geoRankNum, &geoTotal)
+		err = rows.Scan(&scriptId, &rank.minFAScore, &rankNum, &total)
 		if err != nil {
 			return result, log.Error(ctx, 500, err, `Error scanning in SelectVerseFARank`)
 		}
 		rank.percentile = float64(rankNum) * 100.0 / float64(total)
-		if rank.geoMin.Valid {
-			rank.geoPercentile = float64(geoRankNum) * 100.0 / float64(geoTotal)
-		}
 		result[scriptId] = rank
 	}
 	err = rows.Err()

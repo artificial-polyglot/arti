@@ -3,7 +3,6 @@ package mms_align
 import (
 	"context"
 	"encoding/json"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,6 +13,7 @@ import (
 	"github.com/artificial-polyglot/arti/db"
 	"github.com/artificial-polyglot/arti/generic"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/fa"
 	"github.com/artificial-polyglot/arti/utility/ffmpeg"
 	"github.com/artificial-polyglot/arti/utility/stdio_exec"
 	"github.com/artificial-polyglot/arti/utility/uroman"
@@ -297,7 +297,7 @@ func (m *MMSAlign) processPyOutput(file generic.InputFile, wordRefs []Word, resp
 			//word.FAScore = word.FAScore / float64(len(faWd))
 			// Geometric mean of the char scores, so that one confident char cannot hide
 			// several badly aligned ones, as an arithmetic mean does.
-			word.FAScore = m.geometricMean(scores)
+			word.FAScore = fa.GeometricMean(scores)
 		}
 		word.Chars = faWd
 		words = append(words, word)
@@ -380,7 +380,7 @@ func (m *MMSAlign) summarizeByVerse(chapter [][]db.Audio) []db.Audio {
 		vs.Text = strings.Join(text, " ")
 		vs.Uroman = strings.Join(uroman, " ")
 		//vs.FAScore = m.average(scores, 5)
-		vs.FAScore = m.geometricMean(scores)
+		vs.FAScore = fa.GeometricMean(scores)
 		result = append(result, vs)
 	}
 	return result
@@ -396,18 +396,6 @@ func (m *MMSAlign) summarizeByVerse(chapter [][]db.Audio) []db.Audio {
 //	result := math.Round(avg*pow) / pow
 //	return result
 //}
-
-// minFAScore keeps math.Log finite when a score is 0.
-const minFAScore = 1e-12
-
-// geometricMean is exp(mean(log(score))), rounded to precision decimal places.
-func (m *MMSAlign) geometricMean(scores []float64) float64 {
-	var logSum float64
-	for _, scr := range scores {
-		logSum += math.Log(math.Max(scr, minFAScore))
-	}
-	return math.Exp(logSum / float64(len(scores)))
-}
 
 // padVerses adds generic.AudioPadSec before the first word and after the last word of each verse
 // of one audio file, limited to half the gap to the neighbouring verse.  Phrase samples are

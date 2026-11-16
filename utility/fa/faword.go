@@ -182,3 +182,20 @@ func median(xs []float64) float64 {
 	sort.Float64s(s)
 	return percentile(s, 0.5)
 }
+
+// minGeoScore keeps math.Log finite when a score is 0.
+const minGeoScore = 1e-12
+
+// GeometricMean is exp(mean(log(score))), the FA score of a word from its chars, and of a verse
+// from its words, in both mms_align and qa_align.  A score of 0 is taken as 1e-12.  It returns 0
+// when there are no scores.
+func GeometricMean(scores []float64) float64 {
+	if len(scores) == 0 {
+		return 0
+	}
+	var logSum float64
+	for _, scr := range scores {
+		logSum += math.Log(math.Max(scr, minGeoScore))
+	}
+	return math.Exp(logSum / float64(len(scores)))
+}

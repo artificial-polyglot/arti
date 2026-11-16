@@ -7,6 +7,7 @@ import (
 
 	"github.com/artificial-polyglot/arti/db"
 	log "github.com/artificial-polyglot/arti/logger"
+	"github.com/artificial-polyglot/arti/utility/fa"
 	sa "github.com/artificial-polyglot/arti/utility/sequence_align"
 	"golang.org/x/text/unicode/norm"
 )
@@ -47,8 +48,7 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 	var scriptText []string
 	var scriptBegin float64
 	var scriptEnd float64
-	var scriptErrorSum float64
-	var scriptCharCount int
+	var wordScores []float64
 
 	for i, w := range words {
 		wChars := wordCharSlices[i]
@@ -56,12 +56,17 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 			continue
 		}
 		var wordText string
-		var wordBegin, wordEnd, wordErrorSum float64
-		wordText, wordBegin, wordEnd, wordErrorSum, status = insertChars(conn, w.wordID, wChars)
+		var wordBegin, wordEnd float64
+		wordText, wordBegin, wordEnd, status = insertChars(conn, w.wordID, wChars)
 		if status != nil {
 			return status
 		}
-		wordScore := wordErrorSum / float64(len(wChars))
+		// Geometric mean of the char scores, the same as mms_align's word score
+		charScores := make([]float64, len(wChars))
+		for j, c := range wChars {
+			charScores[j] = c.Error
+		}
+		wordScore := fa.GeometricMean(charScores)
 		status = insertWords(conn, w.wordID, wordText, wordBegin, wordEnd, wordScore)
 		if status != nil {
 			return status
@@ -72,14 +77,11 @@ func ProcessFAResults(conn db.DBAdapter, request FARequest, jsonData string) *lo
 		}
 		scriptText = append(scriptText, wordText)
 		scriptEnd = wordEnd
-		scriptErrorSum += wordErrorSum
-		scriptCharCount += len(wChars)
+		wordScores = append(wordScores, wordScore)
 	}
 
-	var scriptScore float64
-	if scriptCharCount > 0 {
-		scriptScore = scriptErrorSum / float64(scriptCharCount)
-	}
+	// Geometric mean of the word scores, the same as mms_align's verse score
+	scriptScore := fa.GeometricMean(wordScores)
 
 	normTranscript := norm.NFC.String(alignResult.Transcript)
 	status = insertScript(conn, request.ScriptId, normTranscript, scriptBegin, scriptEnd, scriptScore)
@@ -221,12 +223,12 @@ func createQAAlignTables(conn db.DBAdapter) *log.Status {
 
 // insertCharsV2 inserts one charsV2 row per char for a single word and returns
 // the word's begin timestamp, end timestamp, and sum of fa_error values.
-func insertChars(conn db.DBAdapter, wordId int64, wordChars []sa.TimedChar) (word string, begin, end, errorSum float64, status *log.Status) {
+func insertChars(conn db.DBAdapter, wordId int64, wordChars []sa.TimedChar) (word string, begin, end float64, status *log.Status) {
 	stmt, err := conn.DB.Prepare(`INSERT INTO chars_qa_align
 		 (word_id, seq, char, begin_ts, end_ts, fa_score)
 		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return "", 0, 0, 0, log.Error(conn.Ctx, 500, err, "insert chars_qa_align: prepare")
+		return "", 0, 0, log.Error(conn.Ctx, 500, err, "insert chars_qa_align: prepare")
 	}
 	defer stmt.Close()
 	begin = wordChars[0].Begin
@@ -234,14 +236,13 @@ func insertChars(conn db.DBAdapter, wordId int64, wordChars []sa.TimedChar) (wor
 	for seq, c := range wordChars {
 		_, err = stmt.Exec(wordId, seq, c.Char, c.Begin, c.End, c.Error)
 		if err != nil {
-			return "", 0, 0, 0, log.Error(conn.Ctx, 500, err, "insert chars_qa_align: word_id", wordId, seq)
+			return "", 0, 0, log.Error(conn.Ctx, 500, err, "insert chars_qa_align: word_id", wordId, seq)
 		}
 		chars = append(chars, c.Char)
-		errorSum += c.Error
 		end = c.End
 	}
 	word = strings.Join(chars, "")
-	return word, begin, end, errorSum, nil
+	return word, begin, end, nil
 }
 
 // updateWords sets the timing and FA score on one word row.

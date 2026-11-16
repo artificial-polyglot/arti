@@ -27,8 +27,6 @@ type knownRow struct {
 	Status     string
 	MinFA      string
 	Pctl       string
-	GeoMin     string
-	GeoPctl    string
 	CER        string
 	Largest    int
 	Found      bool
@@ -121,10 +119,6 @@ func generateReport(ctx context.Context, datasetName string, unit string, before
 			}
 			if kn.faRankFound {
 				row.Pctl = strconv.FormatFloat(kn.faRank.percentile, 'f', 1, 64)
-			}
-			if kn.faRank.geoMin.Valid {
-				row.GeoMin = strconv.FormatFloat(kn.faRank.geoMin.Float64, 'g', 3, 64)
-				row.GeoPctl = strconv.FormatFloat(kn.faRank.geoPercentile, 'f', 1, 64)
 			}
 			row.CER = strconv.FormatFloat(kn.cer.ErrorRate(), 'f', 3, 64)
 			row.Segments = diffSegments(kn.diffs)
@@ -268,13 +262,13 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <h2>Known Errors</h2>
 <div class="scroll">
 <table>
-<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th title="Minimum over the verse's words of the geometric mean of each word's char fa_score">Geo Min</th><th>Geo Pctl</th><th>CER</th>{{if .Filtered}}<th>Largest Before Filters</th>{{end}}<th>Largest</th>{{if .Filtered}}<th>Removed By</th>{{end}}<th>Diff</th></tr></thead>
+<thead><tr><th>Reference</th><th>Prune Status</th><th>Min FA</th><th>FA Pctl</th><th>CER</th>{{if .Filtered}}<th>Largest Before Filters</th>{{end}}<th>Largest</th>{{if .Filtered}}<th>Removed By</th>{{end}}<th>Diff</th></tr></thead>
 <tbody>
 {{- range .Known}}
 <tr{{if .Missed}} class="missed"{{end}}>
 <td class="ref">{{.Reference}}</td>
 {{- if .Found}}
-<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.GeoMin}}</td><td class="num">{{.GeoPctl}}</td><td class="num">{{.CER}}</td>{{if $.Filtered}}<td class="num">{{.Before}}</td>{{end}}<td class="num largest">{{.Largest}}</td>{{if $.Filtered}}<td class="status removed">{{.RemovedBy}}</td>{{end}}
+<td class="status">{{.Status}}</td><td class="num">{{.MinFA}}</td><td class="num">{{.Pctl}}</td><td class="num">{{.CER}}</td>{{if $.Filtered}}<td class="num">{{.Before}}</td>{{end}}<td class="num largest">{{.Largest}}</td>{{if $.Filtered}}<td class="status removed">{{.RemovedBy}}</td>{{end}}
 <td class="diff">
 {{- if .Changed}}
 <div class="line"><span class="lbl">before</span>{{range .BeforeSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
@@ -282,7 +276,7 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <div class="line"><span class="lbl">arti</span>{{range .Segments}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div></td>
 {{- else}}
-<td colspan="{{if $.Filtered}}9{{else}}7{{end}}"></td><td class="diff">
+<td colspan="{{if $.Filtered}}7{{else}}5{{end}}"></td><td class="diff">
 <div class="line notfound">This verse was not found in data.</div>
 <div class="line"><span class="lbl">known</span>{{range .KnownSegs}}<span class="mk {{.Class}}">{{.Marker}}</span>{{.Text}}{{end}}</div>
 </td>
