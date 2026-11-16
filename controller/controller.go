@@ -583,7 +583,8 @@ func (c *Controller) matchText() (string, *log.Status) {
 		}
 	}
 	tempFilePath := filepath.Join(os.TempDir(), c.database.Project+"_compare.json")
-	c.bucket.AddJson(records, tempFilePath)
+	outRec := db.Output{Component: "compare_rpt", Report: "proofing_data", FilePath: tempFilePath}
+	c.bucket.AddJson(records, outRec)
 	writer := diff.NewHTMLWriter(c.ctx, c.database.Project)
 	filename, status := writer.WriteReport(baseDatasetName, records, languageISO, fileMap,
 		c.req.SpeechToText)

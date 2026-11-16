@@ -33,7 +33,7 @@ func NewHTMLWriter(ctx context.Context, datasetName string) HTMLWriter {
 func (h *HTMLWriter) WriteReport(records []generic.Pair, languageISO string, fileMap map[string]generic.AudioFile) (string, *log.Status) {
 	var err error
 	h.fileMap = fileMap
-	filePath := filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_compare.html")
+	filePath := filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_Compare.html")
 	h.out, err = os.Create(filePath)
 	if err != nil {
 		return "", log.Error(h.ctx, 500, err, `Error creating output file for diff`)

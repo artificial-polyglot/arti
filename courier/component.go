@@ -71,9 +71,7 @@ func (c *Component) StartComponent() (db.DBAdapter, request.Request, *log.Status
 }
 
 func (c *Component) FinishComponent(outputs []db.Output, runStatus *log.Status) {
-	for _, out := range outputs {
-		c.courier.AddOutput(out.FilePath)
-	}
+	c.courier.AddOutputList(outputs)
 	_ = c.courier.PersistToBucket(runStatus)                          // do not propagate error
 	_ = c.courier.Notification(c.req, runStatus, time.Since(c.start)) // do not propagate error
 }

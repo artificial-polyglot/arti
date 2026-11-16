@@ -46,7 +46,7 @@ func (h *HTMLWriter) WriteReport(verses []generic.Verse2, audioURLs map[string]g
 	default:
 		model = ""
 	}
-	h.out, err = os.Create(filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_proof.html"))
+	h.out, err = os.Create(filepath.Join(os.Getenv(`FCBH_DATASET_TMP`), h.datasetName+"_Proof.html"))
 	if err != nil {
 		return "", log.Error(h.ctx, 500, err, `Error creating output file for proof`)
 	}

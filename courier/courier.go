@@ -30,7 +30,7 @@ type Courier struct {
 	yamlContent string
 	logFile     string
 	databases   []string
-	outputs     []string
+	outputs     []db.Output
 	outputKeys  []string
 }
 
@@ -67,26 +67,27 @@ func (b *Courier) AddDatabase(conn db.DBAdapter) {
 
 func (b *Courier) AddOutput(outputPath string) {
 	if len(outputPath) > 0 {
-		b.outputs = append(b.outputs, outputPath)
+		var out = db.Output{Component: "legacy", Report: "report", FilePath: outputPath}
+		b.outputs = append(b.outputs, out)
 	}
 }
 
 func (b *Courier) AddOutputList(output []db.Output) {
 	for _, out := range output {
-		b.outputs = append(b.outputs, out.FilePath)
+		b.outputs = append(b.outputs, out)
 	}
 }
 
-func (b *Courier) AddJson(records any, filePath string) {
+func (b *Courier) AddJson(records any, output db.Output) {
 	jsonData, err := json.MarshalIndent(records, "", "  ")
 	if err != nil {
-		log.Warn(b.ctx, err, "Failed to marshal ", filePath)
+		log.Warn(b.ctx, err, "Failed to marshal ", output.Report)
 	} else {
-		err = os.WriteFile(filePath, jsonData, 0644)
+		err = os.WriteFile(output.FilePath, jsonData, 0644)
 		if err != nil {
-			log.Warn(b.ctx, err, "Failed to write ", filePath)
+			log.Warn(b.ctx, err, "Failed to write ", output.FilePath)
 		} else {
-			b.AddOutput(filePath)
+			b.AddOutputList([]db.Output{output})
 		}
 	}
 }
@@ -109,14 +110,18 @@ func (b *Courier) PersistModel(prefix string, localDir string) *log.Status {
 }
 
 func (b *Courier) GetOutputPaths() []string {
-	return b.outputs
+	var result []string
+	for _, out := range b.outputs {
+		result = append(result, out.FilePath)
+	}
+	return result
 }
 
 func (b *Courier) GetOutputByExt() []string {
 	var results []string
 	for _, path := range b.outputs {
-		if !strings.HasSuffix(path, ".db") && !strings.HasSuffix(path, ".sqlite") {
-			results = append(results, path)
+		if !strings.HasSuffix(path.FilePath, ".db") && !strings.HasSuffix(path.FilePath, ".sqlite") {
+			results = append(results, path.FilePath)
 		}
 	}
 	return results
@@ -144,7 +149,7 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 		for _, output := range b.outputs {
 			var mimeType string
 			var inline bool
-			switch strings.ToLower(filepath.Ext(output)) {
+			switch strings.ToLower(filepath.Ext(output.FilePath)) {
 			case ".html":
 				mimeType = "text/html"
 				inline = true
@@ -158,7 +163,7 @@ func (b *Courier) PersistToBucket(runStatus *log.Status) *log.Status {
 				mimeType = ""
 				inline = false
 			}
-			outputKey, status2 := b.uploadFile(client, run, "output", output, mimeType, inline)
+			outputKey, status2 := b.uploadFile(client, run, output.Report, output.FilePath, mimeType, inline)
 			allStatus = append(allStatus, status2)
 			b.outputKeys = append(b.outputKeys, outputKey)
 		}

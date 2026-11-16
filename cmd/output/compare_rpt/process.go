@@ -26,7 +26,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 		if status1 != nil {
 			return output, status1
 		}
-		output = append(output, db.Output{Component: "compare_rpt", Report: "filters.html", FilePath: filterPath})
+		output = append(output, db.Output{Component: "compare_rpt", Report: "validation_report", FilePath: filterPath})
 	}
 	s3, status := s3_datastore.NewS3Client(ctx)
 	if status != nil {
@@ -41,19 +41,19 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if err != nil {
 		return output, log.Error(database.Ctx, 500, err, "Error writing Pairs to json bytes")
 	}
-	jsonFile := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), req.DatasetName+"_pairs.json")
+	jsonFile := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), req.DatasetName+"_Pairs.json")
 	err = os.WriteFile(jsonFile, jsonBytes, 0644)
 	if err != nil {
 		return output, log.Error(database.Ctx, 500, err, "Error writing pairs json to file")
 	}
-	out := db.Output{Component: "compare_rpt", Report: "pairs.json", FilePath: jsonFile}
+	out := db.Output{Component: "compare_rpt", Report: "proofing_data", FilePath: jsonFile}
 	output = append(output, out)
 
 	jsonPath, status1 := generic.OutputAudioFiles(database.Ctx, fileMap)
 	if status1 != nil {
 		return output, status1
 	}
-	out = db.Output{Component: "compare_rpt", Report: "audio_files.json", FilePath: jsonPath}
+	out = db.Output{Component: "compare_rpt", Report: "proofing_report", FilePath: jsonPath}
 	output = append(output, out)
 
 	report := NewHTMLWriter(database.Ctx, req.DatasetName)
@@ -61,7 +61,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status1 != nil {
 		return output, status
 	}
-	out = db.Output{Component: "compare_rpt", Report: "compare.html", FilePath: filePath}
+	out = db.Output{Component: "compare_rpt", Report: "proofing_report", FilePath: filePath}
 	output = append(output, out)
 
 	status = database.InsertOutput(output)

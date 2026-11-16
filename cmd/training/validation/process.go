@@ -116,7 +116,7 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status2 != nil {
 		return output, status2
 	}
-	var out = db.Output{Component: "Validate", Report: "Validation Report", FilePath: rptPath}
+	var out = db.Output{Component: "validate_rpt", Report: "validation_report", FilePath: rptPath}
 	output = append(output, out)
 	return output, nil
 }

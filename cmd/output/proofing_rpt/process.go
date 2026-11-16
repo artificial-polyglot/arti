@@ -20,14 +20,14 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if status != nil {
 		return output, status
 	}
-	out := db.Output{Component: "proofing_rpt", Report: "proofing", FilePath: filename}
+	out := db.Output{Component: "proofing_rpt", Report: "proofing_report", FilePath: filename}
 	output = append(output, out)
 
 	jsonName, status1 := generic.OutputAudioFiles(database.Ctx, audioURLs)
 	if status1 != nil {
 		return output, status
 	}
-	out = db.Output{Component: "proofing_rpt", Report: "audio_urls", FilePath: jsonName}
+	out = db.Output{Component: "proofing_rpt", Report: "proofing_report", FilePath: jsonName}
 	output = append(output, out)
 	status = database.InsertOutput(output)
 	if status != nil {

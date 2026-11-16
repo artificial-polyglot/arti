@@ -2,6 +2,7 @@ package generic
 
 import (
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/artificial-polyglot/arti/utility/diff"
@@ -54,9 +55,40 @@ func (p *Pair) Deletes() int {
 	return deletes
 }
 
-// LargestLength returns the longest run of inserted/deleted chars. A single
-// equal char between changes does not break the run, and is not counted.
+// LargestLength returns the longest run of contiguous non-equal chars: inserts,
+// deletes and replaces next to each other, ended by any equal text. Spaces are
+// not counted. A replace contributes the longer of its two sides.
 func (p *Pair) LargestLength() int {
+	var result, length int
+	for _, df := range p.Text.Diffs {
+		if df.Type == diff.OpEqual {
+			length = 0
+			continue
+		}
+		n := countNonSpace(df.Text)
+		if df.Type == diff.OpReplace {
+			n = max(n, countNonSpace(df.Replace))
+		}
+		length += n
+		result = max(result, length)
+	}
+	return result
+}
+
+// countNonSpace returns the number of chars in s that are not white space.
+func countNonSpace(s string) int {
+	var n int
+	for _, r := range s {
+		if !unicode.IsSpace(r) {
+			n++
+		}
+	}
+	return n
+}
+
+// LargestLengthTest returns the longest run of inserted/deleted chars. A single
+// equal char between changes does not break the run, and is not counted.
+func (p *Pair) LargestLengthTest() int {
 	var result int
 	var run strings.Builder
 	endRun := func() {
