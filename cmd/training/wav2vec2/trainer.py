@@ -216,7 +216,7 @@ outputDir = os.path.join(os.getenv('FCBH_DATASET_DB'), modelName, targetLang)
 checkpoints = CheckpointManager(modelName, targetLang, processor, isAdapter)
 stopper = EarlyStopper(numEpochs)
 lrPlan = LRPlan(warmupSteps, len(dataset) * numEpochs)
-hasValidation = validationSet is not None and len(validationSet) > 0
+hasValidation = validationSet is not None and any(not s.trainedVerse for s in validationSet)   # the stop needs pruned samples
 epochResults = []
 lastEpoch = 0
 
