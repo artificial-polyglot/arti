@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import torch
 from io import BytesIO
@@ -13,9 +14,16 @@ from text_normalize import normalizeText
 # Headings (verse_str '0') are left out: they are pruned because they are headings, not because
 # of their fa_score, and they are often not read.
 # Word samples have no validation set; training then runs every epoch.
+#
+# The "verse" group is different: it is up to TRAINED_VERSE_COUNT whole verses that training does
+# use, none of their phrases pruned, each transcribed from the same clip that ASR is given.  Its
+# CER is ideally near zero, and a rise means the model has started to drop words when it hears a
+# whole verse, which the phrase groups cannot show.  It is not counted in "all".
 
-VALIDATION_GROUPS = ("fa_score", "silence", "all")
+VALIDATION_GROUPS = ("fa_score", "silence", "all", "verse")
 VALIDATION_MAX_BATCH = 64
+TRAINED_VERSE_COUNT = 500
+TRAINED_VERSE_SEED = 42     # the same verses are chosen in every run of a dataset
 
 PHRASE_QUERY = """
     SELECT s.book_id || ' ' || s.chapter_num || ':' || s.verse_str || '.' || p.phrase_num AS ref,
@@ -44,40 +52,68 @@ VERSE_QUERY = """
     ORDER BY s.script_end_ts - s.script_begin_ts
     """
 
+# Verses that are trained: not headings, and no part pruned.  For phrase samples, the verse must
+# have phrases and none of them pruned; for verse samples, the verse itself is not pruned.
+TRAINED_VERSE_QUERY = """
+    SELECT s.book_id || ' ' || s.chapter_num || ':' || s.verse_str AS ref,
+        s.audio_file, s.script_begin_ts, s.script_end_ts, GROUP_CONCAT(w.word, ' ' ORDER BY w.word_id) AS text
+    FROM scripts s
+    JOIN words w ON w.script_id = s.script_id
+    WHERE w.ttype = 'W' AND s.verse_str != '0'
+    AND {trained}
+    GROUP BY s.script_id
+    ORDER BY s.script_id
+    """
+TRAINED_PHRASES = """EXISTS (SELECT 1 FROM phrases p WHERE p.script_id = s.script_id)
+    AND NOT EXISTS (SELECT 1 FROM phrases p WHERE p.script_id = s.script_id
+        AND (p.phrase_id IN (SELECT phrase_id FROM pruned_data)
+            OR p.phrase_id IN (SELECT phrase_id FROM pruned_silence)))"""
+TRAINED_VERSES = """s.script_id NOT IN (SELECT script_id FROM pruned_data)
+    AND s.script_id NOT IN (SELECT script_id FROM pruned_silence)"""
+
 
 class ValidationSample:
-    def __init__(self, reference, inputValues, attentionMask, text, faPruned, silencePruned):
+    def __init__(self, reference, inputValues, attentionMask, text, faPruned, silencePruned, trainedVerse=False):
         self.reference = reference
         self.inputValues = inputValues          # 1-D float tensor, already normalized by the processor
         self.attentionMask = attentionMask      # 0 for the padding added to reach minAudioSec, as in training
         self.text = text                        # normalized reference text
         self.faPruned = faPruned
         self.silencePruned = silencePruned
+        self.trainedVerse = trainedVerse        # in the "verse" group only
 
 
 def prepareValidationSet(scriptsDB, audioDir, sampleType, processor, minAudioSec):
-    """Returns the pruned samples as a list of ValidationSample, or None when sampleType has no
-    validation set.  It must run before scriptsDB is closed."""
+    """Returns the pruned samples and the trained verses as a list of ValidationSample, or None when
+    sampleType has no validation set.  It must run before scriptsDB is closed."""
     if sampleType == "phrase":
-        query = PHRASE_QUERY
+        (query, trained) = (PHRASE_QUERY, TRAINED_PHRASES)
     elif sampleType == "verse":
-        query = VERSE_QUERY
+        (query, trained) = (VERSE_QUERY, TRAINED_VERSES)
     else:
         return None
     (minTensorLength, _) = calcMinTensor(minAudioSec, torch.float32)
     vocab = processor.tokenizer.get_vocab()
     unkId = processor.tokenizer.unk_token_id
-    samples = []
-    for (reference, audioFile, beginTS, endTS, text, faPruned, silencePruned) in scriptsDB.select(query, ()):
-        if endTS <= beginTS:
-            continue
+
+    def makeSample(reference, audioFile, beginTS, endTS, text, faPruned, silencePruned, trainedVerse):
         # encodeSample is the training path, so validation audio is prepared exactly as training audio
         (inputValuesBlob, _, _, _, _) = encodeSample(reference, audioFile, beginTS, endTS, text,
                                                       audioDir, processor, vocab, unkId)
         inputValues = torch.load(BytesIO(inputValuesBlob))
         inputValues, attentionMask = ensureMinimumTensorSize(inputValues, minTensorLength, 0)
-        samples.append(ValidationSample(reference, inputValues, attentionMask, cleanText(normalizeText(text)),
-                                        bool(faPruned), bool(silencePruned)))
+        return ValidationSample(reference, inputValues, attentionMask, cleanText(normalizeText(text)),
+                                bool(faPruned), bool(silencePruned), trainedVerse)
+
+    samples = []
+    for (reference, audioFile, beginTS, endTS, text, faPruned, silencePruned) in scriptsDB.select(query, ()):
+        if endTS > beginTS:
+            samples.append(makeSample(reference, audioFile, beginTS, endTS, text, faPruned, silencePruned, False))
+    verses = [row for row in scriptsDB.select(TRAINED_VERSE_QUERY.format(trained=trained), ()) if row[3] > row[2]]
+    if len(verses) > TRAINED_VERSE_COUNT:
+        verses = random.Random(TRAINED_VERSE_SEED).sample(verses, TRAINED_VERSE_COUNT)
+    for (reference, audioFile, beginTS, endTS, text) in verses:
+        samples.append(makeSample(reference, audioFile, beginTS, endTS, text, False, False, True))
     counts = {g: sum(1 for s in samples if inGroup(s, g)) for g in VALIDATION_GROUPS}
     print("validation samples", counts)
     return samples
@@ -147,6 +183,10 @@ def summarize(transcripts):
 
 
 def inGroup(sample, group):
+    if group == "verse":
+        return sample.trainedVerse
+    if sample.trainedVerse:
+        return False
     if group == "fa_score":
         return sample.faPruned
     if group == "silence":
