@@ -2,11 +2,15 @@
 # validation CER.  NumEpochs from the request is the most epochs that will run, and the base
 # linear learning rate schedule decays over all of them.  When the CER stops improving, the
 # learning rate is cut to zero over COOLDOWN_EPOCHS more epochs so the model settles, and then
-# training stops.  The published epoch is the best of those settled epochs, never one taken while
-# the learning rate was still high.  These constants may later become request parameters.
+# training stops.  The published epoch is the one with the lowest CER in PUBLISH_METRIC, the
+# trained verses transcribed whole, which judges the model as the reports use it.  Any epoch after
+# the all-blank phase may be chosen, since that CER is measured, not inferred.  Without that group,
+# the published epoch is the best of the settled epochs, never one taken while the learning rate
+# was still high.  These constants may later become request parameters.
 
 STOP_METRIC = "all"         # validation group whose CER decides: "fa_score", "silence" or "all"
-PATIENCE = 4                # start the cool-down after this many epochs in a row without a real gain
+PUBLISH_METRIC = "verse"    # validation group whose lowest CER chooses the published epoch
+PATIENCE = 1000 #4                # start the cool-down after this many epochs in a row without a real gain
 MIN_RELATIVE_GAIN = 0.005   # a gain is real when CER falls by at least 0.5% of the reference CER
 COOLDOWN_EPOCHS = 4         # epochs over which the learning rate is cut to zero before stopping;
                             # it never runs past maxEpochs, where the base schedule is already at zero
@@ -31,12 +35,16 @@ class EarlyStopper:
         # the base schedule's last epochs are the settled ones, since its rate also ends at zero.
         self.settledFrom = max(1, maxEpochs - COOLDOWN_EPOCHS + 1)
         self.cers = {}              # epoch -> CER, after escaping the all-blank phase
+        self.publishCers = {}       # epoch -> PUBLISH_METRIC CER, when that group has samples
         self.failed = False
         self.reason = None
 
     @property
     def bestEpoch(self):
-        """The settled epoch with the lowest CER so far; this is the one published."""
+        """The epoch published: the lowest PUBLISH_METRIC CER so far, a tie going to the later
+        epoch, or without that group the settled epoch with the lowest CER."""
+        if self.publishCers:
+            return min(self.publishCers, key=lambda e: (self.publishCers[e], -e))
         settled = [e for e in self.cers if e >= self.settledFrom]
         return min(settled, key=lambda e: (self.cers[e], -e)) if settled else None
 
@@ -61,6 +69,9 @@ class EarlyStopper:
             else:
                 return CONTINUE
         self.cers[epoch] = cer
+        publish = result.get(PUBLISH_METRIC)
+        if publish and publish["num_samples"] > 0 and publish["cer"] is not None:
+            self.publishCers[epoch] = publish["cer"]
         if self.cooldownStart is not None:
             if epoch >= self.cooldownEnd:
                 self.reason = (f"No {MIN_RELATIVE_GAIN:.1%} gain in {STOP_METRIC} CER for {PATIENCE} epochs "
@@ -89,12 +100,15 @@ class EarlyStopper:
 
     def bestText(self):
         text = f"published epoch {self.bestEpoch} CER {self.cers.get(self.bestEpoch)}"
+        if self.publishCers:
+            text += f" {PUBLISH_METRIC} CER {self.publishCers[self.bestEpoch]}"
         if self.lowestEpoch != self.bestEpoch:
             text += f"; lowest CER {self.cers[self.lowestEpoch]} at epoch {self.lowestEpoch}"
         return text
 
     def settings(self):
-        return {"stop_metric": STOP_METRIC, "patience": PATIENCE, "min_relative_gain": MIN_RELATIVE_GAIN,
+        return {"stop_metric": STOP_METRIC,
+                "publish_metric": PUBLISH_METRIC if self.publishCers else None, "patience": PATIENCE, "min_relative_gain": MIN_RELATIVE_GAIN,
                 "cooldown_epochs": COOLDOWN_EPOCHS, "cooldown_start": self.cooldownStart,
                 "max_empty_fraction": MAX_EMPTY_FRACTION, "blank_fail_updates": BLANK_FAIL_UPDATES}
 
