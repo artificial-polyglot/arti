@@ -57,11 +57,12 @@ type reportData struct {
 	Missed     int
 	Removed    int // known errors caught before the filters, but missed after
 	Total      int
-	Filtered   bool   // the STT filters ran, and CER and known errors are after them
-	Filters    string // the filters that ran, in order
+	Filtered   bool           // the STT filters ran, and CER and known errors are after them
+	Filters    string         // the filters that ran, in order
+	Training   *trainingTable // each epoch of training, when training_info.json is present
 }
 
-func generateReport(ctx context.Context, datasetName string, unit string, before cerResult, after *cerResult, filterNames []string, knownErrors []knownError) (string, *log.Status) {
+func generateReport(ctx context.Context, datasetName string, unit string, before cerResult, after *cerResult, filterNames []string, knownErrors []knownError, training *trainingTable) (string, *log.Status) {
 	filePath := filepath.Join(os.Getenv("FCBH_DATASET_TMP"), datasetName+"_Validation.html")
 	data := reportData{
 		Dataset:   datasetName,
@@ -71,6 +72,7 @@ func generateReport(ctx context.Context, datasetName string, unit string, before
 		Total:     len(knownErrors),
 		Filtered:  after != nil,
 		Filters:   strings.Join(filterNames, ", "),
+		Training:  training,
 	}
 	rate := func(c diff.Counts) string { return strconv.FormatFloat(c.ErrorRate(), 'f', 4, 64) }
 	for _, reas := range []PruneSource{NotPruned, FAScore, Silence, Both} {
@@ -226,6 +228,7 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
   .mk.ins { background: #c9f0d1; color: #116329; }
   .mk.eq  { background: #dbeafe; color: #3b6aa0; }
   td.removed { color: var(--bad); font-weight: 600; }
+  tr.published td { background: #eef6ff; font-weight: 600; }
   .notfound { color: var(--bad); font-style: italic; }
   .line + .line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
   .lbl { display: inline-block; min-width: 44px; color: var(--muted); font-size: 11px;
@@ -258,6 +261,24 @@ var reportTemplate = template.Must(template.New("validation").Parse(`<!doctype h
 <tfoot><tr class="total"><td class="status">{{.Validation.Status}}</td><td class="num">{{.Validation.Verses}}</td><td class="num">{{.Validation.Chars}}</td><td class="num">{{.Validation.CER}}</td>{{if .Filtered}}<td class="num">{{.Validation.CERAfter}}</td>{{end}}</tr></tfoot>
 </table>
 </div>
+
+{{- with .Training}}
+<h2>Training by Epoch</h2>
+<div class="meta">Validation CER after each epoch, from the trainer's greedy ASR. The pruned groups are samples that training never saw.{{if .HasVerse}} Verse is {{.VerseCount}} trained verses, each transcribed whole as the reports transcribe it; it is ideally near zero, and the published epoch is the one where it is lowest.{{end}}</div>
+<div class="scroll">
+<table>
+<thead><tr><th>Epoch</th><th>Loss</th><th>FAScore Pruned</th><th>Silence Pruned</th><th>All Pruned</th>{{if .HasVerse}}<th>Verse</th>{{end}}</tr></thead>
+<tbody>
+{{- range .Rows}}
+<tr{{if .Published}} class="published"{{end}}><td class="num">{{.Epoch}}{{if .Published}} published{{end}}</td><td class="num">{{.Loss}}</td><td class="num">{{.FAScore}}</td><td class="num">{{.Silence}}</td><td class="num">{{.All}}</td>{{if $.Training.HasVerse}}<td class="num">{{.Verse}}</td>{{end}}</tr>
+{{- end}}
+</tbody>
+</table>
+</div>
+{{- if .StopReason}}
+<div class="meta">{{.StopReason}}</div>
+{{- end}}
+{{- end}}
 
 <h2>Known Errors</h2>
 <div class="scroll">

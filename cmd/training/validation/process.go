@@ -112,7 +112,8 @@ func Process(database db.DBAdapter, req request.Request) ([]db.Output, *log.Stat
 	if phraseMode {
 		unit = "Phrases"
 	}
-	rptPath, status2 := generateReport(ctx, req.DatasetName, unit, before, after, filterRes.StageNames(), knownErrors)
+	rptPath, status2 := generateReport(ctx, req.DatasetName, unit, before, after, filterRes.StageNames(), knownErrors,
+		readTrainingTable(ctx, req))
 	if status2 != nil {
 		return output, status2
 	}
