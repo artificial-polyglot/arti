@@ -3,8 +3,6 @@
 An Application Server for checking correctness of Bible audio files, 
 especially for low resource languages.
 
-## NOTE: This repository is in active development.  The production version of this application can be found at https://github.com/faithcomesbyhearing/fcbh-dataset-io
-
 ## Objective
 
 Artificial Polyglot is an open source software service that validates audio Bibles 
